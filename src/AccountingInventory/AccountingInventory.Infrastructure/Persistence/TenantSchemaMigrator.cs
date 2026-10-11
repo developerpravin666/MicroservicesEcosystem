@@ -35,84 +35,96 @@ internal static class TenantSchemaMigrator
             $"CREATE SCHEMA IF NOT EXISTS \"{tenantProvider.SchemaName}\";", cancellationToken);
         await applicationDbContext.Database.MigrateAsync(cancellationToken);
 
-        // Idempotent safety fallback: ensures staging tables and indexes exist even if
-        // historical schemas were bootstrapped without full migration execution.
-        await applicationDbContext.Database.ExecuteSqlRawAsync($@"
-            CREATE TABLE IF NOT EXISTS ""{tenantProvider.SchemaName}"".master_import_batches (
-                id uuid NOT NULL,
-                batch_number character varying(80) NOT NULL,
-                file_name character varying(250) NOT NULL,
-                file_type character varying(50),
-                status integer NOT NULL,
-                total_rows integer NOT NULL,
-                valid_rows integer NOT NULL,
-                error_rows integer NOT NULL,
-                warning_rows integer NOT NULL,
-                created_count integer NOT NULL,
-                updated_count integer NOT NULL,
-                summary_json text,
-                review_notes text,
-                reviewed_at timestamp with time zone,
-                reviewed_by text,
-                created_at timestamp with time zone NOT NULL,
-                created_by uuid,
-                modified_at timestamp with time zone,
-                modified_by uuid,
-                is_active boolean NOT NULL,
-                is_deleted boolean NOT NULL,
-                CONSTRAINT pk_master_import_batches PRIMARY KEY (id)
-            );
-            CREATE UNIQUE INDEX IF NOT EXISTS ix_master_import_batches_batch_number
-                ON ""{tenantProvider.SchemaName}"".master_import_batches (batch_number);
+        // Idempotent safety fallback executed inside an explicit database transaction:
+        // ensures staging tables and indexes exist even if historical schemas were bootstrapped
+        // without full migration execution, and syncs table registry for this tenant schema.
+        await using var tx = await applicationDbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, cancellationToken);
+        try
+        {
+            await applicationDbContext.Database.ExecuteSqlRawAsync($@"
+                CREATE TABLE IF NOT EXISTS ""{tenantProvider.SchemaName}"".master_import_batches (
+                    id uuid NOT NULL,
+                    batch_number character varying(80) NOT NULL,
+                    file_name character varying(250) NOT NULL,
+                    file_type character varying(50),
+                    status integer NOT NULL,
+                    total_rows integer NOT NULL,
+                    valid_rows integer NOT NULL,
+                    error_rows integer NOT NULL,
+                    warning_rows integer NOT NULL,
+                    created_count integer NOT NULL,
+                    updated_count integer NOT NULL,
+                    summary_json text,
+                    review_notes text,
+                    reviewed_at timestamp with time zone,
+                    reviewed_by text,
+                    created_at timestamp with time zone NOT NULL,
+                    created_by uuid,
+                    modified_at timestamp with time zone,
+                    modified_by uuid,
+                    is_active boolean NOT NULL,
+                    is_deleted boolean NOT NULL,
+                    CONSTRAINT pk_master_import_batches PRIMARY KEY (id)
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS ix_master_import_batches_batch_number
+                    ON ""{tenantProvider.SchemaName}"".master_import_batches (batch_number);
 
-            CREATE TABLE IF NOT EXISTS ""{tenantProvider.SchemaName}"".master_import_staging_rows (
-                id uuid NOT NULL,
-                batch_id uuid NOT NULL,
-                row_index integer NOT NULL,
-                entity_type character varying(50) NOT NULL,
-                action integer NOT NULL,
-                status integer NOT NULL,
-                entity_key character varying(150),
-                entity_name character varying(250),
-                validation_errors text,
-                raw_data_json text NOT NULL,
-                is_approved boolean NOT NULL,
-                is_imported boolean NOT NULL,
-                imported_at timestamp with time zone,
-                import_message text,
-                created_at timestamp with time zone NOT NULL,
-                created_by uuid,
-                modified_at timestamp with time zone,
-                modified_by uuid,
-                is_active boolean NOT NULL,
-                is_deleted boolean NOT NULL,
-                CONSTRAINT pk_master_import_staging_rows PRIMARY KEY (id)
-            );
-            DO $$
-            BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_constraint 
-                    WHERE conname = 'fk_master_import_staging_rows_master_import_batches_batch_id'
-                ) THEN
-                    ALTER TABLE ""{tenantProvider.SchemaName}"".master_import_staging_rows
-                        ADD CONSTRAINT fk_master_import_staging_rows_master_import_batches_batch_id
-                        FOREIGN KEY (batch_id) REFERENCES ""{tenantProvider.SchemaName}"".master_import_batches (id) ON DELETE CASCADE;
-                END IF;
-            END $$;
-            CREATE INDEX IF NOT EXISTS ix_master_import_staging_rows_batch_id_row_index
-                ON ""{tenantProvider.SchemaName}"".master_import_staging_rows (batch_id, row_index);
+                CREATE TABLE IF NOT EXISTS ""{tenantProvider.SchemaName}"".master_import_staging_rows (
+                    id uuid NOT NULL,
+                    batch_id uuid NOT NULL,
+                    row_index integer NOT NULL,
+                    entity_type character varying(50) NOT NULL,
+                    action integer NOT NULL,
+                    status integer NOT NULL,
+                    entity_key character varying(150),
+                    entity_name character varying(250),
+                    validation_errors text,
+                    raw_data_json text NOT NULL,
+                    is_approved boolean NOT NULL,
+                    is_imported boolean NOT NULL,
+                    imported_at timestamp with time zone,
+                    import_message text,
+                    created_at timestamp with time zone NOT NULL,
+                    created_by uuid,
+                    modified_at timestamp with time zone,
+                    modified_by uuid,
+                    is_active boolean NOT NULL,
+                    is_deleted boolean NOT NULL,
+                    CONSTRAINT pk_master_import_staging_rows PRIMARY KEY (id)
+                );
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint 
+                        WHERE conname = 'fk_master_import_staging_rows_master_import_batches_batch_id'
+                    ) THEN
+                        ALTER TABLE ""{tenantProvider.SchemaName}"".master_import_staging_rows
+                            ADD CONSTRAINT fk_master_import_staging_rows_master_import_batches_batch_id
+                            FOREIGN KEY (batch_id) REFERENCES ""{tenantProvider.SchemaName}"".master_import_batches (id) ON DELETE CASCADE;
+                    END IF;
+                END $$;
+                CREATE INDEX IF NOT EXISTS ix_master_import_staging_rows_batch_id_row_index
+                    ON ""{tenantProvider.SchemaName}"".master_import_staging_rows (batch_id, row_index);
 
-            DO $$
-            BEGIN
-                IF EXISTS (
-                    SELECT 1 FROM pg_proc p 
-                    JOIN pg_namespace n ON p.pronamespace = n.oid 
-                    WHERE n.nspname = 'tenant' AND p.proname = 'sync_table_registry'
-                ) THEN
-                    PERFORM tenant.sync_table_registry('{tenantProvider.SchemaName}');
-                END IF;
-            END $$;
-        ", cancellationToken);
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM pg_proc p 
+                        JOIN pg_namespace n ON p.pronamespace = n.oid 
+                        WHERE n.nspname = 'tenant' AND p.proname = 'sync_table_registry'
+                    ) THEN
+                        PERFORM tenant.sync_table_registry('{tenantProvider.SchemaName}');
+                    END IF;
+                END $$;
+            ", cancellationToken);
+
+            await tx.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await tx.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     internal static string CreateTenantConnectionString(string connectionString, string schemaName)

@@ -62,6 +62,7 @@ public static class DependencyInjection
         services.AddScoped<ITenantDirectoryContext>(sp => sp.GetRequiredService<TenantDbContext>());
 
         services.AddScoped<ITenantSchemaProvisioner, TenantSchemaProvisionerAdapter>();
+        services.AddScoped<IDatabaseMigrationCoordinator, DatabaseMigrationCoordinator>();
 
         var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
             ?? throw new InvalidOperationException("Jwt configuration section is missing.");

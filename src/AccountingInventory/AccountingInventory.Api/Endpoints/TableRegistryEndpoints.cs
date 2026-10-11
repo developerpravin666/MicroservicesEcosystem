@@ -230,9 +230,20 @@ public static class TableRegistryEndpoints
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync(ct);
-                await using var cmd = conn.CreateCommand();
-                cmd.CommandText = $"TRUNCATE TABLE \"{targetSchema}\".\"{tableName}\" CASCADE;";
-                await cmd.ExecuteNonQueryAsync(ct);
+                await using var tx = await conn.BeginTransactionAsync(ct);
+                try
+                {
+                    await using var cmd = conn.CreateCommand();
+                    cmd.Transaction = tx;
+                    cmd.CommandText = $"TRUNCATE TABLE \"{targetSchema}\".\"{tableName}\" CASCADE;";
+                    await cmd.ExecuteNonQueryAsync(ct);
+                    await tx.CommitAsync(ct);
+                }
+                catch
+                {
+                    await tx.RollbackAsync(ct);
+                    throw;
+                }
             }
 
             return Results.Ok(new
@@ -295,9 +306,20 @@ public static class TableRegistryEndpoints
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync(ct);
-                await using var cmd = conn.CreateCommand();
-                cmd.CommandText = $"TRUNCATE TABLE {truncateStatements} CASCADE;";
-                await cmd.ExecuteNonQueryAsync(ct);
+                await using var tx = await conn.BeginTransactionAsync(ct);
+                try
+                {
+                    await using var cmd = conn.CreateCommand();
+                    cmd.Transaction = tx;
+                    cmd.CommandText = $"TRUNCATE TABLE {truncateStatements} CASCADE;";
+                    await cmd.ExecuteNonQueryAsync(ct);
+                    await tx.CommitAsync(ct);
+                }
+                catch
+                {
+                    await tx.RollbackAsync(ct);
+                    throw;
+                }
             }
 
             return Results.Ok(new
