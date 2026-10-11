@@ -101,6 +101,17 @@ internal static class TenantSchemaMigrator
             END $$;
             CREATE INDEX IF NOT EXISTS ix_master_import_staging_rows_batch_id_row_index
                 ON ""{tenantProvider.SchemaName}"".master_import_staging_rows (batch_id, row_index);
+
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM pg_proc p 
+                    JOIN pg_namespace n ON p.pronamespace = n.oid 
+                    WHERE n.nspname = 'tenant' AND p.proname = 'sync_table_registry'
+                ) THEN
+                    PERFORM tenant.sync_table_registry('{tenantProvider.SchemaName}');
+                END IF;
+            END $$;
         ", cancellationToken);
     }
 

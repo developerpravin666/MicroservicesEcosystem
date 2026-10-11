@@ -1,891 +1,1688 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Accounting &amp; Inventory User Manual</title>
-<style>
-body{font:16px/1.65 Arial,sans-serif;color:#172536;background:#edf2f6;margin:0}
-main{max-width:900px;margin:30px auto;padding:40px;background:white;border-radius:8px}
-h1{font-size:30px}h2{margin-top:40px;border-top:1px solid #ccd5df;padding-top:20px}h3{margin-top:28px}
-a{color:#1558a1}li{margin:8px 0}table{border-collapse:collapse;width:100%;font-size:14px}
-th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}th{background:#eef3f8}
-.table-wrap{overflow-x:auto}code{background:#eef3f8;padding:2px 4px}button{padding:10px 16px;cursor:pointer}
-@media(max-width:600px){main{margin:0;padding:20px;border-radius:0}}
-@media print{@page{size:A4;margin:18mm}body{background:white;font-size:11pt}main{margin:0;padding:0;max-width:none}.print-tools{display:none}h2,h3{break-after:avoid}tr{break-inside:avoid}a{color:inherit;text-decoration:none}table{font-size:9pt}}
-</style></head><body><main><div class="print-tools"><button onclick="window.print()">Print / Save PDF</button></div>
-<h1 id='accounting-inventory-user-manual'>Accounting &amp; Inventory User Manual</h1>
-<p>Version: 1.7 | Updated: 10 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, and Two-Stage Master Data Import &amp; Verification</p>
-<p>For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.</p>
-<p>To share this guide, send accounting-user-manual.html. Open that file in a browser and choose Print / Save PDF for a paper or PDF copy. Keep the version and date with any distributed copy.</p>
-<h2 id='contents'>Contents</h2>
-<ul>
-<li><a href="#1-get-started">1. Get started</a></li>
-<li><a href="#2-owner-invite-staff-and-grant-access">2. Owner: invite staff and grant access</a></li>
-<li><a href="#3-set-up-products-and-bill-details">3. Set up products and bill details</a></li>
-<li><a href="#4-accountant-bring-forward-opening-balances">4. Accountant: bring forward opening balances</a></li>
-<li><a href="#5-record-a-new-purchase">5. Record a new purchase</a></li>
-<li><a href="#6-pay-a-supplier">6. Pay a supplier</a></li>
-<li><a href="#7-create-a-sale-and-select-gst">7. Create a sale and select GST</a></li>
-<li><a href="#8-receive-a-customer-payment-and-print-a-bill">8. Receive a customer payment and print a bill</a></li>
-<li><a href="#9-return-or-cancel-a-sale">9. Return or cancel a sale</a></li>
-<li><a href="#10-return-a-product-to-a-supplier">10. Return a product to a supplier</a></li>
-<li><a href="#11-record-refunds-and-print-notes">11. Record refunds and print notes</a></li>
-<li><a href="#12-check-balances-gst-and-stock">12. Check balances, GST and stock</a></li>
-<li><a href="#13-accountant-journals-periods-and-bank-reconciliation">13. Accountant: journals, periods and bank reconciliation</a></li>
-<li><a href="#14-additional-accounting-controls">14. Additional accounting controls</a></li>
-<li><a href="#15-daily-checklist-and-practice-example">15. Daily checklist and practice example</a></li>
-<li><a href="#16-common-problems-and-help">16. Common problems and help</a></li>
-<li><a href="#17-terms-used-in-this-guide">17. Terms used in this guide</a></li>
-<li><a href="#18-multi-line-invoices-and-customer-advances">18. Multi-line invoices and customer advances</a></li>
-<li><a href="#19-stocked-accessories-and-integrity-controls">19. Stocked accessories and integrity controls</a></li>
-<li><a href="#20-non-accountant-store-operator-guide--smart-suggestions">20. Non-Accountant Store Operator Guide &amp; Smart Suggestions</a></li>
-<li><a href="#21-tenant-onboarding--offline-deployment-setup-guide">21. Tenant Onboarding &amp; Offline Deployment Setup Guide</a></li>
-<li><a href="#22-product-owner-super-administrator-console--platform-management">22. Product Owner (Super Administrator) Console &amp; Platform Management</a></li>
-<li><a href="#221-dedicated-product-owner-sign-in">22.1 Dedicated Product Owner Sign In</a></li>
-<li><a href="#222-platform-overview-dashboard-admindashboard">22.2 Platform Overview Dashboard</a></li>
-<li><a href="#223-tenant-directory--store-approvals-admintenants">22.3 Tenant Directory &amp; Store Approvals</a></li>
-<li><a href="#224-database-schema-migrations-hub-admindatabase-migrations">22.4 Database Schema Migrations Hub</a></li>
-<li><a href="#225-system-settings--offline-configuration-adminsystem-settings">22.5 System Settings &amp; Offline Configuration</a></li>
-<li><a href="#226-dynamic-database-switching-local-postgresql--cloud-postgresql">22.6 Dynamic Database Switching (Local PostgreSQL ↔ Cloud PostgreSQL)</a></li>
-<li><a href="#23-master-data-import--staging-verification-vendors-brands-categories-models-variants-colors">23. Master Data Import &amp; Staging Verification (Vendors, Brands, Categories, Models, Variants, Colors)</a></li>
-</ul>
-<h2 id='1-get-started'>1. Get started</h2>
-<ol>
-<li>For a new account, open the invitation email and follow the activation link. Invitations expire after 24 hours and can be used once.</li>
-<li>Set a password containing at least 12 characters, including an uppercase letter, a lowercase letter and a number.</li>
-<li>Open the sign-in page. Enter your Tenant slug, Username and Password, then sign in.</li>
-<li>Expand the sidebar sections to find Product, Purchase, Sale, Accounting and Settings.</li>
-<li>Ask the owner for the permissions needed for your work. Activation alone does not give staff permission to enter transactions.</li>
-</ol>
-<p>Expected result: you can sign in to your own business and open the permitted forms. If you see a permission error, follow section 16.</p>
-<h2 id='2-owner-invite-staff-and-grant-access'>2. Owner: invite staff and grant access</h2>
-<ol>
-<li>Open Accounting &gt; Staff Access. This page is available to the designated owner.</li>
-<li>Enter Username, Email and Mobile, then select Send invitation.</li>
-<li>Ask the staff member to activate the email invitation. Until activation, their status is Invited and they cannot sign in.</li>
-<li>When the user is Active, tick the permissions they need in their row. Changes save as you select them.</li>
-<li>Ask the user to refresh the application before retrying a blocked action.</li>
-</ol>
-<div class="table-wrap"><table><tbody>
-<tr><th>Permission shown on screen</th><th>Use</th></tr>
-<tr><td>catalog.manage</td><td>Maintain product references, customers and settings</td></tr>
-<tr><td>purchases.manage</td><td>Enter purchases, supplier payments, purchase returns and supplier refunds</td></tr>
-<tr><td>sales.manage</td><td>Enter sales, customer receipts, sales returns and customer refunds</td></tr>
-<tr><td>inventory.manage</td><td>Authorized inventory adjustments</td></tr>
-<tr><td>accounting.manage</td><td>Opening balances, journals and general accounting actions</td></tr>
-<tr><td>accounting.approve</td><td>Review accounting approval requests</td></tr>
-<tr><td>accounting.dimensions.manage</td><td>Maintain branches, projects and cost centers</td></tr>
-<tr><td>accounting.documents.manage</td><td>Link supporting evidence</td></tr>
-<tr><td>accounting.assets.manage</td><td>Maintain fixed assets</td></tr>
-<tr><td>accounting.budgets.manage</td><td>Maintain budgets</td></tr>
-</tbody></table></div>
-<p>To resend an unused or expired invitation, select Resend invitation. The recipient should use the latest email. To suspend verified staff, select Disable; select Enable to restore their account. Disabling does not erase historical transactions.</p>
-<p>To change the owner, first confirm that the replacement user is active and verified. Select Transfer ownership in their row and confirm the named user. You immediately lose owner privileges; you retain only separately granted staff permissions. Arrange any access you need before transferring ownership.</p>
-<p>The initial owner receives an invitation from the service administrator. Contact that administrator if your business has no activated owner.</p>
-<h2 id='3-set-up-products-and-bill-details'>3. Set up products and bill details</h2>
-<ol>
-<li>Under Product, add Vendors, Brands, Product Types, Categories / Models, Variants and Colors as needed. Create the brand and product type before their model.</li>
-<li>Under Settings &gt; Tax, maintain the CGST/SGST rate combinations used by your business. Have your accountant confirm which rate to apply.</li>
-<li>Under Settings &gt; Customer Bill, enter the seller details and choose the printing options for new invoices.</li>
-<li>Confirm that the model belongs to the selected brand and product type before recording stock.</li>
-</ol>
-<p>Expected result: purchase forms offer the required references and sale forms offer the required GST rates. Changes to customer, supplier, product or seller details do not rewrite details captured on existing invoices. Older invoices may use explicitly reconstructed details from the upgrade.</p>
-<h2 id='4-accountant-bring-forward-opening-balances'>4. Accountant: bring forward opening balances</h2>
-<p>Use this once when starting the business in this system with existing stock and unpaid customer/supplier invoices. For a business starting without historical balances, ask your accountant whether an opening import is needed. Complete the cutover before entering normal transactions. Normal postings must be dated after the cutover date.</p>
-<h3 id='prepare-and-stage-stock'>Prepare and stage stock</h3>
-<ol>
-<li>Agree a cutover date with the owner and prepare the approved balance-sheet totals, unpaid invoices and stock list as of that date.</li>
-<li>Create the customer, vendor and product references needed by those lists.</li>
-<li>Open Accounting &gt; Opening Balances &amp; Reconciliation and select the cutover date.</li>
-<li>Select Initialize accounts if the standard accounts have not been created.</li>
-<li>Select Import opening stock. Enter one existing unit, its serial number, historical purchase details and historical cost, then select Import stock unit.</li>
-<li>Repeat for each unit. Use a purchase date on or before cutover. Staged units remain unavailable for sale until opening balances are posted.</li>
-</ol>
-<h3 id='enter-and-post-balances'>Enter and post balances</h3>
-<ol>
-<li>On Opening Balances &amp; Reconciliation, enter each balance-sheet account with a debit or credit. Select Add account balance for more lines.</li>
-<li>Select Add outstanding item for each unpaid customer or vendor invoice. Choose Customer or Vendor, Party, invoice reference, Due date and Opening amount.</li>
-<li>Check that customer items equal the debit balance on 1100 (receivables), vendor items equal the credit balance on 2000 (payables), and staged stock net costs equal the debit balance on 1200 (inventory).</li>
-<li>Include the other approved balance-sheet balances. The system posts any remaining difference to retained earnings; the accountant must approve that difference before submission.</li>
-<li>Review every line and select Post reconciled opening balances.</li>
-<li>Confirm that stock is available and that the Receivables, Payables and Stock reconciliation differences are all zero.</li>
-</ol>
-<p>Example: customer items total 200, vendor items total 150 and stock net cost totals 100. The corresponding control lines are 1100 debit 200, 2000 credit 150 and 1200 debit 100. With no other lines, the system balances the remaining 150 to retained earnings. Use your accountant&#39;s complete figures for a real import.</p>
-<p>Expected result: one opening journal, individual outstanding items and active opening stock. The import cannot be repeated. Use this dedicated page when importing party or stock balances; the older General Ledger opening form does not collect those detailed items.</p>
-<h3 id='settle-an-old-unpaid-invoice'>Settle an old unpaid invoice</h3>
-<ol>
-<li>Find the item under Opening outstanding items.</li>
-<li>Select Receive payment for a customer or Pay vendor for a supplier.</li>
-<li>Enter a date after cutover, an amount no greater than the outstanding balance, and Cash or Bank.</li>
-<li>Select Save settlement and verify the reduced balance.</li>
-</ol>
-<p>Use this workflow for brought-forward invoices. Opening stock does not create a new supplier bill or new input GST claim in the normal purchase workflow.</p>
-<h2 id='5-record-a-new-purchase'>5. Record a new purchase</h2>
-<ol>
-<li>Open Purchase &gt; Products and choose the add action.</li>
-<li>Select Vendor and enter Vendor Bill / Invoice Number, Vendor Invoice Date and Payment Terms (days).</li>
-<li>Select Brand, Product Type, Model, Variant and Color.</li>
-<li>Enter the unit&#39;s Serial Number and Serial Number 1 where applicable. Check both against the physical unit.</li>
-<li>Enter Purchase Price before GST, Discount before GST, CGST (%) and SGST (%). Check the calculated Total Amount (per unit).</li>
-<li>Save and verify that the unit appears in Purchase &gt; Stock Inventory and the bill appears in Purchase &gt; Bills &amp; Payments.</li>
-<li>For multiple serialized units on one vendor invoice, enter each unit using the same vendor, bill number, invoice date and payment terms. Finish entering the invoice before paying it.</li>
-</ol>
-<p>Example: Purchase Price 1,000, Discount 0, CGST 9% and SGST 9% gives Total Amount 1,180 per unit.</p>
-<p>Expected result: available stock and a supplier payable are created. Saving a purchase does not record payment. Serial numbers cannot collide with existing records. Paid bills cannot gain or change units; posted, sold or written-off stock cannot be edited directly.</p>
-<h2 id='6-pay-a-supplier'>6. Pay a supplier</h2>
-<ol>
-<li>Open Purchase &gt; Bills &amp; Payments and find the vendor bill.</li>
-<li>Select View / Record in the Payments column.</li>
-<li>Review the invoice total, previous payments and balance.</li>
-<li>Enter Amount, Payment method and Payment date. Enter the required reference for a transfer, UPI or cheque, and an optional note.</li>
-<li>Select Record payment once, then check Payment history and the remaining balance.</li>
-</ol>
-<p>Expected result: the supplier balance decreases. The amount cannot exceed the outstanding bill balance and the date cannot precede the invoice or fall in a closed period. Opening invoices are settled through section 4.</p>
-<h2 id='7-create-a-sale-and-select-gst'>7. Create a sale and select GST</h2>
-<ol>
-<li>Open Sale &gt; Products and choose the add action.</li>
-<li>Select Product (name or serial number). Match the displayed serial to the physical unit.</li>
-<li>Check Purchase Price (including GST), which fills automatically and cannot be edited here.</li>
-<li>Check GST rate. It defaults to the configured CGST/SGST combination matching the purchase product. Verify it before saving; if a matching rate is missing, ask the owner to configure it under Settings &gt; Tax.</li>
-<li>Enter Selling Price (including GST). It initially equals the product&#39;s purchase total, and you can change it.</li>
-<li>Check Discount (including GST), calculated as purchase total minus selling price, with a minimum of zero. It is not an additional discount to subtract from the selling price.</li>
-<li>Search Customer Name or Mobile and select an existing customer, or enter the customer&#39;s details. Confirm Mobile Number and Address; Email is optional.</li>
-<li>Enter Sale Date and Payment Terms (days), then select Create Sale.</li>
-<li>Verify the invoice under Sale &gt; Bills &amp; Payments. Record any money received separately using section 8.</li>
-</ol>
-<p>Example: purchase total 1,180 and selling price 1,000 gives a displayed discount of 180. With CGST 9% and SGST 9%, the selling total remains 1,000; the system calculates the taxable value and tax inside that total. A selling price above 1,180 gives a displayed discount of zero.</p>
-<p>GST rate selection is required by the form. No GST is an available selection; use it only when appropriate for the transaction. Selecting a product again can reset its default selling price and GST selection, so review those fields after changing products.</p>
-<p>Expected result: the unit becomes sold and a customer receivable is created. The sale date cannot precede purchase, cutover or the previous customer return for a restocked unit. Posted financial details cannot be changed directly; use Returns &amp; Corrections for supported full-unit corrections.</p>
-<h2 id='8-receive-a-customer-payment-and-print-a-bill'>8. Receive a customer payment and print a bill</h2>
-<ol>
-<li>Open Sale &gt; Bills &amp; Payments and find the invoice.</li>
-<li>Select View / Record in the Payments column.</li>
-<li>Check Bill Total, Received and Balance Due.</li>
-<li>Enter Amount, Payment method, Payment date and any required transaction reference. Add an optional note.</li>
-<li>Select Record payment, then confirm the receipt in Payment history and the reduced balance.</li>
-<li>Select Print bill. Review the invoice and use the print control to print or save it as a PDF.</li>
-</ol>
-<p>Expected result: the customer&#39;s outstanding balance decreases. Receipts cannot exceed the unpaid amount or precede the invoice. New invoice prints retain the seller and customer/product details captured at creation, while payment history reflects subsequently recorded payments.</p>
-<h2 id='9-return-or-cancel-a-sale'>9. Return or cancel a sale</h2>
-<p>This workflow reverses a complete serialized unit. The original invoice stays in history. A refund is a separate step.</p>
-<ol>
-<li>Open Accounting &gt; Returns &amp; Corrections and set Invoice type to Sale.</li>
-<li>Search Find invoice or serial, then select the correct Invoice unit.</li>
-<li>Enter Note date on or after the sale and all receipts already recorded for it, in an open period after cutover.</li>
-<li>For Returned stock, choose Restock for resale if the unit is saleable, or Write off damaged stock if it must not be sold again.</li>
-<li>Enter a clear Reason, review the invoice/serial and select Post credit note.</li>
-<li>Confirm the note in the table. Check Stock Inventory or Stock Movements for the selected disposition.</li>
-<li>If money must be returned to the customer, follow section 11.</li>
-</ol>
-<p>Expected result: the sale and GST journal are reversed. Restock makes the unit available for a later sale. WriteOff removes its inventory cost and records the loss. The same sale cannot be returned twice and cannot receive further payments after return.</p>
-<p>To cancel an entered sale or replace incorrect invoice details, first confirm that a full reversal is appropriate, post the credit note, then create the replacement sale from available stock. A partial price-only adjustment is not currently supported.</p>
-<h2 id='10-return-a-product-to-a-supplier'>10. Return a product to a supplier</h2>
-<ol>
-<li>Open Accounting &gt; Returns &amp; Corrections and set Invoice type to Purchase.</li>
-<li>Search the bill or serial and select the available Invoice unit.</li>
-<li>Enter Note date on or after purchase. If it was sold and later returned by a customer, the supplier return must also be on or after that customer return.</li>
-<li>Enter the supplier-return Reason and select Post debit note.</li>
-<li>Confirm the note and that the unit is no longer available stock.</li>
-<li>Record any refund received from the supplier using section 11.</li>
-</ol>
-<p>Expected result: the unit&#39;s original purchase journal and GST are reversed. Sold or inactive stock cannot be returned through this form. The debit note reduces the supplier bill&#39;s payable; a supplier refund can only use the paid credit available after the other units on that bill are accounted for.</p>
-<h2 id='11-record-refunds-and-print-notes'>11. Record refunds and print notes</h2>
-<ol>
-<li>In Accounting &gt; Returns &amp; Corrections, find the posted note.</li>
-<li>If Record refund is available, select it. The form shows the available paid credit.</li>
-<li>Enter Date on or after the note, Amount within that available credit, Cash or Bank, and Reference where available.</li>
-<li>Select Save refund and verify the Refunded value. Record the actual cash/bank movement once.</li>
-<li>Select View note to review the original party, product/serial, reason, tax reversals and refund history.</li>
-<li>Select Print / save PDF to produce a copy for the customer or supplier.</li>
-</ol>
-<p>Expected result: customer refunds record money paid out; supplier refunds record money received. An unpaid returned invoice may have no refund available. Never enter a refund as a new customer receipt or vendor payment. Notes cannot be edited after posting; contact the accountant if a note was entered incorrectly.</p>
-<h2 id='12-check-balances-gst-and-stock'>12. Check balances, GST and stock</h2>
-<ol>
-<li>Open Accounting &gt; Opening Balances &amp; Reconciliation and set Cutover / report date to the date you want to review.</li>
-<li>Compare Subledger and GL for Receivables, Payables and Stock. Each Difference should be zero. Refer any difference to the accountant with the date and relevant invoices.</li>
-<li>Open Accounting &gt; Receivable &amp; Payable Aging to review overdue customer and supplier amounts for the selected report date.</li>
-<li>Open Accounting &gt; GST Reports and select the reporting dates. Review sales tax, purchase input tax and their ledger comparisons. Return notes reduce tax in their note period. Opening stock is excluded from new purchase input-tax reporting.</li>
-<li>Open Accounting &gt; Stock Movements to trace purchases, sales, customer returns, supplier returns and write-offs by date.</li>
-<li>Use Purchase &gt; Stock Inventory to review current availability, and the Bills &amp; Payments pages for current invoice balances.</li>
-</ol>
-<p>These reports support checking the recorded transactions. Have the accountant review the figures and required supporting records before preparing external returns or statements.</p>
-<h2 id='13-accountant-journals-periods-and-bank-reconciliation'>13. Accountant: journals, periods and bank reconciliation</h2>
-<h3 id='manual-journals'>Manual journals</h3>
-<ol>
-<li>Open Accounting &gt; General Ledger and review the Chart of Accounts.</li>
-<li>Under Post Journal, enter Journal date and Description.</li>
-<li>Add account lines with the approved debit or credit amounts and dimensions where needed.</li>
-<li>Check that total debits equal total credits, then post using the form&#39;s submit button.</li>
-<li>Verify the entry in the journal listing and review the affected reports.</li>
-</ol>
-<p>Purchase, sale, receipt, payment and return workflows create their own journals. Enter those transactions in their dedicated screens to keep stock and unpaid invoice balances consistent. An accountant should review any manual posting to control accounts.</p>
-<h3 id='accounting-periods'>Accounting periods</h3>
-<ol>
-<li>Open Accounting &gt; Accounting Periods, enter Period name, Start date and End date, then select Create period.</li>
-<li>Review completed transactions, bank matching, GST and control-account differences for the period.</li>
-<li>Select Year-end close only after the accountant confirms the period is ready for that closing. This closes revenue and expense balances to retained earnings as well as locking the dates; confirm the prompt after reviewing its period name and date range.</li>
-<li>If a closed-period transaction needs attention, ask the accountant to review how to correct it. The current screen does not provide a reopen button.</li>
-</ol>
-<p>Expected result: closed periods reject postings. Backdating a transaction will not bypass this control.</p>
-<h3 id='bank-reconciliation'>Bank reconciliation</h3>
-<ol>
-<li>Open Accounting &gt; Bank Reconciliation and choose the bank ledger account.</li>
-<li>Enter the statement reference, date range, opening balance and closing balance.</li>
-<li>Add statement lines with date, description, reference and signed amount: positive for money in, negative for money out.</li>
-<li>Select Import statement, then select the statement under Reconciliation.</li>
-<li>Match each statement line to the correct available ledger line after checking amount and direction. Investigate unmatched items.</li>
-<li>When every line is matched and the statement balances agree, select Finalize.</li>
-</ol>
-<p>Matching associates existing entries; it does not replace recording a missing receipt, payment or accountant-approved bank adjustment. Check whether a statement has already been imported before importing it again.</p>
-<h2 id='14-additional-accounting-controls'>14. Additional accounting controls</h2>
-<p>These tasks require the corresponding permission. Open Accounting &gt; Controls &amp; Budgets.</p>
-<ul>
-<li>Approvals: enter the Action, Resource ID, Summary and the exact action payload supplied by your accountant or administrator, then Submit for review. A different authorized user reviews with Approve or Reject; an approved request is executed using Apply. Approval alone does not apply the action.</li>
-<li>Supporting documents: enter the resource type/ID, File name, Content type, Storage reference and optional Description, then Link evidence. Store the document in the agreed document store first; this form links the reference rather than uploading the file.</li>
-<li>Reporting dimensions: choose Type, enter Code and Name, then Add dimension. Use the agreed branch, project or cost-center codes.</li>
-<li>Fixed assets: enter acquisition details, cost, salvage value, useful life and the accountant-approved accounts, then Record asset. Use Depreciate month or Dispose only after reviewing the dates, prior depreciation and disposal proceeds with the accountant.</li>
-<li>Budgets: select Account and optional Dimension, enter Budget amount, Start date, End date and Notes, then Save budget. Review Actual and Variance for the same period.</li>
-</ul>
-<h2 id='15-daily-checklist-and-practice-example'>15. Daily checklist and practice example</h2>
-<h3 id='daily-checks'>Daily checks</h3>
-<ol>
-<li>Match received and sold units to their serial numbers.</li>
-<li>Check that invoices and actual payments have both been recorded where appropriate.</li>
-<li>Review payment references and cash/bank totals against the day&#39;s evidence.</li>
-<li>Review returns and refunds separately; confirm the physical stock disposition.</li>
-<li>Review outstanding balances and reconcile control differences with the accountant.</li>
-<li>Keep invoice, payment and return documents in the agreed location, and sign out when finished.</li>
-</ol>
-<h3 id='practice-in-a-training-business'>Practice in a training business</h3>
-<ol>
-<li>Enter one purchased unit at 1,000 before GST with CGST 9% and SGST 9%; confirm purchase total 1,180.</li>
-<li>Record supplier payment 1,180; confirm no supplier balance remains.</li>
-<li>Sell the unit for 1,000 including GST; confirm displayed discount 180.</li>
-<li>Record customer payment 1,000; confirm Balance Due is zero and print the bill.</li>
-<li>Return the sale using Restock; confirm a credit note and available stock.</li>
-<li>Refund the customer 1,000; confirm the refund history on the printable note.</li>
-<li>Confirm receivables, payables and stock reconcile for the final report date. A restocked unit remains at its original net inventory cost.</li>
-</ol>
-<p>Use a training business for this exercise; each saved step creates real accounting records within the selected business.</p>
-<h2 id='16-common-problems-and-help'>16. Common problems and help</h2>
-<div class="table-wrap"><table><tbody>
-<tr><th>Message or symptom</th><th>What to do</th></tr>
-<tr><td>sales.manage permission required</td><td>Owner opens Staff Access and grants sales.manage to the active user; refresh and retry</td></tr>
-<tr><td>Other permission required</td><td>Send the exact code to the owner and request the access needed for your role</td></tr>
-<tr><td>Activation link expired or already used</td><td>Ask the owner to resend if still unverified; use the latest email. An already activated user should sign in</td></tr>
-<tr><td>Staff Access is missing</td><td>This menu is restricted to the designated owner</td></tr>
-<tr><td>Product not available for sale</td><td>Check it is active, unsold and not staged opening stock awaiting cutover</td></tr>
-<tr><td>Wrong or missing default GST rate</td><td>Verify purchase rates and ask the owner to configure the matching combination; review the sale before saving</td></tr>
-<tr><td>Duplicate serial number</td><td>Check both serial fields and existing stock history; confirm the physical serial before retrying</td></tr>
-<tr><td>Payment exceeds outstanding balance</td><td>Review previous payments and returns; enter only the remaining amount</td></tr>
-<tr><td>Refund exceeds available paid credit</td><td>Review the original payments and prior refunds; for supplier bills, review the remaining invoice units</td></tr>
-<tr><td>Closed accounting period</td><td>Ask the accountant to review the date and correction process; the current period screen does not provide reopening</td></tr>
-<tr><td>Posting date at/before cutover</td><td>Use the actual operational date after cutover; settle old invoices through Opening outstanding items</td></tr>
-<tr><td>Opening totals do not match</td><td>Reconcile detailed customer/vendor items and stock costs to 1100/2000/1200 before posting</td></tr>
-<tr><td>Opening import already exists</td><td>Do not repeat the import; ask the accountant to review existing opening records</td></tr>
-<tr><td>Legacy invoice has no source journal</td><td>Ask the accountant/administrator to reconcile the historical invoice before returning it</td></tr>
-<tr><td>Reconstructed details on an old note</td><td>Review against the original paper invoice; details available at upgrade cannot establish earlier master-data changes</td></tr>
-<tr><td>A posted record cannot be edited</td><td>Use the supported full-unit return workflow when appropriate, or ask the accountant to review</td></tr>
-<tr><td>Failed request or connection error</td><td>Check whether the record was saved before retrying; refresh its listing/history to avoid duplicate entry</td></tr>
-</tbody></table></div>
-<p>For help, provide the page name, exact message, invoice/note number, serial number, transaction date and steps taken. Share screenshots with customer details concealed where appropriate. Never share passwords or invitation tokens.</p>
-<h2 id='17-terms-used-in-this-guide'>17. Terms used in this guide</h2>
-<div class="table-wrap"><table><tbody>
-<tr><th>Term</th><th>Meaning</th></tr>
-<tr><td>Tenant</td><td>Your business&#39;s separate application workspace</td></tr>
-<tr><td>Serialized unit</td><td>One stock item identified by its serial number</td></tr>
-<tr><td>GST-inclusive price</td><td>The final amount including CGST and SGST</td></tr>
-<tr><td>Receivable</td><td>Money a customer still owes the business</td></tr>
-<tr><td>Payable</td><td>Money the business still owes a supplier</td></tr>
-<tr><td>Credit/debit note</td><td>A linked document reversing a supported invoice unit</td></tr>
-<tr><td>Refund</td><td>Actual money returned after a note; separate from posting the note</td></tr>
-<tr><td>Restock</td><td>Make a customer-returned unit available for resale</td></tr>
-<tr><td>Write-off</td><td>Remove stock value because the unit is no longer saleable</td></tr>
-<tr><td>Cutover</td><td>The date used to bring historical balances into the system</td></tr>
-<tr><td>Subledger</td><td>Detailed customer, supplier or stock balances</td></tr>
-<tr><td>GL</td><td>General Ledger, containing the accounting entries</td></tr>
-<tr><td>Reconciliation</td><td>Comparing detailed balances with their corresponding ledger totals</td></tr>
-</tbody></table></div>
-<p>Current scope: full serialized-unit and whole multi-line invoice returns and cancellations. Partial invoice returns and partial price adjustments are not available.</p>
-<h2 id='18-multi-line-invoices-and-customer-advances'>18. Multi-line invoices and customer advances</h2>
-<p>Prerequisites: sales permission, available serialized stock where applicable, configured seller bill details and active tax rates. GST-registered sellers must provide their state, the place of supply and a valid HSN/SAC code for each line.</p>
-<ol>
-<li>Open Sale &gt; Invoices and create a new invoice. Select the customer and check the contact details, GSTIN and place of supply.</li>
-<li>Add serialized products, standard items or services. A serialized product can appear once with quantity 1. Accessory and service quantities support four decimal places. Accessory lines require a stocked SKU and deduct quantity and inventory cost; service lines do not affect stock.</li>
-<li>Enter the tax-exclusive unit price, discount, HSN/SAC and unit of measure (for example NOS). Select an active tax rate. The seller state and place of supply determine CGST/SGST or IGST. Check the displayed totals before saving.</li>
-<li>If collecting an initial payment, enter its amount, method and date. Money supports two decimal places. Non-cash payments require a reference, except the Other method. Payments cannot predate the invoice.</li>
-<li>Save and print the invoice. Printed buyer, seller, serial numbers, HSN/SAC and amounts come from the saved invoice snapshot, even after master details change.</li>
-</ol>
-<p>To receive a payment across invoices, open the customer payment dialog from the invoice list. Select the customer, amount, method, date and reference. Use Auto-Allocate FIFO (Oldest First) or enter custom allocations. Custom allocations cannot exceed the payment or an invoice balance. The unallocated amount becomes an on-account advance for that customer.</p>
-<p>To use an advance, select it under Existing customer advances, select an unpaid invoice, enter the amount and date, then choose Apply advance. This settles the invoice without recording cash a second time. To return unused credit, select the advance, enter an amount, refund date, Cash or Bank and the bank reference if applicable, then choose Refund advance. An advance cannot be applied to another customer, spent twice or refunded above its remaining amount. Application and refund dates cannot predate the original advance.</p>
-<p>For a whole invoice return, open Accounting &gt; Returns &amp; Corrections, select the invoice, date and reason, then choose whether serialized stock is restocked or written off. All invoice lines are reversed together. Record any customer refund separately, limited to credit already paid. The cancelled invoice remains available in history and cannot receive new payments. Partial line returns require a separately scoped workflow.</p>
-<p>Use customer statements and aging with an as-of date to check historical balances. Returns, receipts and refunds affect the report on their own dates; later cancellations do not erase an earlier outstanding balance. GST reports include original invoices and dated reversals, including IGST and mixed tax rates. Customer history opens each invoice using its corresponding bill page. Legacy single-product bills retain their existing payment workflow.</p>
-<p>If a payment request loses its response, repeat the same action in the same browser session with unchanged details. The saved retry key allows the API to return the committed result without posting twice. Changing details creates a different request; first check invoice or customer history when uncertain whether an earlier transaction succeeded.</p>
-<h2 id='19-stocked-accessories-and-integrity-controls'>19. Stocked accessories and integrity controls</h2>
-<p>Prerequisites: create active suppliers and GST rates. SKU creation requires catalog permission; purchases and supplier returns require purchase permission; write-offs require inventory permission; opening stock requires accounting permission. Multi-line sales require sales permission.</p>
-<ol>
-<li>Open Purchase &gt; Stock Movements and find Accessory SKU inventory. Enter a unique SKU code, accessory name, HSN and unit (such as NOS), then choose Create SKU.</li>
-<li>To enter a purchase, select the SKU and supplier, supplier bill number, stock date, quantity, tax-exclusive unit cost and payment terms. Select GST and tick Interstate purchase (IGST) only when appropriate for that supplier invoice. Choose Receive stock.</li>
-<li>The stock quantity and carrying value increase. The supplier bill appears in Purchase accounting, with its payable and GST recorded. Use the existing supplier payment page to pay it. All items on a supplier bill must use the same invoice date and payment terms. After payments or returns are recorded, enter further stock under a separate bill.</li>
-<li>To sell an accessory, add an item to a multi-line sales invoice, keep the line type Accessory, select its SKU and enter selling price, quantity and tax. Saving deducts stock and posts cost of goods sold. Select Service for a non-stock charge.</li>
-<li>A whole customer invoice return restores the original sold quantity and cost when Restock is chosen. WriteOff returns reverse the sale and expense the returned cost without making those items available again.</li>
-<li>To return purchased accessories, select the whole purchase receipt under Accessory supplier return, enter the date and reason and choose Return receipt to supplier. Available quantity must cover the receipt quantity. The credit reverses the original supplier amount and GST; any difference between original purchase cost and current carrying cost is posted as a cost variance. Record supplier refunds through Returns &amp; Corrections.</li>
-<li>To remove damaged or missing accessories, select the SKU, date, quantity and reason, then choose Write off quantity. Check the stock movement ledger and reconciliation report afterwards.</li>
-</ol>
-<p>Accessory costs use moving average. A sale or write-off consumes the proportionate carrying value, rounded to two decimals; issuing the final quantity consumes the exact remaining value. Customer returns restore the recorded original sale cost. Enter all movements in chronological order: dates cannot precede the latest movement for that SKU, and quantities cannot reduce stock below zero. Whole receipt and whole invoice returns are supported; partial returns, warehouse transfers and batch/expiry tracking require separately scoped workflows.</p>
-<p>For stock already held at cutover, create a new SKU and use Stage opening SKU stock before importing the opening journal. Enter the opening date, quantity and carrying unit cost. Staged stock is unavailable for sale or write-off. Include its value, together with serialized stock cost, in account 1200 in Opening Balances. The opening import checks the total and activates staged SKU stock. Opening stock is excluded from new supplier purchases and input GST reports; bring forward any supplier outstanding amounts using opening vendor items.</p>
-<p>Serialized write-offs must be dated on/after purchase and the customer return that restored the unit. Ordinary manual journals cannot post to accounts 1100, 1200 or 2000. Use customer, supplier or inventory workflows; historical ledger adjustments require an approved FinancialCorrection request and reconciliation review.</p>
-<p>Customer history now shows Net received: cash and bank receipts plus original advances, less customer and advance refunds. Applying an advance is not counted again as new money. Individual invoice payment histories still show the applied credit.</p>
-<p>For GST invoices, save Home State (GST) in Settings &gt; Customer Bill, then choose Place of Supply (State) on the invoice. Missing supplier settings are displayed explicitly rather than defaulting to Maharashtra.</p>
-<h2 id='20-non-accountant-store-operator-guide-smart-suggestions'>20. Non-Accountant Store Operator Guide &amp; Smart Suggestions</h2>
-<p>Designed for store owners, retail sales staff, and cashiers who do not possess formal bookkeeping or accounting training. This system automates double-entry accounting, Indian GST rate determinations, stock relieving, and ledger reconciliations behind the scenes while presenting an intuitive, self-explanatory retail interface.</p>
-<h3 id='201-zero-accounting-automation-what-happens-behind-the-scenes'>20.1 Zero-accounting automation: what happens behind the scenes</h3>
-<p>In traditional software such as Tally Prime, operators must manually select voucher types (F4 Contra, F5 Payment, F6 Receipt, F7 Journal, F8 Sales, F9 Purchase), specify debit and credit account ledgers, and compute tax splits. In this system, all of that bookkeeping is completely automated:</p>
-<ol>
-<li><strong>Instant Sales Invoicing</strong>: Creating an invoice automatically posts <code>Accounts Receivable (1100)</code> and <code>Sales Revenue (4000)</code>.</li>
-<li><strong>Automated Indian GST</strong>: Automatically calculates and separates tax into <code>CGST (2100)</code> and <code>SGST (2100)</code> for local sales, or <code>IGST (2100)</code> for interstate sales based on Place of Supply.</li>
-<li><strong>Automated Stock Deduction &amp; Costing</strong>: Adding a serialized phone or stocked accessory automatically relieves <code>Inventory (1200)</code> and posts <code>Cost of Goods Sold (5000)</code> using real-time FIFO and moving average costs.</li>
-<li><strong>Receipts &amp; Ledgers</strong>: Payments automatically update Cash/Bank balances and reconcile customer balances in real time.</li>
-</ol>
-<h3 id='202-smart-billing-assistant-proactive-customer-suggestions-sale-invoices'>20.2 Smart billing assistant &amp; proactive customer suggestions (<code>Sale &gt; Invoices</code>)</h3>
-<p>When entering a new multi-line sales invoice, the interface provides intelligent assistive cards and one-click shortcuts:</p>
-<ul>
-<li><strong>💡 Plain-English Billing Assistant</strong>: Click <strong>&quot;💡 How It Works (Quick Tour)&quot;</strong> at the top of the invoice form at any time for an on-screen visual summary of customer balance checks, IMEI locking, GST splits, and payment entries.</li>
-<li><strong>Proactive Customer Dues &amp; Advance Suggestions</strong>:</li>
-<li>As soon as you select a customer by typing their name or mobile number, the system automatically checks their historical account balance in the background.</li>
-<li>If the customer has unpaid bills from earlier purchases, a yellow suggestion banner alerts you immediately:</li>
-</ul>
-<p>&gt; <strong>💡 Smart Suggestion:</strong> Customer has ₹X unpaid balance across Y past bills. Consider collecting old dues together with this bill.</p>
-<ul>
-<li>If the customer holds unused advance store credit, a green suggestion banner informs you:</li>
-</ul>
-<p>&gt; <strong>✨ Advance Credit Available:</strong> Customer has ₹X in store credit. Can be applied to settle bills in Multi-Pay.</p>
-<ul>
-<li><strong>1-Click Smart Payment Shortcuts</strong>:</li>
-<li>Instead of manually checking boxes and typing exact rupee amounts, select any of the one-click preset buttons:</li>
-<li><strong>💵 Full Cash</strong>: Instantly marks the invoice as collected in full and sets payment mode to Cash.</li>
-<li><strong>📱 Full UPI / QR</strong>: Automatically fills the exact bill total and sets payment mode to UPI (GPay / PhonePe / Paytm).</li>
-<li><strong>💳 Card Swipe</strong>: Automatically fills the exact bill total and sets payment mode to Card.</li>
-<li><strong>⏳ Pay Later (Credit Bill)</strong>: Marks the bill as sold on credit (₹0 paid today); the invoice balance is automatically logged to the customer&#39;s ledger for follow-up.</li>
-<li><strong>Quick-Add Stocked Accessories</strong>:</li>
-<li>If your shop has stocked accessories (screen guards, back covers, chargers), 1-click suggestion chips appear above the items table to add them instantly with stock availability counts.</li>
-<li><strong>Automatic Indian Place of Supply &amp; GST Split</strong>:</li>
-<li>The system checks your shop&#39;s registered state against the customer&#39;s state code.</li>
-<li><strong>Local Sale (Intra-State)</strong>: Applies a 50/50 split between CGST and SGST.</li>
-<li><strong>Inter-State Sale</strong>: Automatically applies 100% IGST.</li>
-<li>A color-coded status badge confirms the tax mode so you never need to calculate tax percentages by hand.</li>
-<li><strong>High-Speed Keyboard Entry (Tally-Speed Hotkeys)</strong>:</li>
-<li><code>Alt+N</code>: Quickly add a new serialized phone to the invoice.</li>
-<li><code>Alt+A</code>: Quickly add an accessory line.</li>
-<li><code>Ctrl+Enter</code> or <code>Alt+S</code>: Instantly save, post, and open the printable tax invoice.</li>
-<li><code>Esc</code>: Cancel and return to the invoices list.</li>
-</ul>
-<h3 id='203-smart-multi-invoice-payment-allocation-sale-invoices-smart-multi-pay'>20.3 Smart multi-invoice payment allocation (<code>Sale &gt; Invoices &gt; Smart Multi-Pay</code>)</h3>
-<p>When a customer pays a lumpsum amount (for example ₹10,000) against multiple past unpaid bills:</p>
-<ol>
-<li>Open <strong>Smart Multi-Pay</strong> (<code>Alt+M</code> or select <strong>Smart Multi-Pay</strong> from the invoice list).</li>
-<li>Select the customer from the dropdown. The system automatically lists all unpaid bills in chronological order (oldest to newest) with total balance due.</li>
-<li>Use the <strong>💡 Smart Suggested Payment Amounts</strong>:</li>
-</ol>
-<ul>
-<li><code>Clear All Dues</code>: Automatically fills the exact total outstanding balance.</li>
-<li><code>Pay Half</code>: Fills 50% of the customer&#39;s total due.</li>
-<li><code>Round Figure</code>: Rounds up to the nearest ₹1,000.</li>
-</ul>
-<ol>
-<li><strong>Auto-Allocate FIFO (Oldest First)</strong>:</li>
-</ol>
-<ul>
-<li>Keep FIFO selected. The system automatically settles the customer&#39;s oldest bills first.</li>
-<li>If the customer pays more than their total outstanding balance, the excess amount is <strong>safely saved as an Advance Store Credit</strong> on their account for future visits.</li>
-<li>A live green badge shows the exact settlement preview: *&quot;Will clear X bills in full and partially pay 1 bill. + ₹Y saved safely as Customer Advance.&quot;*</li>
-</ul>
-<h3 id='204-understanding-customer-and-vendor-ledgers-accounting-party-statement'>20.4 Understanding customer and vendor ledgers (<code>Accounting &gt; Party Statement</code>)</h3>
-<p>To check a complete history of transactions for any customer or supplier without accounting confusion:</p>
-<ul>
-<li>Open <strong>Accounting &gt; Party Statement</strong> (<code>Alt+P</code>).</li>
-<li>Click <strong>&quot;💡 How to Read Ledgers&quot;</strong> at any time to view the plain-English explanation:</li>
-<li><strong>Customer Statement</strong>:</li>
-<li><strong>Debit (+)</strong>: Phones or accessories you sold to the customer on bill.</li>
-<li><strong>Credit (-)</strong>: Payments received from the customer (Cash, UPI, Card).</li>
-<li><strong>Closing Balance Dr</strong>: Money the customer still owes your shop today.</li>
-<li><strong>Closing Balance Cr</strong>: Advance store credit the customer has with you.</li>
-<li><strong>Vendor Statement</strong>:</li>
-<li><strong>Credit (+)</strong>: Inventory you purchased from the supplier.</li>
-<li><strong>Debit (-)</strong>: Payments you sent to the supplier.</li>
-<li><strong>Closing Balance Cr</strong>: Money you still owe the supplier.</li>
-<li><strong>Closing Balance Dr</strong>: Advance money you gave the supplier.</li>
-<li><strong>Color-Coded Aging &amp; Overdue Insights</strong>:</li>
-<li><strong>0–30 Days (Green)</strong>: Fresh, normal billing cycle.</li>
-<li><strong>31–60 Days (Blue)</strong>: Maturing bills; time to send a friendly reminder.</li>
-<li><strong>61–90 Days (Amber)</strong>: Overdue; phone call follow-up recommended.</li>
-<li><strong>90+ Days (Rose)</strong>: Critical overdue; prioritize recovery before issuing further credit.</li>
-<li><strong>Smart Next Action Suggestions</strong>:</li>
-<li>If a customer has a pending balance, an immediate 1-click <strong>&quot;Collect Payment via Multi-Pay&quot;</strong> button is displayed.</li>
-<li>If all bills are settled, an <strong>&quot;All Settled (Zero Balance)&quot;</strong> badge confirms that the account is fully clear.</li>
-<li><strong>Export &amp; Print</strong>:</li>
-<li>Export the full chronological ledger to Excel/CSV with running balances.</li>
-<li>Print a formal stationery Statement of Account for customer sharing with your shop logo, GSTIN, and contact details.</li>
-</ul>
-<h3 id='205-daily-operations-from-the-business-intelligence-dashboard-dashboard-home'>20.5 Daily operations from the Business Intelligence Dashboard (<code>Dashboard / Home</code>)</h3>
-<p>The real-time BI Dashboard gives shop owners a complete financial and operational overview:</p>
-<ul>
-<li><strong>Executive KPI Cards (Plain-English Meanings)</strong>:</li>
-<li><strong>Monthly Revenue</strong>: Total sales billed during the current calendar month.</li>
-<li><strong>Receivables (AR)</strong>: Money customers currently owe your shop across all unpaid bills.</li>
-<li><strong>Payables (AP)</strong>: Money you owe to phone suppliers and distributors.</li>
-<li><strong>Net GST Due</strong>: Output GST collected minus Input GST paid on purchases (tax due to the government).</li>
-<li><strong>Stock Valuation</strong>: Total wholesale purchase value of all phones and accessories currently in stock.</li>
-<li><strong>In-Stock Units</strong>: Total physical phone devices available for immediate sale.</li>
-<li><strong>💡 Shopkeeper&#39;s 4-Step Daily Workflow Banner</strong>:</li>
-<li>Click <strong>&quot;💡 Shopkeeper&#39;s Guide&quot;</strong> in the top header at any time to open the four-step store routine:</li>
-</ul>
-<ol>
-<li><strong>Buy &amp; Receive Stock</strong> (<code>Purchase &gt; Products</code>)</li>
-<li><strong>Fast Customer Billing</strong> (<code>Sale &gt; Invoices</code> / <code>Alt+I</code>)</li>
-<li><strong>Smart Multi-Pay</strong> (<code>Alt+M</code>)</li>
-<li><strong>Party Ledger &amp; Overdue Tracking</strong> (<code>Alt+P</code>)</li>
-</ol>
-<ul>
-<li><strong>Smart Proactive Store Insights</strong>:</li>
-<li>The dashboard automatically displays proactive suggestions when customer receivables are pending or when GST tax reports are ready for your Chartered Accountant.</li>
-</ul>
-<h3 id='206-daily-store-routine-checklist'>20.6 Daily store routine checklist</h3>
-<div class="table-wrap"><table><tbody>
-<tr><th>Time of day</th><th>Task</th><th>Keyboard / Menu shortcut</th><th>Expected outcome</th></tr>
-<tr><td><strong>Morning Opening</strong></td><td>Check BI Dashboard</td><td><code>Home / Dashboard</code></td><td>Review yesterday&#39;s sales revenue, cash received, and pending customer dues.</td></tr>
-<tr><td><strong>Morning Opening</strong></td><td>Receive incoming phone stock</td><td><code>Purchase &gt; Products</code></td><td>Enter supplier bills and scan/enter IMEI serial numbers. Stock increases immediately.</td></tr>
-<tr><td><strong>During the Day</strong></td><td>Quick Customer Billing</td><td><code>Alt+I</code></td><td>Issue multi-line bills. System automatically verifies IMEI, calculates GST, and prints bills.</td></tr>
-<tr><td><strong>During the Day</strong></td><td>Customer Dues Notification</td><td>On Invoice Form</td><td>System automatically alerts if returning customer has old unpaid bills or advance credit.</td></tr>
-<tr><td><strong>During the Day</strong></td><td>Quick 1-Click Payments</td><td>Payment box</td><td>Click <code>Full Cash</code> or <code>Full UPI</code> for one-second payment recording.</td></tr>
-<tr><td><strong>Evening Closing</strong></td><td>Collect Multi-Invoice Dues</td><td><code>Alt+M</code></td><td>Settle lumpsum customer payments using automatic FIFO allocation.</td></tr>
-<tr><td><strong>Evening Closing</strong></td><td>Review Party Statements</td><td><code>Alt+P</code></td><td>Check aging buckets and follow up on customers with balances over 30 days overdue.</td></tr>
-<tr><td><strong>Monthly Closing</strong></td><td>Review Tax &amp; CA Reports</td><td><code>Accounting &gt; Tax Reports</code></td><td>Export GSTR-1 and GSTR-3B tax summaries with 1 click for your accountant.</td></tr>
-</tbody></table></div>
-<h2 id='21-tenant-onboarding-offline-deployment-setup-guide'>21. Tenant Onboarding &amp; Offline Deployment Setup Guide</h2>
-<h3 id='211-end-to-end-automated-onboarding-flow'>21.1 End-to-End Automated Onboarding Flow</h3>
-<p>Siddhi Mobile SaaS provides an automated, multi-tenant onboarding process:</p>
-<p>```</p>
-<p>[Store Owner]                                [Platform Admin]</p>
-<div class="table-wrap"><table><tbody>
-<tr><th>-- 1. Fills form at /register-tenant -------&gt;</th></tr>
-<tr><td>(Store name, slug, email, mobile, GST)</td></tr>
-<tr><td>&lt;-- 2. Receives &quot;Thank You&quot; Email -----------</td><td>(Dispatched / Logged)</td></tr>
-<tr><td></td><td>-- 3. Receives &quot;Action Required&quot; notification</td></tr>
-<tr><td></td><td>(View at /settings/tenant-approvals)</td></tr>
-<tr><td></td><td>-- 4. Admin clicks &quot;Approve &amp; Provision DB&quot;</td></tr>
-<tr><td></td><td>* PostgreSQL schema created</td></tr>
-<tr><td></td><td>* EF Core migrations executed (40+ tables)</td></tr>
-<tr><td></td><td>* Chart of Accounts (1000..5000) seeded</td></tr>
-<tr><td></td><td>* Indian GST rates (0, 5, 12, 18, 28%) seeded</td></tr>
-<tr><td></td><td>* Store invoice settings initialized</td></tr>
-<tr><td></td><td>* Store Owner account activated</td></tr>
-<tr><td>&lt;-- 5. Receives &quot;Store Workspace Ready&quot; email</td></tr>
-<tr><td>(Slug, Username, Login instructions)</td></tr>
-<tr><td>-- 6. Signs in at /login -------------------&gt;</td></tr>
-<tr><td>(Enters Tenant Slug, Username &amp; Password)</td></tr>
-</tbody></table></div>
-<p>```</p>
-<p>---</p>
-<h3 id='212-self-service-registration-register-tenant'>21.2 Self-Service Registration (<code>/register-tenant</code>)</h3>
-<ol>
-<li>Open the public registration link: <code>http://localhost:5173/register-tenant</code> (or click <strong>&quot;Create store workspace&quot;</strong> on the Sign In page).</li>
-<li>Enter the store information:</li>
-</ol>
-<ul>
-<li><strong>Store / Business Name</strong>: e.g., <code>Siddhi Electronics &amp; Mobiles</code></li>
-<li><strong>Store Slug</strong>: e.g., <code>siddhi-electronics</code> (Auto-generated from store name; this is your unique login identifier)</li>
-<li><strong>GST State Code</strong>: Select from 37 Indian states (e.g., <code>27 - Maharashtra</code>)</li>
-<li><strong>GSTIN Number</strong> *(Optional)*: 15-character GSTIN. The system automatically detects and selects your state code.</li>
-<li><strong>Store Address</strong> *(Optional)*: Physical shop address printed on sales invoices.</li>
-</ul>
-<ol>
-<li>Enter Owner details:</li>
-</ol>
-<ul>
-<li><strong>Owner Full Name</strong>: e.g., <code>Pravin Kumar</code></li>
-<li><strong>Contact Mobile</strong>: 10-digit mobile number</li>
-<li><strong>Notification Email</strong>: Used to receive your approval and activation details.</li>
-<li><strong>Password &amp; Confirm Password</strong>: Set your desired password for immediate login upon approval.</li>
-</ul>
-<ol>
-<li>Click <strong>&quot;Submit Store Registration&quot;</strong>.</li>
-</ol>
-<ul>
-<li>The system validates slug uniqueness and registers the store in <code>PendingApproval</code> status.</li>
-<li>A confirmation notification is dispatched to your email address.</li>
-<li>Platform administration is notified to approve the new workspace.</li>
-</ul>
-<p>---</p>
-<h3 id='213-administrator-approvals-settings-store-approvals-or-admintenants'>21.3 Administrator Approvals (<code>Settings &gt; Store Approvals</code> or <code>/admin/tenants</code>)</h3>
-<p>Platform administrators / product owners can review and approve registered stores with one click:</p>
-<ol>
-<li>Sign in and navigate to <strong>Settings &gt; Store Approvals</strong> (<code>/settings/tenant-approvals</code> or <code>/admin/tenants</code>).</li>
-<li>Review the list of stores under <strong>Pending Approvals</strong>:</li>
-</ol>
-<ul>
-<li>After a successful store registration, click <strong>Refresh</strong> to load the latest requests. Stores awaiting approval or provisioning appear here; approved and rejected stores do not.</li>
-<li>If loading fails, review the displayed error and retry <strong>Refresh</strong>. A confirmation email alone does not mean the store has been approved.</li>
-<li>Verify store name, slug, owner contact information, and state/GSTIN.</li>
-</ul>
-<ol>
-<li>Click <strong>&quot;Approve &amp; Provision DB&quot;</strong>:</li>
-</ol>
-<ul>
-<li>The system displays a live status indicator while performing automatic setup:</li>
-</ul>
-<ol>
-<li>Creates the isolated PostgreSQL schema (e.g., <code>tenant_siddhi_electronics_3f2a1b4c</code>).</li>
-<li>Runs all Entity Framework Core migrations to create business tables.</li>
-<li>Seeds the standard Chart of Accounts (Cash <code>1000</code>, Bank <code>1010</code>, AR <code>1100</code>, Inventory <code>1200</code>, AP <code>2000</code>, GST <code>2100</code>, Sales <code>4000</code>, COGS <code>5000</code>).</li>
-<li>Seeds GST tax rates: <code>0%</code>, <code>5%</code>, <code>12%</code>, <code>18%</code>, <code>28%</code>.</li>
-<li>Creates store invoice template settings with state code and GSTIN.</li>
-<li>Creates and activates the Store Owner user with full administrator accounting permissions.</li>
-<li>Sends the <strong>&quot;Store Workspace Ready&quot;</strong> email with login credentials.</li>
-<li>If a registration is invalid or spam, click <strong>&quot;Reject&quot;</strong> and enter an optional reason. The applicant is notified accordingly.</li>
-</ol>
-<p>---</p>
-<h3 id='214-offline-standalone-deployment-guide'>21.4 Offline Standalone Deployment Guide</h3>
-<p>To deploy this software offline (e.g., on a standalone shop counter PC, laptop, or local LAN server without an internet connection):</p>
-<h4 id='step-1-install-local-postgresql'>Step 1: Install Local PostgreSQL</h4>
-<ol>
-<li>Download and install <strong>PostgreSQL 16 or 17</strong> for Windows (or Linux).</li>
-<li>Set the default postgres password (e.g., <code>siddhi123456</code>).</li>
-<li>Create the database:</li>
-</ol>
-<p>```sql</p>
-<p>CREATE DATABASE accounting_inventory;</p>
-<p>```</p>
-<h4 id='step-2-configure-appsettingsjson-for-offline-mode'>Step 2: Configure <code>appsettings.json</code> for Offline Mode</h4>
-<p>In <code>MicroservicesEcosystem/src/AccountingInventory/AccountingInventory.Api/appsettings.json</code>:</p>
-<p>```json</p>
-<p>{</p>
-<p>&quot;ConnectionStrings&quot;: {</p>
-<p>&quot;AccountingInventoryDb&quot;: &quot;Host=localhost;Port=5432;Database=accounting_inventory;Username=postgres;Password=siddhi123456&quot;</p>
-<p>},</p>
-<p>&quot;Deployment&quot;: {</p>
-<p>&quot;Mode&quot;: &quot;Offline&quot;,</p>
-<p>&quot;OfflineMode&quot;: true</p>
-<p>},</p>
-<p>&quot;Email&quot;: {</p>
-<p>&quot;OfflineMode&quot;: true,</p>
-<p>&quot;SmtpHost&quot;: &quot;offline&quot;,</p>
-<p>&quot;From&quot;: &quot;noreply@siddhi-mobile.local&quot;,</p>
-<p>&quot;AdminEmail&quot;: &quot;admin@siddhi-mobile.local&quot;</p>
-<p>},</p>
-<p>&quot;Frontend&quot;: {</p>
-<p>&quot;BaseUrl&quot;: &quot;http://localhost:5173&quot;</p>
-<p>}</p>
-<p>}</p>
-<p>```</p>
-<p>&gt; [!NOTE]</p>
-<p>&gt; In Offline Mode (<code>OfflineMode: true</code>), email notifications are safely printed directly to application log files and console output. No internet SMTP server or network connection is required.</p>
-<h4 id='step-3-run-the-backend-api'>Step 3: Run the Backend API</h4>
-<p>Start the backend service:</p>
-<p>```powershell</p>
-<h1 id='from-microservicesecosystem-directory'>From MicroservicesEcosystem directory</h1>
-<p>dotnet run --project src/AccountingInventory/AccountingInventory.Api/AccountingInventory.Api.csproj</p>
-<p>```</p>
-<p>The API starts on <code>http://localhost:5000</code> (or configured port). On startup, it automatically migrates the control plane and creates required tables.</p>
-<h4 id='step-4-run-the-frontend-application'>Step 4: Run the Frontend Application</h4>
-<p>Start the frontend web counter:</p>
-<p>```powershell</p>
-<h1 id='from-react-multitenant-saas-directory'>From react-multitenant-saas directory</h1>
-<p>npm install</p>
-<p>npm run dev</p>
-<p>```</p>
-<p>The shop counter application is now available at <code>http://localhost:5173</code>.</p>
-<h4 id='step-5-initial-offline-bootstrapping'>Step 5: Initial Offline Bootstrapping</h4>
-<ol>
-<li>Open <code>http://localhost:5173/register-tenant</code> in the browser.</li>
-<li>Enter your shop details (e.g., Name: <code>Siddhi Electronics</code>, Slug: <code>siddhi</code>, Password: <code>Passw0rd!123</code>).</li>
-<li>Click <strong>Submit Store Registration</strong>.</li>
-<li>Open <code>http://localhost:5173/admin/tenants</code> (or <code>/settings/tenant-approvals</code>).</li>
-<li>Click <strong>&quot;Approve &amp; Provision DB&quot;</strong>.</li>
-</ol>
-<ul>
-<li>Your local PostgreSQL database schema is immediately provisioned and seeded.</li>
-</ul>
-<ol>
-<li>Open <code>http://localhost:5173/login</code>, enter:</li>
-</ol>
-<ul>
-<li><strong>Tenant Slug:</strong> <code>siddhi</code></li>
-<li><strong>Username:</strong> <code>pravin</code> (or <code>admin</code>)</li>
-<li><strong>Password:</strong> <code>Passw0rd!123</code></li>
-</ul>
-<ol>
-<li>Start billing phones, scanning IMEIs, managing inventory, and tracking GST offline!</li>
-</ol>
-<p>---</p>
-<h3 id='215-transitioning-to-online-cloud-saas-future'>21.5 Transitioning to Online Cloud SaaS (Future)</h3>
-<p>When you are ready to transition from offline to online cloud hosting:</p>
-<ol>
-<li><strong>Database:</strong> Point <code>AccountingInventoryDb</code> to a cloud-managed PostgreSQL instance (e.g., AWS RDS, DigitalOcean, or Azure Database for PostgreSQL).</li>
-<li><strong>SMTP Configuration:</strong> Set <code>&quot;OfflineMode&quot;: false</code>, enter real SMTP host, port, username, password, and verified sender email.</li>
-<li><strong>Frontend Domain:</strong> Set <code>&quot;Frontend:BaseUrl&quot;</code> to your live domain (e.g., <code>https://app.siddhimobile.in</code>).</li>
-<li><strong>Reverse Proxy:</strong> Deploy through <code>ApiGateway</code> with SSL/TLS certificate configured.</li>
-</ol>
-<p>All multi-tenant schema isolation, automated registration, and approval pipelines function identically in online mode.</p>
-<p>---</p>
-<h2 id='22-product-owner-super-administrator-console-platform-management'>22. Product Owner (Super Administrator) Console &amp; Platform Management</h2>
-<p>The Product Owner (Super Administrator) oversees all business stores, approval queues, schema migrations, and system-level operations across the entire Siddhi platform.</p>
-<p>```mermaid</p>
-<p>graph TD</p>
-<p>PO[Product Owner Admin] --&gt;|1. Sign in via /admin/login| AdminAuth[Token Issued: Claim Role=ProductOwner]</p>
-<p>AdminAuth --&gt; POConsole[Product Owner Management Console]</p>
-<p>POConsole --&gt; PODash[Platform Overview Dashboard /admin/dashboard]</p>
-<p>POConsole --&gt; TenantDir[Tenant Store Directory /admin/tenants]</p>
-<p>POConsole --&gt; ApprQueue[Store Approvals Queue /admin/tenants/pending]</p>
-<p>POConsole --&gt; DBMig[Schema Migrations Hub /admin/database-migrations]</p>
-<p>POConsole --&gt; SysSet[System &amp; Offline Settings /admin/system-settings]</p>
-<p>TenantDir --&gt;|Suspend / Reactivate| StoreStatus[Tenant Lifecycle Status Updated]</p>
-<p>ApprQueue --&gt;|Approve Store| AutoProvision[Automatic PostgreSQL Schema Creation &amp; Ledger Seeding]</p>
-<p>DBMig --&gt;|Apply All Schema Migrations| EFRunner[TenantSchemaMigrator Across All Tenant Schemas]</p>
-<p>```</p>
-<h3 id='221-dedicated-product-owner-sign-in'>22.1 Dedicated Product Owner Sign In</h3>
-<ul>
-<li><strong>URL:</strong> <code>/admin/login</code> (or click &quot;Product Owner / Platform Sign In&quot; from the bottom of <code>/login</code>).</li>
-<li><strong>No Workspace Slug Required:</strong> Unlike individual store owners and staff who enter a store slug, the Product Owner signs directly into the control plane.</li>
-<li><strong>Default Master Credentials:</strong></li>
-<li><strong>Username / Email:</strong> <code>admin</code> or <code>developer.pravin666@gmail.com</code></li>
-<li><strong>Master Password:</strong> <code>Admin@123456</code></li>
-<li><strong>Security &amp; Authorization:</strong> Produces a JWT bearer token carrying <code>ClaimTypes.Role: &quot;ProductOwner&quot;</code> and <code>PermissionClaimTypes.Permission: &quot;Tenants.Manage&quot;</code>. The frontend attaches this token across all requests, bypassing individual tenant boundaries.</li>
-</ul>
-<p>---</p>
-<h3 id='222-platform-overview-dashboard-admindashboard'>22.2 Platform Overview Dashboard (<code>/admin/dashboard</code>)</h3>
-<p>When logged in as Product Owner, navigating to the home route <code>/</code> or <code>/admin/dashboard</code> renders the Platform Overview Console:</p>
-<ol>
-<li><strong>Platform KPI Metrics:</strong></li>
-</ol>
-<ul>
-<li><strong>Total Stores:</strong> Overall count of businesses registered in the platform directory.</li>
-<li><strong>Pending Review:</strong> Registrations waiting for Product Owner verification.</li>
-<li><strong>Active Stores:</strong> Verified stores with live, provisioned PostgreSQL schemas.</li>
-<li><strong>Suspended Stores:</strong> Stores frozen by administrator intervention.</li>
-<li><strong>Environment Status:</strong> Offline desktop mode or cloud-hosted status.</li>
-</ul>
-<ol>
-<li><strong>Pending Registrations Quick Action:</strong> Displays registrations waiting in the queue with a 1-click <strong>&quot;Approve &amp; Provision&quot;</strong> button to immediately run schema migrations and seed master ledgers.</li>
-<li><strong>Public Signup Link Generator:</strong> Quick copy button for <code>https://&lt;domain&gt;/register-tenant</code> to share with prospective store owners.</li>
-</ol>
-<p>---</p>
-<h3 id='223-tenant-directory-lifecycle-management-admintenants'>22.3 Tenant Directory &amp; Lifecycle Management (<code>/admin/tenants</code>)</h3>
-<p>The Tenant Directory gives the Product Owner total control over every registered store:</p>
-<ol>
-<li><strong>Filtering &amp; Search:</strong> Instant search by Store Name, Workspace Slug, Owner Email, or GSTIN, with status tabs (<code>All</code>, <code>Active</code>, <code>Pending</code>, <code>Suspended</code>, <code>Rejected</code>).</li>
-<li><strong>Tenant Actions:</strong></li>
-</ol>
-<ul>
-<li><strong>View Full Store Profile (Eye icon):</strong> Inspect isolated schema name (e.g. <code>tenant_siddhi_...</code>), GSTIN, state code, business address, and owner contact details.</li>
-<li><strong>Suspend Store (Ban icon):</strong> Freezes all logins and transactions for this store immediately (<code>POST /api/tenants/{id}/suspend</code>).</li>
-<li><strong>Reactivate Store (Play icon):</strong> Restores store access to active status (<code>POST /api/tenants/{id}/reactivate</code>).</li>
-<li><strong>Approve / Reject:</strong> For pending applicants, approve schema creation or provide a formal rejection reason.</li>
-</ul>
-<ol>
-<li><strong>Workspace Slug Copy:</strong> Quick copy button for the store&#39;s unique workspace slug.</li>
-</ol>
-<p>---</p>
-<h3 id='224-database-schema-migrations-hub-admindatabase-migrations'>22.4 Database Schema Migrations Hub (<code>/admin/database-migrations</code>)</h3>
-<p>Siddhi isolates each store inside its own PostgreSQL schema (<code>tenant_&lt;slug&gt;_&lt;id&gt;</code>) for complete data security and independent database operations.</p>
-<p>When new application features or schema changes are deployed:</p>
-<ol>
-<li>Open <strong>Database Migrations</strong> (<code>/admin/database-migrations</code>).</li>
-<li>Review the <strong>Managed Schema Registry</strong> displaying the master schema (<code>tenant</code>) and all individual store schemas.</li>
-<li>Click <strong>&quot;Apply All Schema Migrations&quot;</strong>.</li>
-</ol>
-<ul>
-<li>The backend runs <code>TenantSchemaMigrator.MigrateAsync</code> across all active schemas sequentially.</li>
-<li>Pending EF Core migrations (tables, columns, indexes, initial seed data) are applied to all store databases without downtime.</li>
-</ul>
-<ol>
-<li><strong>Live Execution Log:</strong> Inspect real-time console events and schema verification timestamps.</li>
-</ol>
-<p>---</p>
-<h3 id='225-system-settings-offline-configuration-adminsystem-settings'>22.5 System Settings &amp; Offline Configuration (<code>/admin/system-settings</code>)</h3>
-<ol>
-<li><strong>Deployment Architecture Review:</strong> View active PostgreSQL connection details, schema isolation settings, and API server status.</li>
-<li><strong>Offline vs. Online Dispatch:</strong> In offline desktop mode, email verification is routed to internal log files (<code>logs/tenant-registrations.log</code>), enabling full software functionality without an active internet connection.</li>
-<li><strong>Setup Checklist:</strong> Reference the built-in offline deployment checklist to ensure local PostgreSQL, backend API, and frontend counter apps are synchronized.</li>
-</ol>
-<p>---</p>
-<h3 id='226-dynamic-database-switching-local-postgresql-cloud-postgresql'>22.6 Dynamic Database Switching (Local PostgreSQL ↔ Cloud PostgreSQL)</h3>
-<p>Siddhi features dual-database runtime agility, allowing the Product Owner to switch the entire application between a <strong>Local PostgreSQL database</strong> (for offline desktop or on-premise operation) and a <strong>Cloud PostgreSQL database</strong> (AWS RDS, Supabase, Neon, Azure PostgreSQL, or remote VPS) with zero backend downtime and zero manual database scripts.</p>
-<p>```mermaid</p>
-<p>flowchart LR</p>
-<p>PO([Product Owner Console /admin/system-settings]) --&gt;|1. Test Connection| Probe{Connectivity Probe}</p>
-<p>Probe --&gt;|Success| SwitchAct[2. Switch Target Request]</p>
-<p>SwitchAct --&gt; ConnMgr[IDatabaseConnectionManager]</p>
-<p>ConnMgr --&gt;|Target: Local| LocalDB[(Local PostgreSQL localhost:5432)]</p>
-<p>ConnMgr --&gt;|Target: Cloud| CloudDB[(Cloud PostgreSQL Hosted/RDS)]</p>
-<p>ConnMgr --&gt;|3. Auto-Migrate| Migrator[TenantSchemaMigrator Auto-Sync]</p>
-<p>ConnMgr --&gt;|4. Persist Target| FileStore[(database.config.json)]</p>
-<p>Migrator --&gt;|All Store Schemas Verified| Ready[Live Serving Requests]</p>
-<p>```</p>
-<h4 id='step-by-step-instructions-configure-switch-databases'>Step-by-Step Instructions: Configure &amp; Switch Databases</h4>
-<ol>
-<li><strong>Open System Settings:</strong></li>
-</ol>
-<ul>
-<li>Log in as Product Owner at <code>/admin/login</code>.</li>
-<li>In the sidebar or top navigation, click <strong>System Settings</strong> (<code>/admin/system-settings</code>).</li>
-</ul>
-<ol>
-<li><strong>Inspect Current Target:</strong></li>
-</ol>
-<ul>
-<li>The <strong>Database Target &amp; Multi-Cloud Switcher</strong> banner displays the current active target (e.g. <code>Active: Local PostgreSQL</code> or <code>Active: Cloud PostgreSQL</code>) with a live status indicator.</li>
-</ul>
-<ol>
-<li><strong>Configure Cloud Connection String:</strong></li>
-</ol>
-<ul>
-<li>In the <strong>Cloud PostgreSQL</strong> card, enter your cloud connection string:</li>
-</ul>
-<p>```text</p>
-<p>Host=&lt;cloud-host&gt;;Port=5432;Database=accounting_inventory;Username=postgres;Password=&lt;your_password&gt;;SSL Mode=Require;Trust Server Certificate=true;</p>
-<p>```</p>
-<ul>
-<li>Use the <strong>Presets</strong> buttons (<code>AWS RDS</code>, <code>Supabase</code>, <code>Neon</code>) for instant boilerplate strings.</li>
-<li>Click <strong>Show password / Mask password</strong> to verify credentials.</li>
-<li>Click <strong>Save String</strong> to store the connection parameters without activating immediately.</li>
-</ul>
-<ol>
-<li><strong>Test Reachability (Probe):</strong></li>
-</ol>
-<ul>
-<li>Click <strong>Test Connection</strong> on either the Local or Cloud card.</li>
-<li>The backend opens a connection, executes <code>SELECT version();</code>, and returns the round-trip latency (e.g., <code>24ms • PostgreSQL 16.2</code>) or a detailed diagnostics error message if the host is unreachable.</li>
-</ul>
-<ol>
-<li><strong>Execute Live Switch:</strong></li>
-</ol>
-<ul>
-<li>Click <strong>Switch to Cloud</strong> (or <strong>Switch to Local</strong>).</li>
-<li>A confirmation dialog appears. Ensure the <strong>&quot;Auto-migrate database schema &amp; synchronize tenant registry&quot;</strong> checkbox is checked (recommended).</li>
-<li>Click <strong>Confirm &amp; Switch Target</strong>:</li>
-</ul>
-<ol>
-<li>The backend verifies connectivity to the target database.</li>
-<li>Automatically initializes the <code>tenant</code> schema and migrations if connecting to a new cloud database.</li>
-<li>Provisions all active store schemas on the new target database.</li>
-<li>Updates <code>IDatabaseConnectionManager</code> and writes the selection to <code>database.config.json</code>.</li>
-<li>Subsequent API requests across the entire application immediately point to the new target database!</li>
-</ol>
-<ol>
-<li><strong>Verify Active Target:</strong></li>
-</ol>
-<ul>
-<li>The badge updates to <code>Active: Cloud PostgreSQL</code>.</li>
-<li>The Platform Dashboard (<code>/admin/dashboard</code>) and Migrations Hub (<code>/admin/database-migrations</code>) immediately reflect the new active database target.</li>
-</ul>
-<p>---</p>
-<h2 id='23-master-data-import-staging-verification-vendors-brands-categories-models-variants-colors'>23. Master Data Import &amp; Staging Verification (Vendors, Brands, Categories, Models, Variants, Colors)</h2>
-<p>Siddhi includes a <strong>Two-Stage Master Data Import &amp; Verification Hub</strong>, enabling store owners and administrators to bulk-import catalog data safely without risking database corruption or accidental duplicates.</p>
-<p>```mermaid</p>
-<p>flowchart TD</p>
-<p>User([Store Owner or Product Owner]) --&gt;|1. Download Template or Export| ExcelFile[Excel / CSV Master Spreadsheet]</p>
-<p>ExcelFile --&gt;|2. Fill Data &amp; Upload| UploadAPI[POST /api/masters/import/upload]</p>
-<p>UploadAPI --&gt; Validate{Automated Validation &amp; Logic Engine}</p>
-<p>Validate --&gt;|Inserts Into Staging| TempDB[(Temp Staging: master_import_batches &amp; staging_rows)]</p>
-<p>TempDB --&gt; ReviewUI[3. Staging Review &amp; Verification Workspace /products/import-masters]</p>
-<p>ReviewUI --&gt;|Inspect Valid / Invalid / Warnings| ToggleRows{Reviewer Excludes or Approves Rows}</p>
-<p>ToggleRows --&gt;|4. Click &#39;Approve &amp; Import&#39;| TxnImport[5. Atomic Dependency Resolution &amp; Production Insert]</p>
-<p>TxnImport --&gt;|Brands &amp; Types First| ProdMasters1[(Main Catalog: Brands &amp; ProductTypes)]</p>
-<p>TxnImport --&gt;|Models Linked Second| ProdMasters2[(Main Catalog: ProductModels)]</p>
-<p>TxnImport --&gt;|Variants, Colors &amp; Vendors| ProdMasters3[(Main Catalog: Variants, Colors, Vendors)]</p>
-<p>TxnImport --&gt; AuditLog[(AuditableEntity SaveChanges Log)]</p>
-<p>```</p>
-<h3 id='231-key-architectural-principles'>23.1 Key Architectural Principles</h3>
-<ol>
-<li><strong>Two-Stage Safety Guarantee:</strong></li>
-</ol>
-<ul>
-<li>Uploaded rows are <strong>never</strong> inserted directly into live production tables.</li>
-<li>All parsed rows are first staged in dedicated PostgreSQL temporary tables (<code>master_import_batches</code> and <code>master_import_staging_rows</code>) within the store&#39;s isolated tenant schema.</li>
-<li>The reviewer (Store Owner or Product Owner) can inspect each record&#39;s status, action (<code>+ Create</code> vs <code>↺ Update</code>), and error explanations before giving final approval.</li>
-</ul>
-<ol>
-<li><strong>Automated Upsert Logic (Create vs Update):</strong></li>
-</ol>
-<ul>
-<li><strong>New Records:</strong> If a code or name does not exist in the store catalog, it is flagged as <code>+ Create</code>.</li>
-<li><strong>Existing Records:</strong> If a code or unique name matches an existing entity, it is flagged as <code>↺ Update</code>. The system updates its description, contact details, or status without duplicating the master item.</li>
-</ul>
-<ol>
-<li><strong>Hierarchical Dependency Resolution:</strong></li>
-</ol>
-<ul>
-<li>When approving a batch, the system automatically imports parent entities before child entities:</li>
-</ul>
-<ol>
-<li><strong>Brands &amp; Product Types</strong> are committed first.</li>
-<li><strong>Product Models</strong> are committed second, dynamically resolving foreign keys (<code>BrandId</code> and <code>ProductTypeId</code>) from the newly created or matched parents.</li>
-<li><strong>Variants</strong>, <strong>Colors</strong>, and <strong>Vendors</strong> are committed with complete integrity checks.</li>
-</ol>
-<p>---</p>
-<h3 id='232-step-by-step-instructions-import-master-data'>23.2 Step-by-Step Instructions: Import Master Data</h3>
-<h4 id='step-1-download-template-or-export-existing-catalog'>Step 1: Download Template or Export Existing Catalog</h4>
-<ol>
-<li>Navigate to <strong>Product &gt; Import Master Data</strong> (<code>/products/import-masters</code>) from the sidebar.</li>
-<li>Choose one of two options:</li>
-</ol>
-<ul>
-<li><strong>Download Excel Template (.xlsx):</strong> Downloads <code>siddhi_master_import_template.xlsx</code> containing column headers and sample records in six worksheets: Vendors, Brands, ProductTypes, Models, Variants, and Colors.</li>
-<li><strong>Export Master Catalog (.xlsx):</strong> Exports the selected store&#39;s existing master records, including inactive records, in the same six-worksheet format for re-importing.</li>
-</ul>
-<ol>
-<li>Open the downloaded workbook in Microsoft Excel. It should open without a file-format or extension warning. If you downloaded an unreadable file before the export fix, download a fresh copy after the updated API is running; previously downloaded files are not repaired automatically.</li>
-<li>If the page reports that the server did not return a valid Excel workbook, the download is stopped. Have the administrator restart the updated AccountingInventory API, then retry the download.</li>
-</ol>
-<p>Prerequisites: Sign in with access to the import page. Product Owners must select a store before downloading its template or catalog.</p>
-<h4 id='step-2-fill-the-excel-workbook'>Step 2: Fill the Excel Workbook</h4>
-<p>Open the file in <strong>Microsoft Excel</strong>, <strong>Google Sheets</strong>, or <strong>LibreOffice</strong>. The spreadsheet supports all six master entities:</p>
-<div class="table-wrap"><table><tbody>
-<tr><th>Column</th><th>Supported Values</th><th>Required For</th><th>Description &amp; Example</th></tr>
-<tr><td>Worksheet</td><td><code>Vendors</code>, <code>Brands</code>, <code>ProductTypes</code>, <code>Models</code>, <code>Variants</code>, <code>Colors</code></td><td><strong>All</strong></td><td>The worksheet name identifies the entity; keep worksheet names and column headers unchanged.</td></tr>
-<tr><td><code>Name</code></td><td>Free text (e.g. <code>Apple</code>, <code>iPhone 15 Pro</code>, <code>128GB</code>, <code>Titanium</code>)</td><td><strong>All</strong></td><td>Display name of the item.</td></tr>
-<tr><td><code>Code</code></td><td>Alphanumeric (e.g. <code>VEN-APP-001</code>, <code>IPH15P</code>)</td><td><code>Vendor</code>, <code>Model</code></td><td>Unique item or supplier code.</td></tr>
-<tr><td><code>Mobile</code></td><td>7 to 20 digits (e.g. <code>9876543210</code>)</td><td><code>Vendor</code></td><td>Primary contact number.</td></tr>
-<tr><td><code>Email</code></td><td>Valid email (e.g. <code>distro@apple.in</code>)</td><td><code>Vendor</code></td><td>Billing / order email address.</td></tr>
-<tr><td><code>Brand</code></td><td>Brand Name (e.g. <code>Apple</code>)</td><td><code>Model</code></td><td>Linked brand for the model.</td></tr>
-<tr><td><code>ProductType</code></td><td>Product Type Name (e.g. <code>Smartphone</code>)</td><td><code>Model</code></td><td>Linked category/type for the model.</td></tr>
-<tr><td><code>Description</code></td><td>Free text (e.g. <code>6.1-inch Super Retina display</code>)</td><td>Optional</td><td>Narrative description.</td></tr>
-<tr><td><code>Address</code></td><td>Free text (e.g. <code>BKC Mumbai</code>)</td><td><code>Vendor</code></td><td>Supplier physical address.</td></tr>
-<tr><td><code>IsActive</code></td><td><code>TRUE</code> or <code>FALSE</code></td><td>Optional</td><td>Defaults to <code>TRUE</code> if omitted.</td></tr>
-</tbody></table></div>
-<h4 id='step-3-upload-and-stage-data'>Step 3: Upload and Stage Data</h4>
-<ol>
-<li>On the <strong>Master Data Import Hub</strong> page, click <strong>&quot;Browse &amp; Upload Excel (.xlsx)&quot;</strong>.</li>
-<li>Select your populated <code>.xlsx</code> file. CSV and text files are not supported by this page. Replace or remove template sample rows before uploading your own records.</li>
-<li>The system parses the file, executes business rule validation, assigns a unique batch tracking number (<code>IMP-YYYYMMDD-XXXX</code>), and inserts all records into the staging database.</li>
-</ol>
-<h4 id='step-4-verify-staged-records-in-review-workspace'>Step 4: Verify Staged Records in Review Workspace</h4>
-<p>The <strong>Review Workspace</strong> displays:</p>
-<ul>
-<li><strong>KPI Summary Cards:</strong> Total Rows, Valid Records, New Creates, Existing Updates, Warnings, and Errors.</li>
-<li><strong>Entity Filter Tabs:</strong> Click <code>Vendors</code>, <code>Brands</code>, <code>Product Types</code>, <code>Models</code>, <code>Variants</code>, or <code>Colors</code> to inspect subsets.</li>
-<li><strong>Status Filter:</strong> Filter by <code>Valid Only</code> or <code>Errors Only</code>.</li>
-<li><strong>Search:</strong> Search across names, codes, brands, and validation notes.</li>
-<li><strong>Row Inclusion Checkboxes:</strong> If any row has a typo or validation error, uncheck its <strong>Include</strong> checkbox to exclude it from the final import without discarding the entire batch.</li>
-</ul>
-<h4 id='step-5-approve-import-to-main-database'>Step 5: Approve &amp; Import to Main Database</h4>
-<ol>
-<li>When satisfied with the staged records, click <strong>&quot;Approve &amp; Import to Main Database&quot;</strong>.</li>
-<li>A confirmation modal displays the number of new records to be created and existing records to be updated.</li>
-<li>Click <strong>&quot;Confirm &amp; Import Now&quot;</strong>:</li>
-</ol>
-<ul>
-<li>The transaction commits all approved records into the production catalog tables.</li>
-<li>Staging records are marked as <code>Imported</code>.</li>
-<li>The batch status changes to <code>Approved</code>.</li>
-<li>A success banner itemizes counts: <code>e.g. 5 Brands, 3 Product Types, 12 Models, 4 Variants, 6 Colors, 2 Vendors imported.</code></li>
-</ul>
-<p>---</p>
-<h3 id='233-product-owner-master-import-console-adminmasters-import'>23.3 Product Owner Master Import Console (<code>/admin/masters-import</code>)</h3>
-<p>The <strong>Product Owner</strong> (Super Administrator) can oversee and manage master imports across all stores:</p>
-<ol>
-<li>Sign in to the Product Owner console at <code>/admin/login</code>.</li>
-<li>In the sidebar, click <strong>Master Data Import</strong> (<code>/admin/masters-import</code>).</li>
-<li>Select any store from the <strong>Select Tenant Store</strong> dropdown.</li>
-<li>Review that store&#39;s staged batches, inspect validation notes, and click <strong>&quot;Approve &amp; Import&quot;</strong> or <strong>&quot;Reject Batch&quot;</strong> on behalf of the store.</li>
-</ol>
-</main></body></html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Accounting &amp; Inventory User Manual</title>
+    <style>
+        body {
+            font: 16px/1.65 Arial, sans-serif;
+            color: #172536;
+            background: #edf2f6;
+            margin: 0
+        }
+
+        main {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 8px
+        }
+
+        h1 {
+            font-size: 30px
+        }
+
+        h2 {
+            margin-top: 40px;
+            border-top: 1px solid #ccd5df;
+            padding-top: 20px
+        }
+
+        h3 {
+            margin-top: 28px
+        }
+
+        a {
+            color: #1558a1
+        }
+
+        li {
+            margin: 8px 0
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 14px
+        }
+
+        th,
+        td {
+            border: 1px solid #ccd5df;
+            padding: 10px;
+            text-align: left;
+            vertical-align: top
+        }
+
+        th {
+            background: #eef3f8
+        }
+
+        .table-wrap {
+            overflow-x: auto
+        }
+
+        code {
+            background: #eef3f8;
+            padding: 2px 4px
+        }
+
+        button {
+            padding: 10px 16px;
+            cursor: pointer
+        }
+
+        @media(max-width:600px) {
+            main {
+                margin: 0;
+                padding: 20px;
+                border-radius: 0
+            }
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 18mm
+            }
+
+            body {
+                background: white;
+                font-size: 11pt
+            }
+
+            main {
+                margin: 0;
+                padding: 0;
+                max-width: none
+            }
+
+            .print-tools {
+                display: none
+            }
+
+            h2,
+            h3 {
+                break-after: avoid
+            }
+
+            tr {
+                break-inside: avoid
+            }
+
+            a {
+                color: inherit;
+                text-decoration: none
+            }
+
+            table {
+                font-size: 9pt
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <div class="print-tools"><button onclick="window.print()">Print / Save PDF</button></div>
+        <h1 id='accounting-inventory-user-manual'>Accounting &amp; Inventory User Manual</h1>
+        <p>Version: 1.7 | Updated: 10 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO
+            payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, and
+            Two-Stage Master Data Import &amp; Verification</p>
+        <p>For business owners, purchase staff, sales staff and accountants. Menu names below match the application.
+            Your owner provides your website address and Tenant slug. Available actions depend on your permissions.</p>
+        <p>To share this guide, send accounting-user-manual.html. Open that file in a browser and choose Print / Save
+            PDF for a paper or PDF copy. Keep the version and date with any distributed copy.</p>
+        <h2 id='contents'>Contents</h2>
+        <ul>
+            <li><a href="#1-get-started">1. Get started</a></li>
+            <li><a href="#2-owner-invite-staff-and-grant-access">2. Owner: invite staff and grant access</a></li>
+            <li><a href="#3-set-up-products-and-bill-details">3. Set up products and bill details</a></li>
+            <li><a href="#4-accountant-bring-forward-opening-balances">4. Accountant: bring forward opening balances</a>
+            </li>
+            <li><a href="#5-record-a-new-purchase">5. Record a new purchase</a></li>
+            <li><a href="#6-pay-a-supplier">6. Pay a supplier</a></li>
+            <li><a href="#7-create-a-sale-and-select-gst">7. Create a sale and select GST</a></li>
+            <li><a href="#8-receive-a-customer-payment-and-print-a-bill">8. Receive a customer payment and print a
+                    bill</a></li>
+            <li><a href="#9-return-or-cancel-a-sale">9. Return or cancel a sale</a></li>
+            <li><a href="#10-return-a-product-to-a-supplier">10. Return a product to a supplier</a></li>
+            <li><a href="#11-record-refunds-and-print-notes">11. Record refunds and print notes</a></li>
+            <li><a href="#12-check-balances-gst-and-stock">12. Check balances, GST and stock</a></li>
+            <li><a href="#13-accountant-journals-periods-and-bank-reconciliation">13. Accountant: journals, periods and
+                    bank reconciliation</a></li>
+            <li><a href="#14-additional-accounting-controls">14. Additional accounting controls</a></li>
+            <li><a href="#15-daily-checklist-and-practice-example">15. Daily checklist and practice example</a></li>
+            <li><a href="#16-common-problems-and-help">16. Common problems and help</a></li>
+            <li><a href="#17-terms-used-in-this-guide">17. Terms used in this guide</a></li>
+            <li><a href="#18-multi-line-invoices-and-customer-advances">18. Multi-line invoices and customer
+                    advances</a></li>
+            <li><a href="#19-stocked-accessories-and-integrity-controls">19. Stocked accessories and integrity
+                    controls</a></li>
+            <li><a href="#20-non-accountant-store-operator-guide--smart-suggestions">20. Non-Accountant Store Operator
+                    Guide &amp; Smart Suggestions</a></li>
+            <li><a href="#21-tenant-onboarding--offline-deployment-setup-guide">21. Tenant Onboarding &amp; Offline
+                    Deployment Setup Guide</a></li>
+            <li><a href="#22-product-owner-super-administrator-console--platform-management">22. Product Owner (Super
+                    Administrator) Console &amp; Platform Management</a></li>
+            <li><a href="#221-dedicated-product-owner-sign-in">22.1 Dedicated Product Owner Sign In</a></li>
+            <li><a href="#222-platform-overview-dashboard-admindashboard">22.2 Platform Overview Dashboard</a></li>
+            <li><a href="#223-tenant-directory--store-approvals-admintenants">22.3 Tenant Directory &amp; Store
+                    Approvals</a></li>
+            <li><a href="#224-database-schema-migrations-hub-admindatabase-migrations">22.4 Database Schema Migrations
+                    Hub</a></li>
+            <li><a href="#225-system-settings--offline-configuration-adminsystem-settings">22.5 System Settings &amp;
+                    Offline Configuration</a></li>
+            <li><a href="#226-dynamic-database-switching-local-postgresql--cloud-postgresql">22.6 Dynamic Database
+                    Switching (Local PostgreSQL ↔ Cloud PostgreSQL)</a></li>
+            <li><a href="#23-master-data-import--staging-verification-vendors-brands-categories-models-variants-colors">23.
+                    Master Data Import &amp; Staging Verification (Vendors, Brands, Categories, Models, Variants,
+                    Colors)</a></li>
+        </ul>
+        <h2 id='1-get-started'>1. Get started</h2>
+        <ol>
+            <li>For a new account, open the invitation email and follow the activation link. Invitations expire after 24
+                hours and can be used once.</li>
+            <li>Set a password containing at least 12 characters, including an uppercase letter, a lowercase letter and
+                a number.</li>
+            <li>Open the sign-in page. Enter your Tenant slug, Username and Password, then sign in.</li>
+            <li>Expand the sidebar sections to find Product, Purchase, Sale, Accounting and Settings.</li>
+            <li>Ask the owner for the permissions needed for your work. Activation alone does not give staff permission
+                to enter transactions.</li>
+        </ol>
+        <p>Expected result: you can sign in to your own business and open the permitted forms. If you see a permission
+            error, follow section 16.</p>
+        <h2 id='2-owner-invite-staff-and-grant-access'>2. Owner: invite staff and grant access</h2>
+        <ol>
+            <li>Open Accounting &gt; Staff Access. This page is available to the designated owner.</li>
+            <li>Enter Username, Email and Mobile, then select Send invitation.</li>
+            <li>Ask the staff member to activate the email invitation. Until activation, their status is Invited and
+                they cannot sign in.</li>
+            <li>When the user is Active, tick the permissions they need in their row. Changes save as you select them.
+            </li>
+            <li>Ask the user to refresh the application before retrying a blocked action.</li>
+        </ol>
+        <div class="table-wrap">
+            <table>
+                <tbody>
+                    <tr>
+                        <th>Permission shown on screen</th>
+                        <th>Use</th>
+                    </tr>
+                    <tr>
+                        <td>catalog.manage</td>
+                        <td>Maintain product references, customers and settings</td>
+                    </tr>
+                    <tr>
+                        <td>purchases.manage</td>
+                        <td>Enter purchases, supplier payments, purchase returns and supplier refunds</td>
+                    </tr>
+                    <tr>
+                        <td>sales.manage</td>
+                        <td>Enter sales, customer receipts, sales returns and customer refunds</td>
+                    </tr>
+                    <tr>
+                        <td>inventory.manage</td>
+                        <td>Authorized inventory adjustments</td>
+                    </tr>
+                    <tr>
+                        <td>accounting.manage</td>
+                        <td>Opening balances, journals and general accounting actions</td>
+                    </tr>
+                    <tr>
+                        <td>accounting.approve</td>
+                        <td>Review accounting approval requests</td>
+                    </tr>
+                    <tr>
+                        <td>accounting.dimensions.manage</td>
+                        <td>Maintain branches, projects and cost centers</td>
+                    </tr>
+                    <tr>
+                        <td>accounting.documents.manage</td>
+                        <td>Link supporting evidence</td>
+                    </tr>
+                    <tr>
+                        <td>accounting.assets.manage</td>
+                        <td>Maintain fixed assets</td>
+                    </tr>
+                    <tr>
+                        <td>accounting.budgets.manage</td>
+                        <td>Maintain budgets</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p>To resend an unused or expired invitation, select Resend invitation. The recipient should use the latest
+            email. To suspend verified staff, select Disable; select Enable to restore their account. Disabling does not
+            erase historical transactions.</p>
+        <p>To change the owner, first confirm that the replacement user is active and verified. Select Transfer
+            ownership in their row and confirm the named user. You immediately lose owner privileges; you retain only
+            separately granted staff permissions. Arrange any access you need before transferring ownership.</p>
+        <p>The initial owner receives an invitation from the service administrator. Contact that administrator if your
+            business has no activated owner.</p>
+        <h2 id='3-set-up-products-and-bill-details'>3. Set up products and bill details</h2>
+        <ol>
+            <li>Under Product, add Vendors, Brands, Product Types, Categories / Models, Variants and Colors as needed.
+                Create the brand and product type before their model.</li>
+            <li>Under Settings &gt; Tax, maintain the CGST/SGST rate combinations used by your business. Have your
+                accountant confirm which rate to apply.</li>
+            <li>Under Settings &gt; Customer Bill, enter the seller details and choose the printing options for new
+                invoices.</li>
+            <li>Confirm that the model belongs to the selected brand and product type before recording stock.</li>
+        </ol>
+        <p>Expected result: purchase forms offer the required references and sale forms offer the required GST rates.
+            Changes to customer, supplier, product or seller details do not rewrite details captured on existing
+            invoices. Older invoices may use explicitly reconstructed details from the upgrade.</p>
+        <h2 id='4-accountant-bring-forward-opening-balances'>4. Accountant: bring forward opening balances</h2>
+        <p>Use this once when starting the business in this system with existing stock and unpaid customer/supplier
+            invoices. For a business starting without historical balances, ask your accountant whether an opening import
+            is needed. Complete the cutover before entering normal transactions. Normal postings must be dated after the
+            cutover date.</p>
+        <h3 id='prepare-and-stage-stock'>Prepare and stage stock</h3>
+        <ol>
+            <li>Agree a cutover date with the owner and prepare the approved balance-sheet totals, unpaid invoices and
+                stock list as of that date.</li>
+            <li>Create the customer, vendor and product references needed by those lists.</li>
+            <li>Open Accounting &gt; Opening Balances &amp; Reconciliation and select the cutover date.</li>
+            <li>Select Initialize accounts if the standard accounts have not been created.</li>
+            <li>Select Import opening stock. Enter one existing unit, its serial number, historical purchase details and
+                historical cost, then select Import stock unit.</li>
+            <li>Repeat for each unit. Use a purchase date on or before cutover. Staged units remain unavailable for sale
+                until opening balances are posted.</li>
+        </ol>
+        <h3 id='enter-and-post-balances'>Enter and post balances</h3>
+        <ol>
+            <li>On Opening Balances &amp; Reconciliation, enter each balance-sheet account with a debit or credit.
+                Select Add account balance for more lines.</li>
+            <li>Select Add outstanding item for each unpaid customer or vendor invoice. Choose Customer or Vendor,
+                Party, invoice reference, Due date and Opening amount.</li>
+            <li>Check that customer items equal the debit balance on 1100 (receivables), vendor items equal the credit
+                balance on 2000 (payables), and staged stock net costs equal the debit balance on 1200 (inventory).</li>
+            <li>Include the other approved balance-sheet balances. The system posts any remaining difference to retained
+                earnings; the accountant must approve that difference before submission.</li>
+            <li>Review every line and select Post reconciled opening balances.</li>
+            <li>Confirm that stock is available and that the Receivables, Payables and Stock reconciliation differences
+                are all zero.</li>
+        </ol>
+        <p>Example: customer items total 200, vendor items total 150 and stock net cost totals 100. The corresponding
+            control lines are 1100 debit 200, 2000 credit 150 and 1200 debit 100. With no other lines, the system
+            balances the remaining 150 to retained earnings. Use your accountant&#39;s complete figures for a real
+            import.</p>
+        <p>Expected result: one opening journal, individual outstanding items and active opening stock. The import
+            cannot be repeated. Use this dedicated page when importing party or stock balances; the older General Ledger
+            opening form does not collect those detailed items.</p>
+        <h3 id='settle-an-old-unpaid-invoice'>Settle an old unpaid invoice</h3>
+        <ol>
+            <li>Find the item under Opening outstanding items.</li>
+            <li>Select Receive payment for a customer or Pay vendor for a supplier.</li>
+            <li>Enter a date after cutover, an amount no greater than the outstanding balance, and Cash or Bank.</li>
+            <li>Select Save settlement and verify the reduced balance.</li>
+        </ol>
+        <p>Use this workflow for brought-forward invoices. Opening stock does not create a new supplier bill or new
+            input GST claim in the normal purchase workflow.</p>
+        <h2 id='5-record-a-new-purchase'>5. Record a new purchase</h2>
+        <ol>
+            <li>Open Purchase &gt; Products and choose the add action.</li>
+            <li>Select Vendor and enter Vendor Bill / Invoice Number, Vendor Invoice Date and Payment Terms (days).</li>
+            <li>Select Brand, Product Type, Model, Variant and Color.</li>
+            <li>Enter the unit&#39;s Serial Number and Serial Number 1 where applicable. Check both against the physical
+                unit.</li>
+            <li>Enter Purchase Price before GST, Discount before GST, CGST (%) and SGST (%). Check the calculated Total
+                Amount (per unit).</li>
+            <li>Save and verify that the unit appears in Purchase &gt; Stock Inventory and the bill appears in Purchase
+                &gt; Bills &amp; Payments.</li>
+            <li>For multiple serialized units on one vendor invoice, enter each unit using the same vendor, bill number,
+                invoice date and payment terms. Finish entering the invoice before paying it.</li>
+        </ol>
+        <p>Example: Purchase Price 1,000, Discount 0, CGST 9% and SGST 9% gives Total Amount 1,180 per unit.</p>
+        <p>Expected result: available stock and a supplier payable are created. Saving a purchase does not record
+            payment. Serial numbers cannot collide with existing records. Paid bills cannot gain or change units;
+            posted, sold or written-off stock cannot be edited directly.</p>
+        <h2 id='6-pay-a-supplier'>6. Pay a supplier</h2>
+        <ol>
+            <li>Open Purchase &gt; Bills &amp; Payments and find the vendor bill.</li>
+            <li>Select View / Record in the Payments column.</li>
+            <li>Review the invoice total, previous payments and balance.</li>
+            <li>Enter Amount, Payment method and Payment date. Enter the required reference for a transfer, UPI or
+                cheque, and an optional note.</li>
+            <li>Select Record payment once, then check Payment history and the remaining balance.</li>
+        </ol>
+        <p>Expected result: the supplier balance decreases. The amount cannot exceed the outstanding bill balance and
+            the date cannot precede the invoice or fall in a closed period. Opening invoices are settled through section
+            4.</p>
+        <h2 id='7-create-a-sale-and-select-gst'>7. Create a sale and select GST</h2>
+        <ol>
+            <li>Open Sale &gt; Products and choose the add action.</li>
+            <li>Select Product (name or serial number). Match the displayed serial to the physical unit.</li>
+            <li>Check Purchase Price (including GST), which fills automatically and cannot be edited here.</li>
+            <li>Check GST rate. It defaults to the configured CGST/SGST combination matching the purchase product.
+                Verify it before saving; if a matching rate is missing, ask the owner to configure it under Settings
+                &gt; Tax.</li>
+            <li>Enter Selling Price (including GST). It initially equals the product&#39;s purchase total, and you can
+                change it.</li>
+            <li>Check Discount (including GST), calculated as purchase total minus selling price, with a minimum of
+                zero. It is not an additional discount to subtract from the selling price.</li>
+            <li>Search Customer Name or Mobile and select an existing customer, or enter the customer&#39;s details.
+                Confirm Mobile Number and Address; Email is optional.</li>
+            <li>Enter Sale Date and Payment Terms (days), then select Create Sale.</li>
+            <li>Verify the invoice under Sale &gt; Bills &amp; Payments. Record any money received separately using
+                section 8.</li>
+        </ol>
+        <p>Example: purchase total 1,180 and selling price 1,000 gives a displayed discount of 180. With CGST 9% and
+            SGST 9%, the selling total remains 1,000; the system calculates the taxable value and tax inside that total.
+            A selling price above 1,180 gives a displayed discount of zero.</p>
+        <p>GST rate selection is required by the form. No GST is an available selection; use it only when appropriate
+            for the transaction. Selecting a product again can reset its default selling price and GST selection, so
+            review those fields after changing products.</p>
+        <p>Expected result: the unit becomes sold and a customer receivable is created. The sale date cannot precede
+            purchase, cutover or the previous customer return for a restocked unit. Posted financial details cannot be
+            changed directly; use Returns &amp; Corrections for supported full-unit corrections.</p>
+        <h2 id='8-receive-a-customer-payment-and-print-a-bill'>8. Receive a customer payment and print a bill</h2>
+        <ol>
+            <li>Open Sale &gt; Bills &amp; Payments and find the invoice.</li>
+            <li>Select View / Record in the Payments column.</li>
+            <li>Check Bill Total, Received and Balance Due.</li>
+            <li>Enter Amount, Payment method, Payment date and any required transaction reference. Add an optional note.
+            </li>
+            <li>Select Record payment, then confirm the receipt in Payment history and the reduced balance.</li>
+            <li>Select Print bill. Review the invoice and use the print control to print or save it as a PDF.</li>
+        </ol>
+        <p>Expected result: the customer&#39;s outstanding balance decreases. Receipts cannot exceed the unpaid amount
+            or precede the invoice. New invoice prints retain the seller and customer/product details captured at
+            creation, while payment history reflects subsequently recorded payments.</p>
+        <h2 id='9-return-or-cancel-a-sale'>9. Return or cancel a sale</h2>
+        <p>This workflow reverses a complete serialized unit. The original invoice stays in history. A refund is a
+            separate step.</p>
+        <ol>
+            <li>Open Accounting &gt; Returns &amp; Corrections and set Invoice type to Sale.</li>
+            <li>Search Find invoice or serial, then select the correct Invoice unit.</li>
+            <li>Enter Note date on or after the sale and all receipts already recorded for it, in an open period after
+                cutover.</li>
+            <li>For Returned stock, choose Restock for resale if the unit is saleable, or Write off damaged stock if it
+                must not be sold again.</li>
+            <li>Enter a clear Reason, review the invoice/serial and select Post credit note.</li>
+            <li>Confirm the note in the table. Check Stock Inventory or Stock Movements for the selected disposition.
+            </li>
+            <li>If money must be returned to the customer, follow section 11.</li>
+        </ol>
+        <p>Expected result: the sale and GST journal are reversed. Restock makes the unit available for a later sale.
+            WriteOff removes its inventory cost and records the loss. The same sale cannot be returned twice and cannot
+            receive further payments after return.</p>
+        <p>To cancel an entered sale or replace incorrect invoice details, first confirm that a full reversal is
+            appropriate, post the credit note, then create the replacement sale from available stock. A partial
+            price-only adjustment is not currently supported.</p>
+        <h2 id='10-return-a-product-to-a-supplier'>10. Return a product to a supplier</h2>
+        <ol>
+            <li>Open Accounting &gt; Returns &amp; Corrections and set Invoice type to Purchase.</li>
+            <li>Search the bill or serial and select the available Invoice unit.</li>
+            <li>Enter Note date on or after purchase. If it was sold and later returned by a customer, the supplier
+                return must also be on or after that customer return.</li>
+            <li>Enter the supplier-return Reason and select Post debit note.</li>
+            <li>Confirm the note and that the unit is no longer available stock.</li>
+            <li>Record any refund received from the supplier using section 11.</li>
+        </ol>
+        <p>Expected result: the unit&#39;s original purchase journal and GST are reversed. Sold or inactive stock cannot
+            be returned through this form. The debit note reduces the supplier bill&#39;s payable; a supplier refund can
+            only use the paid credit available after the other units on that bill are accounted for.</p>
+        <h2 id='11-record-refunds-and-print-notes'>11. Record refunds and print notes</h2>
+        <ol>
+            <li>In Accounting &gt; Returns &amp; Corrections, find the posted note.</li>
+            <li>If Record refund is available, select it. The form shows the available paid credit.</li>
+            <li>Enter Date on or after the note, Amount within that available credit, Cash or Bank, and Reference where
+                available.</li>
+            <li>Select Save refund and verify the Refunded value. Record the actual cash/bank movement once.</li>
+            <li>Select View note to review the original party, product/serial, reason, tax reversals and refund history.
+            </li>
+            <li>Select Print / save PDF to produce a copy for the customer or supplier.</li>
+        </ol>
+        <p>Expected result: customer refunds record money paid out; supplier refunds record money received. An unpaid
+            returned invoice may have no refund available. Never enter a refund as a new customer receipt or vendor
+            payment. Notes cannot be edited after posting; contact the accountant if a note was entered incorrectly.</p>
+        <h2 id='12-check-balances-gst-and-stock'>12. Check balances, GST and stock</h2>
+        <ol>
+            <li>Open Accounting &gt; Opening Balances &amp; Reconciliation and set Cutover / report date to the date you
+                want to review.</li>
+            <li>Compare Subledger and GL for Receivables, Payables and Stock. Each Difference should be zero. Refer any
+                difference to the accountant with the date and relevant invoices.</li>
+            <li>Open Accounting &gt; Receivable &amp; Payable Aging to review overdue customer and supplier amounts for
+                the selected report date.</li>
+            <li>Open Accounting &gt; GST Reports and select the reporting dates. Review sales tax, purchase input tax
+                and their ledger comparisons. Return notes reduce tax in their note period. Opening stock is excluded
+                from new purchase input-tax reporting.</li>
+            <li>Open Accounting &gt; Stock Movements to trace purchases, sales, customer returns, supplier returns and
+                write-offs by date.</li>
+            <li>Use Purchase &gt; Stock Inventory to review current availability, and the Bills &amp; Payments pages for
+                current invoice balances.</li>
+        </ol>
+        <p>These reports support checking the recorded transactions. Have the accountant review the figures and required
+            supporting records before preparing external returns or statements.</p>
+        <h2 id='13-accountant-journals-periods-and-bank-reconciliation'>13. Accountant: journals, periods and bank
+            reconciliation</h2>
+        <h3 id='manual-journals'>Manual journals</h3>
+        <ol>
+            <li>Open Accounting &gt; General Ledger and review the Chart of Accounts.</li>
+            <li>Under Post Journal, enter Journal date and Description.</li>
+            <li>Add account lines with the approved debit or credit amounts and dimensions where needed.</li>
+            <li>Check that total debits equal total credits, then post using the form&#39;s submit button.</li>
+            <li>Verify the entry in the journal listing and review the affected reports.</li>
+        </ol>
+        <p>Purchase, sale, receipt, payment and return workflows create their own journals. Enter those transactions in
+            their dedicated screens to keep stock and unpaid invoice balances consistent. An accountant should review
+            any manual posting to control accounts.</p>
+        <h3 id='accounting-periods'>Accounting periods</h3>
+        <ol>
+            <li>Open Accounting &gt; Accounting Periods, enter Period name, Start date and End date, then select Create
+                period.</li>
+            <li>Review completed transactions, bank matching, GST and control-account differences for the period.</li>
+            <li>Select Year-end close only after the accountant confirms the period is ready for that closing. This
+                closes revenue and expense balances to retained earnings as well as locking the dates; confirm the
+                prompt after reviewing its period name and date range.</li>
+            <li>If a closed-period transaction needs attention, ask the accountant to review how to correct it. The
+                current screen does not provide a reopen button.</li>
+        </ol>
+        <p>Expected result: closed periods reject postings. Backdating a transaction will not bypass this control.</p>
+        <h3 id='bank-reconciliation'>Bank reconciliation</h3>
+        <ol>
+            <li>Open Accounting &gt; Bank Reconciliation and choose the bank ledger account.</li>
+            <li>Enter the statement reference, date range, opening balance and closing balance.</li>
+            <li>Add statement lines with date, description, reference and signed amount: positive for money in, negative
+                for money out.</li>
+            <li>Select Import statement, then select the statement under Reconciliation.</li>
+            <li>Match each statement line to the correct available ledger line after checking amount and direction.
+                Investigate unmatched items.</li>
+            <li>When every line is matched and the statement balances agree, select Finalize.</li>
+        </ol>
+        <p>Matching associates existing entries; it does not replace recording a missing receipt, payment or
+            accountant-approved bank adjustment. Check whether a statement has already been imported before importing it
+            again.</p>
+        <h2 id='14-additional-accounting-controls'>14. Additional accounting controls</h2>
+        <p>These tasks require the corresponding permission. Open Accounting &gt; Controls &amp; Budgets.</p>
+        <ul>
+            <li>Approvals: enter the Action, Resource ID, Summary and the exact action payload supplied by your
+                accountant or administrator, then Submit for review. A different authorized user reviews with Approve or
+                Reject; an approved request is executed using Apply. Approval alone does not apply the action.</li>
+            <li>Supporting documents: enter the resource type/ID, File name, Content type, Storage reference and
+                optional Description, then Link evidence. Store the document in the agreed document store first; this
+                form links the reference rather than uploading the file.</li>
+            <li>Reporting dimensions: choose Type, enter Code and Name, then Add dimension. Use the agreed branch,
+                project or cost-center codes.</li>
+            <li>Fixed assets: enter acquisition details, cost, salvage value, useful life and the accountant-approved
+                accounts, then Record asset. Use Depreciate month or Dispose only after reviewing the dates, prior
+                depreciation and disposal proceeds with the accountant.</li>
+            <li>Budgets: select Account and optional Dimension, enter Budget amount, Start date, End date and Notes,
+                then Save budget. Review Actual and Variance for the same period.</li>
+        </ul>
+        <h2 id='15-daily-checklist-and-practice-example'>15. Daily checklist and practice example</h2>
+        <h3 id='daily-checks'>Daily checks</h3>
+        <ol>
+            <li>Match received and sold units to their serial numbers.</li>
+            <li>Check that invoices and actual payments have both been recorded where appropriate.</li>
+            <li>Review payment references and cash/bank totals against the day&#39;s evidence.</li>
+            <li>Review returns and refunds separately; confirm the physical stock disposition.</li>
+            <li>Review outstanding balances and reconcile control differences with the accountant.</li>
+            <li>Keep invoice, payment and return documents in the agreed location, and sign out when finished.</li>
+        </ol>
+        <h3 id='practice-in-a-training-business'>Practice in a training business</h3>
+        <ol>
+            <li>Enter one purchased unit at 1,000 before GST with CGST 9% and SGST 9%; confirm purchase total 1,180.
+            </li>
+            <li>Record supplier payment 1,180; confirm no supplier balance remains.</li>
+            <li>Sell the unit for 1,000 including GST; confirm displayed discount 180.</li>
+            <li>Record customer payment 1,000; confirm Balance Due is zero and print the bill.</li>
+            <li>Return the sale using Restock; confirm a credit note and available stock.</li>
+            <li>Refund the customer 1,000; confirm the refund history on the printable note.</li>
+            <li>Confirm receivables, payables and stock reconcile for the final report date. A restocked unit remains at
+                its original net inventory cost.</li>
+        </ol>
+        <p>Use a training business for this exercise; each saved step creates real accounting records within the
+            selected business.</p>
+        <h2 id='16-common-problems-and-help'>16. Common problems and help</h2>
+        <div class="table-wrap">
+            <table>
+                <tbody>
+                    <tr>
+                        <th>Message or symptom</th>
+                        <th>What to do</th>
+                    </tr>
+                    <tr>
+                        <td>sales.manage permission required</td>
+                        <td>Owner opens Staff Access and grants sales.manage to the active user; refresh and retry</td>
+                    </tr>
+                    <tr>
+                        <td>Other permission required</td>
+                        <td>Send the exact code to the owner and request the access needed for your role</td>
+                    </tr>
+                    <tr>
+                        <td>Activation link expired or already used</td>
+                        <td>Ask the owner to resend if still unverified; use the latest email. An already activated user
+                            should sign in</td>
+                    </tr>
+                    <tr>
+                        <td>Staff Access is missing</td>
+                        <td>This menu is restricted to the designated owner</td>
+                    </tr>
+                    <tr>
+                        <td>Product not available for sale</td>
+                        <td>Check it is active, unsold and not staged opening stock awaiting cutover</td>
+                    </tr>
+                    <tr>
+                        <td>Wrong or missing default GST rate</td>
+                        <td>Verify purchase rates and ask the owner to configure the matching combination; review the
+                            sale before saving</td>
+                    </tr>
+                    <tr>
+                        <td>Duplicate serial number</td>
+                        <td>Check both serial fields and existing stock history; confirm the physical serial before
+                            retrying</td>
+                    </tr>
+                    <tr>
+                        <td>Payment exceeds outstanding balance</td>
+                        <td>Review previous payments and returns; enter only the remaining amount</td>
+                    </tr>
+                    <tr>
+                        <td>Refund exceeds available paid credit</td>
+                        <td>Review the original payments and prior refunds; for supplier bills, review the remaining
+                            invoice units</td>
+                    </tr>
+                    <tr>
+                        <td>Closed accounting period</td>
+                        <td>Ask the accountant to review the date and correction process; the current period screen does
+                            not provide reopening</td>
+                    </tr>
+                    <tr>
+                        <td>Posting date at/before cutover</td>
+                        <td>Use the actual operational date after cutover; settle old invoices through Opening
+                            outstanding items</td>
+                    </tr>
+                    <tr>
+                        <td>Opening totals do not match</td>
+                        <td>Reconcile detailed customer/vendor items and stock costs to 1100/2000/1200 before posting
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Opening import already exists</td>
+                        <td>Do not repeat the import; ask the accountant to review existing opening records</td>
+                    </tr>
+                    <tr>
+                        <td>Legacy invoice has no source journal</td>
+                        <td>Ask the accountant/administrator to reconcile the historical invoice before returning it
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Reconstructed details on an old note</td>
+                        <td>Review against the original paper invoice; details available at upgrade cannot establish
+                            earlier master-data changes</td>
+                    </tr>
+                    <tr>
+                        <td>A posted record cannot be edited</td>
+                        <td>Use the supported full-unit return workflow when appropriate, or ask the accountant to
+                            review</td>
+                    </tr>
+                    <tr>
+                        <td>Failed request or connection error</td>
+                        <td>Check whether the record was saved before retrying; refresh its listing/history to avoid
+                            duplicate entry</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p>For help, provide the page name, exact message, invoice/note number, serial number, transaction date and
+            steps taken. Share screenshots with customer details concealed where appropriate. Never share passwords or
+            invitation tokens.</p>
+        <h2 id='17-terms-used-in-this-guide'>17. Terms used in this guide</h2>
+        <div class="table-wrap">
+            <table>
+                <tbody>
+                    <tr>
+                        <th>Term</th>
+                        <th>Meaning</th>
+                    </tr>
+                    <tr>
+                        <td>Tenant</td>
+                        <td>Your business&#39;s separate application workspace</td>
+                    </tr>
+                    <tr>
+                        <td>Serialized unit</td>
+                        <td>One stock item identified by its serial number</td>
+                    </tr>
+                    <tr>
+                        <td>GST-inclusive price</td>
+                        <td>The final amount including CGST and SGST</td>
+                    </tr>
+                    <tr>
+                        <td>Receivable</td>
+                        <td>Money a customer still owes the business</td>
+                    </tr>
+                    <tr>
+                        <td>Payable</td>
+                        <td>Money the business still owes a supplier</td>
+                    </tr>
+                    <tr>
+                        <td>Credit/debit note</td>
+                        <td>A linked document reversing a supported invoice unit</td>
+                    </tr>
+                    <tr>
+                        <td>Refund</td>
+                        <td>Actual money returned after a note; separate from posting the note</td>
+                    </tr>
+                    <tr>
+                        <td>Restock</td>
+                        <td>Make a customer-returned unit available for resale</td>
+                    </tr>
+                    <tr>
+                        <td>Write-off</td>
+                        <td>Remove stock value because the unit is no longer saleable</td>
+                    </tr>
+                    <tr>
+                        <td>Cutover</td>
+                        <td>The date used to bring historical balances into the system</td>
+                    </tr>
+                    <tr>
+                        <td>Subledger</td>
+                        <td>Detailed customer, supplier or stock balances</td>
+                    </tr>
+                    <tr>
+                        <td>GL</td>
+                        <td>General Ledger, containing the accounting entries</td>
+                    </tr>
+                    <tr>
+                        <td>Reconciliation</td>
+                        <td>Comparing detailed balances with their corresponding ledger totals</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p>Current scope: full serialized-unit and whole multi-line invoice returns and cancellations. Partial invoice
+            returns and partial price adjustments are not available.</p>
+        <h2 id='18-multi-line-invoices-and-customer-advances'>18. Multi-line invoices and customer advances</h2>
+        <p>Prerequisites: sales permission, available serialized stock where applicable, configured seller bill details
+            and active tax rates. GST-registered sellers must provide their state, the place of supply and a valid
+            HSN/SAC code for each line.</p>
+        <ol>
+            <li>Open Sale &gt; Invoices and create a new invoice. Select the customer and check the contact details,
+                GSTIN and place of supply.</li>
+            <li>Add serialized products, standard items or services. A serialized product can appear once with quantity
+                1. Accessory and service quantities support four decimal places. Accessory lines require a stocked SKU
+                and deduct quantity and inventory cost; service lines do not affect stock.</li>
+            <li>Enter the tax-exclusive unit price, discount, HSN/SAC and unit of measure (for example NOS). Select an
+                active tax rate. The seller state and place of supply determine CGST/SGST or IGST. Check the displayed
+                totals before saving.</li>
+            <li>If collecting an initial payment, enter its amount, method and date. Money supports two decimal places.
+                Non-cash payments require a reference, except the Other method. Payments cannot predate the invoice.
+            </li>
+            <li>Save and print the invoice. Printed buyer, seller, serial numbers, HSN/SAC and amounts come from the
+                saved invoice snapshot, even after master details change.</li>
+        </ol>
+        <p>To receive a payment across invoices, open the customer payment dialog from the invoice list. Select the
+            customer, amount, method, date and reference. Use Auto-Allocate FIFO (Oldest First) or enter custom
+            allocations. Custom allocations cannot exceed the payment or an invoice balance. The unallocated amount
+            becomes an on-account advance for that customer.</p>
+        <p>To use an advance, select it under Existing customer advances, select an unpaid invoice, enter the amount and
+            date, then choose Apply advance. This settles the invoice without recording cash a second time. To return
+            unused credit, select the advance, enter an amount, refund date, Cash or Bank and the bank reference if
+            applicable, then choose Refund advance. An advance cannot be applied to another customer, spent twice or
+            refunded above its remaining amount. Application and refund dates cannot predate the original advance.</p>
+        <p>For a whole invoice return, open Accounting &gt; Returns &amp; Corrections, select the invoice, date and
+            reason, then choose whether serialized stock is restocked or written off. All invoice lines are reversed
+            together. Record any customer refund separately, limited to credit already paid. The cancelled invoice
+            remains available in history and cannot receive new payments. Partial line returns require a separately
+            scoped workflow.</p>
+        <p>Use customer statements and aging with an as-of date to check historical balances. Returns, receipts and
+            refunds affect the report on their own dates; later cancellations do not erase an earlier outstanding
+            balance. GST reports include original invoices and dated reversals, including IGST and mixed tax rates.
+            Customer history opens each invoice using its corresponding bill page. Legacy single-product bills retain
+            their existing payment workflow.</p>
+        <p>If a payment request loses its response, repeat the same action in the same browser session with unchanged
+            details. The saved retry key allows the API to return the committed result without posting twice. Changing
+            details creates a different request; first check invoice or customer history when uncertain whether an
+            earlier transaction succeeded.</p>
+        <h2 id='19-stocked-accessories-and-integrity-controls'>19. Stocked accessories and integrity controls</h2>
+        <p>Prerequisites: create active suppliers and GST rates. SKU creation requires catalog permission; purchases and
+            supplier returns require purchase permission; write-offs require inventory permission; opening stock
+            requires accounting permission. Multi-line sales require sales permission.</p>
+        <ol>
+            <li>Open Purchase &gt; Stock Movements and find Accessory SKU inventory. Enter a unique SKU code, accessory
+                name, HSN and unit (such as NOS), then choose Create SKU.</li>
+            <li>To enter a purchase, select the SKU and supplier, supplier bill number, stock date, quantity,
+                tax-exclusive unit cost and payment terms. Select GST and tick Interstate purchase (IGST) only when
+                appropriate for that supplier invoice. Choose Receive stock.</li>
+            <li>The stock quantity and carrying value increase. The supplier bill appears in Purchase accounting, with
+                its payable and GST recorded. Use the existing supplier payment page to pay it. All items on a supplier
+                bill must use the same invoice date and payment terms. After payments or returns are recorded, enter
+                further stock under a separate bill.</li>
+            <li>To sell an accessory, add an item to a multi-line sales invoice, keep the line type Accessory, select
+                its SKU and enter selling price, quantity and tax. Saving deducts stock and posts cost of goods sold.
+                Select Service for a non-stock charge.</li>
+            <li>A whole customer invoice return restores the original sold quantity and cost when Restock is chosen.
+                WriteOff returns reverse the sale and expense the returned cost without making those items available
+                again.</li>
+            <li>To return purchased accessories, select the whole purchase receipt under Accessory supplier return,
+                enter the date and reason and choose Return receipt to supplier. Available quantity must cover the
+                receipt quantity. The credit reverses the original supplier amount and GST; any difference between
+                original purchase cost and current carrying cost is posted as a cost variance. Record supplier refunds
+                through Returns &amp; Corrections.</li>
+            <li>To remove damaged or missing accessories, select the SKU, date, quantity and reason, then choose Write
+                off quantity. Check the stock movement ledger and reconciliation report afterwards.</li>
+        </ol>
+        <p>Accessory costs use moving average. A sale or write-off consumes the proportionate carrying value, rounded to
+            two decimals; issuing the final quantity consumes the exact remaining value. Customer returns restore the
+            recorded original sale cost. Enter all movements in chronological order: dates cannot precede the latest
+            movement for that SKU, and quantities cannot reduce stock below zero. Whole receipt and whole invoice
+            returns are supported; partial returns, warehouse transfers and batch/expiry tracking require separately
+            scoped workflows.</p>
+        <p>For stock already held at cutover, create a new SKU and use Stage opening SKU stock before importing the
+            opening journal. Enter the opening date, quantity and carrying unit cost. Staged stock is unavailable for
+            sale or write-off. Include its value, together with serialized stock cost, in account 1200 in Opening
+            Balances. The opening import checks the total and activates staged SKU stock. Opening stock is excluded from
+            new supplier purchases and input GST reports; bring forward any supplier outstanding amounts using opening
+            vendor items.</p>
+        <p>Serialized write-offs must be dated on/after purchase and the customer return that restored the unit.
+            Ordinary manual journals cannot post to accounts 1100, 1200 or 2000. Use customer, supplier or inventory
+            workflows; historical ledger adjustments require an approved FinancialCorrection request and reconciliation
+            review.</p>
+        <p>Customer history now shows Net received: cash and bank receipts plus original advances, less customer and
+            advance refunds. Applying an advance is not counted again as new money. Individual invoice payment histories
+            still show the applied credit.</p>
+        <p>For GST invoices, save Home State (GST) in Settings &gt; Customer Bill, then choose Place of Supply (State)
+            on the invoice. Missing supplier settings are displayed explicitly rather than defaulting to Maharashtra.
+        </p>
+        <h2 id='20-non-accountant-store-operator-guide-smart-suggestions'>20. Non-Accountant Store Operator Guide &amp;
+            Smart Suggestions</h2>
+        <p>Designed for store owners, retail sales staff, and cashiers who do not possess formal bookkeeping or
+            accounting training. This system automates double-entry accounting, Indian GST rate determinations, stock
+            relieving, and ledger reconciliations behind the scenes while presenting an intuitive, self-explanatory
+            retail interface.</p>
+        <h3 id='201-zero-accounting-automation-what-happens-behind-the-scenes'>20.1 Zero-accounting automation: what
+            happens behind the scenes</h3>
+        <p>In traditional software such as Tally Prime, operators must manually select voucher types (F4 Contra, F5
+            Payment, F6 Receipt, F7 Journal, F8 Sales, F9 Purchase), specify debit and credit account ledgers, and
+            compute tax splits. In this system, all of that bookkeeping is completely automated:</p>
+        <ol>
+            <li><strong>Instant Sales Invoicing</strong>: Creating an invoice automatically posts
+                <code>Accounts Receivable (1100)</code> and <code>Sales Revenue (4000)</code>.
+            </li>
+            <li><strong>Automated Indian GST</strong>: Automatically calculates and separates tax into
+                <code>CGST (2100)</code> and <code>SGST (2100)</code> for local sales, or <code>IGST (2100)</code> for
+                interstate sales based on Place of Supply.
+            </li>
+            <li><strong>Automated Stock Deduction &amp; Costing</strong>: Adding a serialized phone or stocked accessory
+                automatically relieves <code>Inventory (1200)</code> and posts <code>Cost of Goods Sold (5000)</code>
+                using real-time FIFO and moving average costs.</li>
+            <li><strong>Receipts &amp; Ledgers</strong>: Payments automatically update Cash/Bank balances and reconcile
+                customer balances in real time.</li>
+        </ol>
+        <h3 id='202-smart-billing-assistant-proactive-customer-suggestions-sale-invoices'>20.2 Smart billing assistant
+            &amp; proactive customer suggestions (<code>Sale &gt; Invoices</code>)</h3>
+        <p>When entering a new multi-line sales invoice, the interface provides intelligent assistive cards and
+            one-click shortcuts:</p>
+        <ul>
+            <li><strong>💡 Plain-English Billing Assistant</strong>: Click <strong>&quot;💡 How It Works (Quick
+                    Tour)&quot;</strong> at the top of the invoice form at any time for an on-screen visual summary of
+                customer balance checks, IMEI locking, GST splits, and payment entries.</li>
+            <li><strong>Proactive Customer Dues &amp; Advance Suggestions</strong>:</li>
+            <li>As soon as you select a customer by typing their name or mobile number, the system automatically checks
+                their historical account balance in the background.</li>
+            <li>If the customer has unpaid bills from earlier purchases, a yellow suggestion banner alerts you
+                immediately:</li>
+        </ul>
+        <p>&gt; <strong>💡 Smart Suggestion:</strong> Customer has ₹X unpaid balance across Y past bills. Consider
+            collecting old dues together with this bill.</p>
+        <ul>
+            <li>If the customer holds unused advance store credit, a green suggestion banner informs you:</li>
+        </ul>
+        <p>&gt; <strong>✨ Advance Credit Available:</strong> Customer has ₹X in store credit. Can be applied to settle
+            bills in Multi-Pay.</p>
+        <ul>
+            <li><strong>1-Click Smart Payment Shortcuts</strong>:</li>
+            <li>Instead of manually checking boxes and typing exact rupee amounts, select any of the one-click preset
+                buttons:</li>
+            <li><strong>💵 Full Cash</strong>: Instantly marks the invoice as collected in full and sets payment mode to
+                Cash.</li>
+            <li><strong>📱 Full UPI / QR</strong>: Automatically fills the exact bill total and sets payment mode to UPI
+                (GPay / PhonePe / Paytm).</li>
+            <li><strong>💳 Card Swipe</strong>: Automatically fills the exact bill total and sets payment mode to Card.
+            </li>
+            <li><strong>⏳ Pay Later (Credit Bill)</strong>: Marks the bill as sold on credit (₹0 paid today); the
+                invoice balance is automatically logged to the customer&#39;s ledger for follow-up.</li>
+            <li><strong>Quick-Add Stocked Accessories</strong>:</li>
+            <li>If your shop has stocked accessories (screen guards, back covers, chargers), 1-click suggestion chips
+                appear above the items table to add them instantly with stock availability counts.</li>
+            <li><strong>Automatic Indian Place of Supply &amp; GST Split</strong>:</li>
+            <li>The system checks your shop&#39;s registered state against the customer&#39;s state code.</li>
+            <li><strong>Local Sale (Intra-State)</strong>: Applies a 50/50 split between CGST and SGST.</li>
+            <li><strong>Inter-State Sale</strong>: Automatically applies 100% IGST.</li>
+            <li>A color-coded status badge confirms the tax mode so you never need to calculate tax percentages by hand.
+            </li>
+            <li><strong>High-Speed Keyboard Entry (Tally-Speed Hotkeys)</strong>:</li>
+            <li><code>Alt+N</code>: Quickly add a new serialized phone to the invoice.</li>
+            <li><code>Alt+A</code>: Quickly add an accessory line.</li>
+            <li><code>Ctrl+Enter</code> or <code>Alt+S</code>: Instantly save, post, and open the printable tax invoice.
+            </li>
+            <li><code>Esc</code>: Cancel and return to the invoices list.</li>
+        </ul>
+        <h3 id='203-smart-multi-invoice-payment-allocation-sale-invoices-smart-multi-pay'>20.3 Smart multi-invoice
+            payment allocation (<code>Sale &gt; Invoices &gt; Smart Multi-Pay</code>)</h3>
+        <p>When a customer pays a lumpsum amount (for example ₹10,000) against multiple past unpaid bills:</p>
+        <ol>
+            <li>Open <strong>Smart Multi-Pay</strong> (<code>Alt+M</code> or select <strong>Smart Multi-Pay</strong>
+                from the invoice list).</li>
+            <li>Select the customer from the dropdown. The system automatically lists all unpaid bills in chronological
+                order (oldest to newest) with total balance due.</li>
+            <li>Use the <strong>💡 Smart Suggested Payment Amounts</strong>:</li>
+        </ol>
+        <ul>
+            <li><code>Clear All Dues</code>: Automatically fills the exact total outstanding balance.</li>
+            <li><code>Pay Half</code>: Fills 50% of the customer&#39;s total due.</li>
+            <li><code>Round Figure</code>: Rounds up to the nearest ₹1,000.</li>
+        </ul>
+        <ol>
+            <li><strong>Auto-Allocate FIFO (Oldest First)</strong>:</li>
+        </ol>
+        <ul>
+            <li>Keep FIFO selected. The system automatically settles the customer&#39;s oldest bills first.</li>
+            <li>If the customer pays more than their total outstanding balance, the excess amount is <strong>safely
+                    saved as an Advance Store Credit</strong> on their account for future visits.</li>
+            <li>A live green badge shows the exact settlement preview: *&quot;Will clear X bills in full and partially
+                pay 1 bill. + ₹Y saved safely as Customer Advance.&quot;*</li>
+        </ul>
+        <h3 id='204-understanding-customer-and-vendor-ledgers-accounting-party-statement'>20.4 Understanding customer
+            and vendor ledgers (<code>Accounting &gt; Party Statement</code>)</h3>
+        <p>To check a complete history of transactions for any customer or supplier without accounting confusion:</p>
+        <ul>
+            <li>Open <strong>Accounting &gt; Party Statement</strong> (<code>Alt+P</code>).</li>
+            <li>Click <strong>&quot;💡 How to Read Ledgers&quot;</strong> at any time to view the plain-English
+                explanation:</li>
+            <li><strong>Customer Statement</strong>:</li>
+            <li><strong>Debit (+)</strong>: Phones or accessories you sold to the customer on bill.</li>
+            <li><strong>Credit (-)</strong>: Payments received from the customer (Cash, UPI, Card).</li>
+            <li><strong>Closing Balance Dr</strong>: Money the customer still owes your shop today.</li>
+            <li><strong>Closing Balance Cr</strong>: Advance store credit the customer has with you.</li>
+            <li><strong>Vendor Statement</strong>:</li>
+            <li><strong>Credit (+)</strong>: Inventory you purchased from the supplier.</li>
+            <li><strong>Debit (-)</strong>: Payments you sent to the supplier.</li>
+            <li><strong>Closing Balance Cr</strong>: Money you still owe the supplier.</li>
+            <li><strong>Closing Balance Dr</strong>: Advance money you gave the supplier.</li>
+            <li><strong>Color-Coded Aging &amp; Overdue Insights</strong>:</li>
+            <li><strong>0–30 Days (Green)</strong>: Fresh, normal billing cycle.</li>
+            <li><strong>31–60 Days (Blue)</strong>: Maturing bills; time to send a friendly reminder.</li>
+            <li><strong>61–90 Days (Amber)</strong>: Overdue; phone call follow-up recommended.</li>
+            <li><strong>90+ Days (Rose)</strong>: Critical overdue; prioritize recovery before issuing further credit.
+            </li>
+            <li><strong>Smart Next Action Suggestions</strong>:</li>
+            <li>If a customer has a pending balance, an immediate 1-click <strong>&quot;Collect Payment via
+                    Multi-Pay&quot;</strong> button is displayed.</li>
+            <li>If all bills are settled, an <strong>&quot;All Settled (Zero Balance)&quot;</strong> badge confirms that
+                the account is fully clear.</li>
+            <li><strong>Export &amp; Print</strong>:</li>
+            <li>Export the full chronological ledger to Excel/CSV with running balances.</li>
+            <li>Print a formal stationery Statement of Account for customer sharing with your shop logo, GSTIN, and
+                contact details.</li>
+        </ul>
+        <h3 id='205-daily-operations-from-the-business-intelligence-dashboard-dashboard-home'>20.5 Daily operations from
+            the Business Intelligence Dashboard (<code>Dashboard / Home</code>)</h3>
+        <p>The real-time BI Dashboard gives shop owners a complete financial and operational overview:</p>
+        <ul>
+            <li><strong>Executive KPI Cards (Plain-English Meanings)</strong>:</li>
+            <li><strong>Monthly Revenue</strong>: Total sales billed during the current calendar month.</li>
+            <li><strong>Receivables (AR)</strong>: Money customers currently owe your shop across all unpaid bills.</li>
+            <li><strong>Payables (AP)</strong>: Money you owe to phone suppliers and distributors.</li>
+            <li><strong>Net GST Due</strong>: Output GST collected minus Input GST paid on purchases (tax due to the
+                government).</li>
+            <li><strong>Stock Valuation</strong>: Total wholesale purchase value of all phones and accessories currently
+                in stock.</li>
+            <li><strong>In-Stock Units</strong>: Total physical phone devices available for immediate sale.</li>
+            <li><strong>💡 Shopkeeper&#39;s 4-Step Daily Workflow Banner</strong>:</li>
+            <li>Click <strong>&quot;💡 Shopkeeper&#39;s Guide&quot;</strong> in the top header at any time to open the
+                four-step store routine:</li>
+        </ul>
+        <ol>
+            <li><strong>Buy &amp; Receive Stock</strong> (<code>Purchase &gt; Products</code>)</li>
+            <li><strong>Fast Customer Billing</strong> (<code>Sale &gt; Invoices</code> / <code>Alt+I</code>)</li>
+            <li><strong>Smart Multi-Pay</strong> (<code>Alt+M</code>)</li>
+            <li><strong>Party Ledger &amp; Overdue Tracking</strong> (<code>Alt+P</code>)</li>
+        </ol>
+        <ul>
+            <li><strong>Smart Proactive Store Insights</strong>:</li>
+            <li>The dashboard automatically displays proactive suggestions when customer receivables are pending or when
+                GST tax reports are ready for your Chartered Accountant.</li>
+        </ul>
+        <h3 id='206-daily-store-routine-checklist'>20.6 Daily store routine checklist</h3>
+        <div class="table-wrap">
+            <table>
+                <tbody>
+                    <tr>
+                        <th>Time of day</th>
+                        <th>Task</th>
+                        <th>Keyboard / Menu shortcut</th>
+                        <th>Expected outcome</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Morning Opening</strong></td>
+                        <td>Check BI Dashboard</td>
+                        <td><code>Home / Dashboard</code></td>
+                        <td>Review yesterday&#39;s sales revenue, cash received, and pending customer dues.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Morning Opening</strong></td>
+                        <td>Receive incoming phone stock</td>
+                        <td><code>Purchase &gt; Products</code></td>
+                        <td>Enter supplier bills and scan/enter IMEI serial numbers. Stock increases immediately.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>During the Day</strong></td>
+                        <td>Quick Customer Billing</td>
+                        <td><code>Alt+I</code></td>
+                        <td>Issue multi-line bills. System automatically verifies IMEI, calculates GST, and prints
+                            bills.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>During the Day</strong></td>
+                        <td>Customer Dues Notification</td>
+                        <td>On Invoice Form</td>
+                        <td>System automatically alerts if returning customer has old unpaid bills or advance credit.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>During the Day</strong></td>
+                        <td>Quick 1-Click Payments</td>
+                        <td>Payment box</td>
+                        <td>Click <code>Full Cash</code> or <code>Full UPI</code> for one-second payment recording.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Evening Closing</strong></td>
+                        <td>Collect Multi-Invoice Dues</td>
+                        <td><code>Alt+M</code></td>
+                        <td>Settle lumpsum customer payments using automatic FIFO allocation.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Evening Closing</strong></td>
+                        <td>Review Party Statements</td>
+                        <td><code>Alt+P</code></td>
+                        <td>Check aging buckets and follow up on customers with balances over 30 days overdue.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Monthly Closing</strong></td>
+                        <td>Review Tax &amp; CA Reports</td>
+                        <td><code>Accounting &gt; Tax Reports</code></td>
+                        <td>Export GSTR-1 and GSTR-3B tax summaries with 1 click for your accountant.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <h2 id='21-tenant-onboarding-offline-deployment-setup-guide'>21. Tenant Onboarding &amp; Offline Deployment
+            Setup Guide</h2>
+        <h3 id='211-end-to-end-automated-onboarding-flow'>21.1 End-to-End Automated Onboarding Flow</h3>
+        <p>SM SaaS provides an automated, multi-tenant onboarding process:</p>
+        <p>```</p>
+        <p>[Store Owner] [Platform Admin]</p>
+        <div class="table-wrap">
+            <table>
+                <tbody>
+                    <tr>
+                        <th>-- 1. Fills form at /register-tenant -------&gt;</th>
+                    </tr>
+                    <tr>
+                        <td>(Store name, slug, email, mobile, GST)</td>
+                    </tr>
+                    <tr>
+                        <td>&lt;-- 2. Receives &quot;Thank You&quot; Email -----------</td>
+                        <td>(Dispatched / Logged)</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>-- 3. Receives &quot;Action Required&quot; notification</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>(View at /settings/tenant-approvals)</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>-- 4. Admin clicks &quot;Approve &amp; Provision DB&quot;</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>* PostgreSQL schema created</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>* EF Core migrations executed (40+ tables)</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>* Chart of Accounts (1000..5000) seeded</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>* Indian GST rates (0, 5, 12, 18, 28%) seeded</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>* Store invoice settings initialized</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>* Store Owner account activated</td>
+                    </tr>
+                    <tr>
+                        <td>&lt;-- 5. Receives &quot;Store Workspace Ready&quot; email</td>
+                    </tr>
+                    <tr>
+                        <td>(Slug, Username, Login instructions)</td>
+                    </tr>
+                    <tr>
+                        <td>-- 6. Signs in at /login -------------------&gt;</td>
+                    </tr>
+                    <tr>
+                        <td>(Enters Tenant Slug, Username &amp; Password)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p>```</p>
+        <p>---</p>
+        <h3 id='212-self-service-registration-register-tenant'>21.2 Self-Service Registration
+            (<code>/register-tenant</code>)</h3>
+        <ol>
+            <li>Open the public registration link: <code>http://localhost:5173/register-tenant</code> (or click
+                <strong>&quot;Create store workspace&quot;</strong> on the Sign In page).
+            </li>
+            <li>Enter the store information:</li>
+        </ol>
+        <ul>
+            <li><strong>Store / Business Name</strong>: e.g., <code>ABC Electronics</code></li>
+            <li><strong>Store Slug</strong>: e.g., <code>abc-electronics</code> (Auto-generated from store name; this is
+                your unique login identifier)</li>
+            <li><strong>GST State Code</strong>: Select from 37 Indian states (e.g., <code>27 - Madhya Pradesh</code>)
+            </li>
+            <li><strong>GSTIN Number</strong> *(Optional)*: 15-character GSTIN. The system automatically detects and
+                selects your state code.</li>
+            <li><strong>Store Address</strong> *(Optional)*: Physical shop address printed on sales invoices.</li>
+        </ul>
+        <ol>
+            <li>Enter Owner details:</li>
+        </ol>
+        <ul>
+            <li><strong>Owner Full Name</strong>: e.g., <code>Full Name</code></li>
+            <li><strong>Contact Mobile</strong>: 10-digit mobile number</li>
+            <li><strong>Notification Email</strong>: Used to receive your approval and activation details.</li>
+            <li><strong>Password &amp; Confirm Password</strong>: Set your desired password for immediate login upon
+                approval.</li>
+        </ul>
+        <ol>
+            <li>Click <strong>&quot;Submit Store Registration&quot;</strong>.</li>
+        </ol>
+        <ul>
+            <li>The system validates slug uniqueness and registers the store in <code>PendingApproval</code> status.
+            </li>
+            <li>A confirmation notification is dispatched to your email address.</li>
+            <li>Platform administration is notified to approve the new workspace.</li>
+        </ul>
+        <p>---</p>
+        <h3 id='213-administrator-approvals-settings-store-approvals-or-admintenants'>21.3 Administrator Approvals
+            (<code>Settings &gt; Store Approvals</code> or <code>/admin/tenants</code>)</h3>
+        <p>Platform administrators / product owners can review and approve registered stores with one click:</p>
+        <ol>
+            <li>Sign in and navigate to <strong>Settings &gt; Store Approvals</strong>
+                (<code>/settings/tenant-approvals</code> or <code>/admin/tenants</code>).</li>
+            <li>Review the list of stores under <strong>Pending Approvals</strong>:</li>
+        </ol>
+        <ul>
+            <li>After a successful store registration, click <strong>Refresh</strong> to load the latest requests.
+                Stores awaiting approval or provisioning appear here; approved and rejected stores do not.</li>
+            <li>If loading fails, review the displayed error and retry <strong>Refresh</strong>. A confirmation email
+                alone does not mean the store has been approved.</li>
+            <li>Verify store name, slug, owner contact information, and state/GSTIN.</li>
+        </ul>
+        <ol>
+            <li>Click <strong>&quot;Approve &amp; Provision DB&quot;</strong>:</li>
+        </ol>
+        <ul>
+            <li>The system displays a live status indicator while performing automatic setup:</li>
+        </ul>
+        <ol>
+            <li>Creates the isolated PostgreSQL schema (e.g., <code>tenant_siddhi_electronics_3f2a1b4c</code>).</li>
+            <li>Runs all Entity Framework Core migrations to create business tables.</li>
+            <li>Seeds the standard Chart of Accounts (Cash <code>1000</code>, Bank <code>1010</code>, AR
+                <code>1100</code>, Inventory <code>1200</code>, AP <code>2000</code>, GST <code>2100</code>, Sales
+                <code>4000</code>, COGS <code>5000</code>).
+            </li>
+            <li>Seeds GST tax rates: <code>0%</code>, <code>5%</code>, <code>12%</code>, <code>18%</code>,
+                <code>28%</code>.
+            </li>
+            <li>Creates store invoice template settings with state code and GSTIN.</li>
+            <li>Creates and activates the Store Owner user with full administrator accounting permissions.</li>
+            <li>Sends the <strong>&quot;Store Workspace Ready&quot;</strong> email with login credentials.</li>
+            <li>If a registration is invalid or spam, click <strong>&quot;Reject&quot;</strong> and enter an optional
+                reason. The applicant is notified accordingly.</li>
+        </ol>
+        <p>---</p>
+        <h3 id='214-offline-standalone-deployment-guide'>21.4 Offline Standalone Deployment Guide</h3>
+        <p>To deploy this software offline (e.g., on a standalone shop counter PC, laptop, or local LAN server without
+            an internet connection):</p>
+        <h4 id='step-1-install-local-postgresql'>Step 1: Install Local PostgreSQL</h4>
+        <ol>
+            <li>Download and install <strong>PostgreSQL 16 or 17</strong> for Windows (or Linux).</li>
+            <li>Set the default postgres password (e.g., <code>siddhi123456</code>).</li>
+            <li>Create the database:</li>
+        </ol>
+        <p>```sql</p>
+        <p>CREATE DATABASE accounting_inventory;</p>
+        <p>```</p>
+        <h4 id='step-2-configure-appsettingsjson-for-offline-mode'>Step 2: Configure <code>appsettings.json</code> for
+            Offline Mode</h4>
+        <p>In <code>MicroservicesEcosystem/src/AccountingInventory/AccountingInventory.Api/appsettings.json</code>:</p>
+        <p>```json</p>
+        <p>{</p>
+        <p>&quot;ConnectionStrings&quot;: {</p>
+        <p>&quot;AccountingInventoryDb&quot;:
+            &quot;Host=localhost;Port=5432;Database=accounting_inventory;Username=postgres;Password=siddhi123456&quot;
+        </p>
+        <p>},</p>
+        <p>&quot;Deployment&quot;: {</p>
+        <p>&quot;Mode&quot;: &quot;Offline&quot;,</p>
+        <p>&quot;OfflineMode&quot;: true</p>
+        <p>},</p>
+        <p>&quot;Email&quot;: {</p>
+        <p>&quot;OfflineMode&quot;: true,</p>
+        <p>&quot;SmtpHost&quot;: &quot;offline&quot;,</p>
+        <p>&quot;From&quot;: &quot;noreply@siddhi-mobile.local&quot;,</p>
+        <p>&quot;AdminEmail&quot;: &quot;admin@siddhi-mobile.local&quot;</p>
+        <p>},</p>
+        <p>&quot;Frontend&quot;: {</p>
+        <p>&quot;BaseUrl&quot;: &quot;http://localhost:5173&quot;</p>
+        <p>}</p>
+        <p>}</p>
+        <p>```</p>
+        <p>&gt; [!NOTE]</p>
+        <p>&gt; In Offline Mode (<code>OfflineMode: true</code>), email notifications are safely printed directly to
+            application log files and console output. No internet SMTP server or network connection is required.</p>
+        <h4 id='step-3-run-the-backend-api'>Step 3: Run the Backend API</h4>
+        <p>Start the backend service:</p>
+        <p>```powershell</p>
+        <h1 id='from-microservicesecosystem-directory'>From MicroservicesEcosystem directory</h1>
+        <p>dotnet run --project src/AccountingInventory/AccountingInventory.Api/AccountingInventory.Api.csproj</p>
+        <p>```</p>
+        <p>The API starts on <code>http://localhost:5000</code> (or configured port). On startup, it automatically
+            migrates the control plane and creates required tables.</p>
+        <h4 id='step-4-run-the-frontend-application'>Step 4: Run the Frontend Application</h4>
+        <p>Start the frontend web counter:</p>
+        <p>```powershell</p>
+        <h1 id='from-react-multitenant-saas-directory'>From react-multitenant-saas directory</h1>
+        <p>npm install</p>
+        <p>npm run dev</p>
+        <p>```</p>
+        <p>The shop counter application is now available at <code>http://localhost:5173</code>.</p>
+        <h4 id='step-5-initial-offline-bootstrapping'>Step 5: Initial Offline Bootstrapping</h4>
+        <ol>
+            <li>Open <code>http://localhost:5173/register-tenant</code> in the browser.</li>
+            <li>Enter your shop details (e.g., Name: <code>Siddhi Electronics</code>, Slug: <code>siddhi</code>,
+                Password: <code>Passw0rd!123</code>).</li>
+            <li>Click <strong>Submit Store Registration</strong>.</li>
+            <li>Open <code>http://localhost:5173/admin/tenants</code> (or <code>/settings/tenant-approvals</code>).</li>
+            <li>Click <strong>&quot;Approve &amp; Provision DB&quot;</strong>.</li>
+        </ol>
+        <ul>
+            <li>Your local PostgreSQL database schema is immediately provisioned and seeded.</li>
+        </ul>
+        <ol>
+            <li>Open <code>http://localhost:5173/login</code>, enter:</li>
+        </ol>
+        <ul>
+            <li><strong>Tenant Slug:</strong> <code>siddhi</code></li>
+            <li><strong>Username:</strong> <code>pravin</code> (or <code>admin</code>)</li>
+            <li><strong>Password:</strong> <code>Passw0rd!123</code></li>
+        </ul>
+        <ol>
+            <li>Start billing phones, scanning IMEIs, managing inventory, and tracking GST offline!</li>
+        </ol>
+        <p>---</p>
+        <h3 id='215-transitioning-to-online-cloud-saas-future'>21.5 Transitioning to Online Cloud SaaS (Future)</h3>
+        <p>When you are ready to transition from offline to online cloud hosting:</p>
+        <ol>
+            <li><strong>Database:</strong> Point <code>AccountingInventoryDb</code> to a cloud-managed PostgreSQL
+                instance (e.g., AWS RDS, DigitalOcean, or Azure Database for PostgreSQL).</li>
+            <li><strong>SMTP Configuration:</strong> Set <code>&quot;OfflineMode&quot;: false</code>, enter real SMTP
+                host, port, username, password, and verified sender email.</li>
+            <li><strong>Frontend Domain:</strong> Set <code>&quot;Frontend:BaseUrl&quot;</code> to your live domain
+                (e.g., <code>https://app.abc.in</code>).</li>
+            <li><strong>Reverse Proxy:</strong> Deploy through <code>ApiGateway</code> with SSL/TLS certificate
+                configured.</li>
+        </ol>
+        <p>All multi-tenant schema isolation, automated registration, and approval pipelines function identically in
+            online mode.</p>
+        <p>---</p>
+        <h2 id='22-product-owner-super-administrator-console-platform-management'>22. Product Owner (Super
+            Administrator) Console &amp; Platform Management</h2>
+        <p>The Product Owner (Super Administrator) oversees all business stores, approval queues, schema migrations, and
+            system-level operations across the entire Siddhi platform.</p>
+        <p>```mermaid</p>
+        <p>graph TD</p>
+        <p>PO[Product Owner Admin] --&gt;|1. Sign in via /admin/login| AdminAuth[Token Issued: Claim Role=ProductOwner]
+        </p>
+        <p>AdminAuth --&gt; POConsole[Product Owner Management Console]</p>
+        <p>POConsole --&gt; PODash[Platform Overview Dashboard /admin/dashboard]</p>
+        <p>POConsole --&gt; TenantDir[Tenant Store Directory /admin/tenants]</p>
+        <p>POConsole --&gt; ApprQueue[Store Approvals Queue /admin/tenants/pending]</p>
+        <p>POConsole --&gt; DBMig[Schema Migrations Hub /admin/database-migrations]</p>
+        <p>POConsole --&gt; SysSet[System &amp; Offline Settings /admin/system-settings]</p>
+        <p>TenantDir --&gt;|Suspend / Reactivate| StoreStatus[Tenant Lifecycle Status Updated]</p>
+        <p>ApprQueue --&gt;|Approve Store| AutoProvision[Automatic PostgreSQL Schema Creation &amp; Ledger Seeding]</p>
+        <p>DBMig --&gt;|Apply All Schema Migrations| EFRunner[TenantSchemaMigrator Across All Tenant Schemas]</p>
+        <p>```</p>
+        <h3 id='221-dedicated-product-owner-sign-in'>22.1 Dedicated Product Owner Sign In</h3>
+        <ul>
+            <li><strong>URL:</strong> <code>/admin/login</code> (or click &quot;Product Owner / Platform Sign In&quot;
+                from the bottom of <code>/login</code>).</li>
+            <li><strong>No Workspace Slug Required:</strong> Unlike individual store owners and staff who enter a store
+                slug, the Product Owner signs directly into the control plane.</li>
+            <li><strong>Default Master Credentials:</strong></li>
+            <li><strong>Username / Email:</strong> <code>admin</code> or <code>developer.pravin666@gmail.com</code></li>
+            <li><strong>Master Password:</strong> <code>Admin@123456</code></li>
+            <li><strong>Security &amp; Authorization:</strong> Produces a JWT bearer token carrying
+                <code>ClaimTypes.Role: &quot;ProductOwner&quot;</code> and
+                <code>PermissionClaimTypes.Permission: &quot;Tenants.Manage&quot;</code>. The frontend attaches this
+                token across all requests, bypassing individual tenant boundaries.
+            </li>
+        </ul>
+        <p>---</p>
+        <h3 id='222-platform-overview-dashboard-admindashboard'>22.2 Platform Overview Dashboard
+            (<code>/admin/dashboard</code>)</h3>
+        <p>When logged in as Product Owner, navigating to the home route <code>/</code> or <code>/admin/dashboard</code>
+            renders the Platform Overview Console:</p>
+        <ol>
+            <li><strong>Platform KPI Metrics:</strong></li>
+        </ol>
+        <ul>
+            <li><strong>Total Stores:</strong> Overall count of businesses registered in the platform directory.</li>
+            <li><strong>Pending Review:</strong> Registrations waiting for Product Owner verification.</li>
+            <li><strong>Active Stores:</strong> Verified stores with live, provisioned PostgreSQL schemas.</li>
+            <li><strong>Suspended Stores:</strong> Stores frozen by administrator intervention.</li>
+            <li><strong>Environment Status:</strong> Offline desktop mode or cloud-hosted status.</li>
+        </ul>
+        <ol>
+            <li><strong>Pending Registrations Quick Action:</strong> Displays registrations waiting in the queue with a
+                1-click <strong>&quot;Approve &amp; Provision&quot;</strong> button to immediately run schema migrations
+                and seed master ledgers.</li>
+            <li><strong>Public Signup Link Generator:</strong> Quick copy button for
+                <code>https://&lt;domain&gt;/register-tenant</code> to share with prospective store owners.
+            </li>
+        </ol>
+        <p>---</p>
+        <h3 id='223-tenant-directory-lifecycle-management-admintenants'>22.3 Tenant Directory &amp; Lifecycle Management
+            (<code>/admin/tenants</code>)</h3>
+        <p>The Tenant Directory gives the Product Owner total control over every registered store:</p>
+        <ol>
+            <li><strong>Filtering &amp; Search:</strong> Instant search by Store Name, Workspace Slug, Owner Email, or
+                GSTIN, with status tabs (<code>All</code>, <code>Active</code>, <code>Pending</code>,
+                <code>Suspended</code>, <code>Rejected</code>).
+            </li>
+            <li><strong>Tenant Actions:</strong></li>
+        </ol>
+        <ul>
+            <li><strong>View Full Store Profile (Eye icon):</strong> Inspect isolated schema name (e.g.
+                <code>tenant_siddhi_...</code>), GSTIN, state code, business address, and owner contact details.
+            </li>
+            <li><strong>Suspend Store (Ban icon):</strong> Freezes all logins and transactions for this store
+                immediately (<code>POST /api/tenants/{id}/suspend</code>).</li>
+            <li><strong>Reactivate Store (Play icon):</strong> Restores store access to active status
+                (<code>POST /api/tenants/{id}/reactivate</code>).</li>
+            <li><strong>Approve / Reject:</strong> For pending applicants, approve schema creation or provide a formal
+                rejection reason.</li>
+        </ul>
+        <ol>
+            <li><strong>Workspace Slug Copy:</strong> Quick copy button for the store&#39;s unique workspace slug.</li>
+        </ol>
+        <p>---</p>
+        <h3 id='224-database-schema-migrations-hub-admindatabase-migrations'>22.4 Database Schema Migrations Hub
+            (<code>/admin/database-migrations</code>)</h3>
+        <p>Siddhi isolates each store inside its own PostgreSQL schema (<code>tenant_&lt;slug&gt;_&lt;id&gt;</code>) for
+            complete data security and independent database operations.</p>
+        <p>When new application features or schema changes are deployed:</p>
+        <ol>
+            <li>Open <strong>Database Migrations</strong> (<code>/admin/database-migrations</code>).</li>
+            <li>Review the <strong>Managed Schema Registry</strong> displaying the master schema (<code>tenant</code>)
+                and all individual store schemas.</li>
+            <li>Click <strong>&quot;Apply All Schema Migrations&quot;</strong>.</li>
+        </ol>
+        <ul>
+            <li>The backend runs <code>TenantSchemaMigrator.MigrateAsync</code> across all active schemas sequentially.
+            </li>
+            <li>Pending EF Core migrations (tables, columns, indexes, initial seed data) are applied to all store
+                databases without downtime.</li>
+        </ul>
+        <ol>
+            <li><strong>Live Execution Log:</strong> Inspect real-time console events and schema verification
+                timestamps.</li>
+        </ol>
+        <p>---</p>
+        <h3 id='225-system-settings-offline-configuration-adminsystem-settings'>22.5 System Settings &amp; Offline
+            Configuration (<code>/admin/system-settings</code>)</h3>
+        <ol>
+            <li><strong>Deployment Architecture Review:</strong> View active PostgreSQL connection details, schema
+                isolation settings, and API server status.</li>
+            <li><strong>Offline vs. Online Dispatch:</strong> In offline desktop mode, email verification is routed to
+                internal log files (<code>logs/tenant-registrations.log</code>), enabling full software functionality
+                without an active internet connection.</li>
+            <li><strong>Setup Checklist:</strong> Reference the built-in offline deployment checklist to ensure local
+                PostgreSQL, backend API, and frontend counter apps are synchronized.</li>
+        </ol>
+        <p>---</p>
+        <h3 id='226-dynamic-database-switching-local-postgresql-cloud-postgresql'>22.6 Dynamic Database Switching (Local
+            PostgreSQL ↔ Cloud PostgreSQL)</h3>
+        <p>Siddhi features dual-database runtime agility, allowing the Product Owner to switch the entire application
+            between a <strong>Local PostgreSQL database</strong> (for offline desktop or on-premise operation) and a
+            <strong>Cloud PostgreSQL database</strong> (AWS RDS, Supabase, Neon, Azure PostgreSQL, or remote VPS) with
+            zero backend downtime and zero manual database scripts.
+        </p>
+        <p>```mermaid</p>
+        <p>flowchart LR</p>
+        <p>PO([Product Owner Console /admin/system-settings]) --&gt;|1. Test Connection| Probe{Connectivity Probe}</p>
+        <p>Probe --&gt;|Success| SwitchAct[2. Switch Target Request]</p>
+        <p>SwitchAct --&gt; ConnMgr[IDatabaseConnectionManager]</p>
+        <p>ConnMgr --&gt;|Target: Local| LocalDB[(Local PostgreSQL localhost:5432)]</p>
+        <p>ConnMgr --&gt;|Target: Cloud| CloudDB[(Cloud PostgreSQL Hosted/RDS)]</p>
+        <p>ConnMgr --&gt;|3. Auto-Migrate| Migrator[TenantSchemaMigrator Auto-Sync]</p>
+        <p>ConnMgr --&gt;|4. Persist Target| FileStore[(database.config.json)]</p>
+        <p>Migrator --&gt;|All Store Schemas Verified| Ready[Live Serving Requests]</p>
+        <p>```</p>
+        <h4 id='step-by-step-instructions-configure-switch-databases'>Step-by-Step Instructions: Configure &amp; Switch
+            Databases</h4>
+        <ol>
+            <li><strong>Open System Settings:</strong></li>
+        </ol>
+        <ul>
+            <li>Log in as Product Owner at <code>/admin/login</code>.</li>
+            <li>In the sidebar or top navigation, click <strong>System Settings</strong>
+                (<code>/admin/system-settings</code>).</li>
+        </ul>
+        <ol>
+            <li><strong>Inspect Current Target:</strong></li>
+        </ol>
+        <ul>
+            <li>The <strong>Database Target &amp; Multi-Cloud Switcher</strong> banner displays the current active
+                target (e.g. <code>Active: Local PostgreSQL</code> or <code>Active: Cloud PostgreSQL</code>) with a live
+                status indicator.</li>
+        </ul>
+        <ol>
+            <li><strong>Configure Cloud Connection String:</strong></li>
+        </ol>
+        <ul>
+            <li>In the <strong>Cloud PostgreSQL</strong> card, enter your cloud connection string:</li>
+        </ul>
+        <p>```text</p>
+        <p>Host=&lt;cloud-host&gt;;Port=5432;Database=accounting_inventory;Username=postgres;Password=&lt;your_password&gt;;SSL
+            Mode=Require;Trust Server Certificate=true;</p>
+        <p>```</p>
+        <ul>
+            <li>Use the <strong>Presets</strong> buttons (<code>AWS RDS</code>, <code>Supabase</code>,
+                <code>Neon</code>) for instant boilerplate strings.
+            </li>
+            <li>Click <strong>Show password / Mask password</strong> to verify credentials.</li>
+            <li>Click <strong>Save String</strong> to store the connection parameters without activating immediately.
+            </li>
+        </ul>
+        <ol>
+            <li><strong>Test Reachability (Probe):</strong></li>
+        </ol>
+        <ul>
+            <li>Click <strong>Test Connection</strong> on either the Local or Cloud card.</li>
+            <li>The backend opens a connection, executes <code>SELECT version();</code>, and returns the round-trip
+                latency (e.g., <code>24ms • PostgreSQL 16.2</code>) or a detailed diagnostics error message if the host
+                is unreachable.</li>
+        </ul>
+        <ol>
+            <li><strong>Execute Live Switch:</strong></li>
+        </ol>
+        <ul>
+            <li>Click <strong>Switch to Cloud</strong> (or <strong>Switch to Local</strong>).</li>
+            <li>A confirmation dialog appears. Ensure the <strong>&quot;Auto-migrate database schema &amp; synchronize
+                    tenant registry&quot;</strong> checkbox is checked (recommended).</li>
+            <li>Click <strong>Confirm &amp; Switch Target</strong>:</li>
+        </ul>
+        <ol>
+            <li>The backend verifies connectivity to the target database.</li>
+            <li>Automatically initializes the <code>tenant</code> schema and migrations if connecting to a new cloud
+                database.</li>
+            <li>Provisions all active store schemas on the new target database.</li>
+            <li>Updates <code>IDatabaseConnectionManager</code> and writes the selection to
+                <code>database.config.json</code>.
+            </li>
+            <li>Subsequent API requests across the entire application immediately point to the new target database!</li>
+        </ol>
+        <ol>
+            <li><strong>Verify Active Target:</strong></li>
+        </ol>
+        <ul>
+            <li>The badge updates to <code>Active: Cloud PostgreSQL</code>.</li>
+            <li>The Platform Dashboard (<code>/admin/dashboard</code>) and Migrations Hub
+                (<code>/admin/database-migrations</code>) immediately reflect the new active database target.</li>
+        </ul>
+        <p>---</p>
+        <h2 id='23-master-data-import-staging-verification-vendors-brands-categories-models-variants-colors'>23. Master
+            Data Import &amp; Staging Verification (Vendors, Brands, Categories, Models, Variants, Colors)</h2>
+        <p>Siddhi includes a <strong>Two-Stage Master Data Import &amp; Verification Hub</strong>, enabling store owners
+            and administrators to bulk-import catalog data safely without risking database corruption or accidental
+            duplicates.</p>
+        <p>```mermaid</p>
+        <p>flowchart TD</p>
+        <p>User([Store Owner or Product Owner]) --&gt;|1. Download Template or Export| ExcelFile[Excel / CSV Master
+            Spreadsheet]</p>
+        <p>ExcelFile --&gt;|2. Fill Data &amp; Upload| UploadAPI[POST /api/masters/import/upload]</p>
+        <p>UploadAPI --&gt; Validate{Automated Validation &amp; Logic Engine}</p>
+        <p>Validate --&gt;|Inserts Into Staging| TempDB[(Temp Staging: master_import_batches &amp; staging_rows)]</p>
+        <p>TempDB --&gt; ReviewUI[3. Staging Review &amp; Verification Workspace /products/import-masters]</p>
+        <p>ReviewUI --&gt;|Inspect Valid / Invalid / Warnings| ToggleRows{Reviewer Excludes or Approves Rows}</p>
+        <p>ToggleRows --&gt;|4. Click &#39;Approve &amp; Import&#39;| TxnImport[5. Atomic Dependency Resolution &amp;
+            Production Insert]</p>
+        <p>TxnImport --&gt;|Brands &amp; Types First| ProdMasters1[(Main Catalog: Brands &amp; ProductTypes)]</p>
+        <p>TxnImport --&gt;|Models Linked Second| ProdMasters2[(Main Catalog: ProductModels)]</p>
+        <p>TxnImport --&gt;|Variants, Colors &amp; Vendors| ProdMasters3[(Main Catalog: Variants, Colors, Vendors)]</p>
+        <p>TxnImport --&gt; AuditLog[(AuditableEntity SaveChanges Log)]</p>
+        <p>```</p>
+        <h3 id='231-key-architectural-principles'>23.1 Key Architectural Principles</h3>
+        <ol>
+            <li><strong>Two-Stage Safety Guarantee:</strong></li>
+        </ol>
+        <ul>
+            <li>Uploaded rows are <strong>never</strong> inserted directly into live production tables.</li>
+            <li>All parsed rows are first staged in dedicated PostgreSQL temporary tables
+                (<code>master_import_batches</code> and <code>master_import_staging_rows</code>) within the store&#39;s
+                isolated tenant schema.</li>
+            <li>The reviewer (Store Owner or Product Owner) can inspect each record&#39;s status, action
+                (<code>+ Create</code> vs <code>↺ Update</code>), and error explanations before giving final approval.
+            </li>
+        </ul>
+        <ol>
+            <li><strong>Automated Upsert Logic (Create vs Update):</strong></li>
+        </ol>
+        <ul>
+            <li><strong>New Records:</strong> If a code or name does not exist in the store catalog, it is flagged as
+                <code>+ Create</code>.
+            </li>
+            <li><strong>Existing Records:</strong> If a code or unique name matches an existing entity, it is flagged as
+                <code>↺ Update</code>. The system updates its description, contact details, or status without
+                duplicating the master item.
+            </li>
+        </ul>
+        <ol>
+            <li><strong>Hierarchical Dependency Resolution:</strong></li>
+        </ol>
+        <ul>
+            <li>When approving a batch, the system automatically imports parent entities before child entities:</li>
+        </ul>
+        <ol>
+            <li><strong>Brands &amp; Product Types</strong> are committed first.</li>
+            <li><strong>Product Models</strong> are committed second, dynamically resolving foreign keys
+                (<code>BrandId</code> and <code>ProductTypeId</code>) from the newly created or matched parents.</li>
+            <li><strong>Variants</strong>, <strong>Colors</strong>, and <strong>Vendors</strong> are committed with
+                complete integrity checks.</li>
+        </ol>
+        <p>---</p>
+        <h3 id='232-step-by-step-instructions-import-master-data'>23.2 Step-by-Step Instructions: Import Master Data
+        </h3>
+        <h4 id='step-1-download-template-or-export-existing-catalog'>Step 1: Download Template or Export Existing
+            Catalog</h4>
+        <ol>
+            <li>Navigate to <strong>Product &gt; Import Master Data</strong> (<code>/products/import-masters</code>)
+                from the sidebar.</li>
+            <li>Choose one of two options:</li>
+        </ol>
+        <ul>
+            <li><strong>Download Excel Template (.xlsx):</strong> Downloads
+                <code>siddhi_master_import_template.xlsx</code> containing column headers and sample records in six
+                worksheets: Vendors, Brands, ProductTypes, Models, Variants, and Colors.
+            </li>
+            <li><strong>Export Master Catalog (.xlsx):</strong> Exports the selected store&#39;s existing master
+                records, including inactive records, in the same six-worksheet format for re-importing.</li>
+        </ul>
+        <ol>
+            <li>Open the downloaded workbook in Microsoft Excel. It should open without a file-format or extension
+                warning. If you downloaded an unreadable file before the export fix, download a fresh copy after the
+                updated API is running; previously downloaded files are not repaired automatically.</li>
+            <li>If the page reports that the server did not return a valid Excel workbook, the download is stopped. Have
+                the administrator restart the updated AccountingInventory API, then retry the download.</li>
+        </ol>
+        <p>Prerequisites: Sign in with access to the import page. Product Owners must select a store before downloading
+            its template or catalog.</p>
+        <h4 id='step-2-fill-the-excel-workbook'>Step 2: Fill the Excel Workbook</h4>
+        <p>Open the file in <strong>Microsoft Excel</strong>, <strong>Google Sheets</strong>, or
+            <strong>LibreOffice</strong>. The spreadsheet supports all six master entities:
+        </p>
+        <div class="table-wrap">
+            <table>
+                <tbody>
+                    <tr>
+                        <th>Column</th>
+                        <th>Supported Values</th>
+                        <th>Required For</th>
+                        <th>Description &amp; Example</th>
+                    </tr>
+                    <tr>
+                        <td>Worksheet</td>
+                        <td><code>Vendors</code>, <code>Brands</code>, <code>ProductTypes</code>, <code>Models</code>,
+                            <code>Variants</code>, <code>Colors</code>
+                        </td>
+                        <td><strong>All</strong></td>
+                        <td>The worksheet name identifies the entity; keep worksheet names and column headers unchanged.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>Name</code></td>
+                        <td>Free text (e.g. <code>Apple</code>, <code>iPhone 15 Pro</code>, <code>128GB</code>,
+                            <code>Titanium</code>)
+                        </td>
+                        <td><strong>All</strong></td>
+                        <td>Display name of the item.</td>
+                    </tr>
+                    <tr>
+                        <td><code>Code</code></td>
+                        <td>Alphanumeric (e.g. <code>VEN-APP-001</code>, <code>IPH15P</code>)</td>
+                        <td><code>Vendor</code>, <code>Model</code></td>
+                        <td>Unique item or supplier code.</td>
+                    </tr>
+                    <tr>
+                        <td><code>Mobile</code></td>
+                        <td>7 to 20 digits (e.g. <code>9876543210</code>)</td>
+                        <td><code>Vendor</code></td>
+                        <td>Primary contact number.</td>
+                    </tr>
+                    <tr>
+                        <td><code>Email</code></td>
+                        <td>Valid email (e.g. <code>distro@apple.in</code>)</td>
+                        <td><code>Vendor</code></td>
+                        <td>Billing / order email address.</td>
+                    </tr>
+                    <tr>
+                        <td><code>Brand</code></td>
+                        <td>Brand Name (e.g. <code>Apple</code>)</td>
+                        <td><code>Model</code></td>
+                        <td>Linked brand for the model.</td>
+                    </tr>
+                    <tr>
+                        <td><code>ProductType</code></td>
+                        <td>Product Type Name (e.g. <code>Smartphone</code>)</td>
+                        <td><code>Model</code></td>
+                        <td>Linked category/type for the model.</td>
+                    </tr>
+                    <tr>
+                        <td><code>Description</code></td>
+                        <td>Free text (e.g. <code>6.1-inch Super Retina display</code>)</td>
+                        <td>Optional</td>
+                        <td>Narrative description.</td>
+                    </tr>
+                    <tr>
+                        <td><code>Address</code></td>
+                        <td>Free text (e.g. <code>BKC Mumbai</code>)</td>
+                        <td><code>Vendor</code></td>
+                        <td>Supplier physical address.</td>
+                    </tr>
+                    <tr>
+                        <td><code>IsActive</code></td>
+                        <td><code>TRUE</code> or <code>FALSE</code></td>
+                        <td>Optional</td>
+                        <td>Defaults to <code>TRUE</code> if omitted.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <h4 id='step-3-upload-and-stage-data'>Step 3: Upload and Stage Data</h4>
+        <ol>
+            <li>On the <strong>Master Data Import Hub</strong> page, click <strong>&quot;Browse &amp; Upload Excel
+                    (.xlsx)&quot;</strong>.</li>
+            <li>Select your populated <code>.xlsx</code> file. CSV and text files are not supported by this page.
+                Replace or remove template sample rows before uploading your own records.</li>
+            <li>The system parses the file, executes business rule validation, assigns a unique batch tracking number
+                (<code>IMP-YYYYMMDD-XXXX</code>), and inserts all records into the staging database.</li>
+        </ol>
+        <h4 id='step-4-verify-staged-records-in-review-workspace'>Step 4: Verify Staged Records in Review Workspace</h4>
+        <p>The <strong>Review Workspace</strong> displays:</p>
+        <ul>
+            <li><strong>KPI Summary Cards:</strong> Total Rows, Valid Records, New Creates, Existing Updates, Warnings,
+                and Errors.</li>
+            <li><strong>Entity Filter Tabs:</strong> Click <code>Vendors</code>, <code>Brands</code>,
+                <code>Product Types</code>, <code>Models</code>, <code>Variants</code>, or <code>Colors</code> to
+                inspect subsets.
+            </li>
+            <li><strong>Status Filter:</strong> Filter by <code>Valid Only</code> or <code>Errors Only</code>.</li>
+            <li><strong>Search:</strong> Search across names, codes, brands, and validation notes.</li>
+            <li><strong>Row Inclusion Checkboxes:</strong> If any row has a typo or validation error, uncheck its
+                <strong>Include</strong> checkbox to exclude it from the final import without discarding the entire
+                batch.
+            </li>
+        </ul>
+        <h4 id='step-5-approve-import-to-main-database'>Step 5: Approve &amp; Import to Main Database</h4>
+        <ol>
+            <li>When satisfied with the staged records, click <strong>&quot;Approve &amp; Import to Main
+                    Database&quot;</strong>.</li>
+            <li>A confirmation modal displays the number of new records to be created and existing records to be
+                updated.</li>
+            <li>Click <strong>&quot;Confirm &amp; Import Now&quot;</strong>:</li>
+        </ol>
+        <ul>
+            <li>The transaction commits all approved records into the production catalog tables.</li>
+            <li>Staging records are marked as <code>Imported</code>.</li>
+            <li>The batch status changes to <code>Approved</code>.</li>
+            <li>A success banner itemizes counts:
+                <code>e.g. 5 Brands, 3 Product Types, 12 Models, 4 Variants, 6 Colors, 2 Vendors imported.</code>
+            </li>
+        </ul>
+        <p>---</p>
+        <h3 id='233-product-owner-master-import-console-adminmasters-import'>23.3 Product Owner Master Import Console
+            (<code>/admin/masters-import</code>)</h3>
+        <p>The <strong>Product Owner</strong> (Super Administrator) can oversee and manage master imports across all
+            stores:</p>
+        <ol>
+            <li>Sign in to the Product Owner console at <code>/admin/login</code>.</li>
+            <li>In the sidebar, click <strong>Master Data Import</strong> (<code>/admin/masters-import</code>).</li>
+            <li>Select any store from the <strong>Select Tenant Store</strong> dropdown.</li>
+            <li>Review that store&#39;s staged batches, inspect validation notes, and click <strong>&quot;Approve &amp;
+                    Import&quot;</strong> or <strong>&quot;Reject Batch&quot;</strong> on behalf of the store.</li>
+        </ol>
+    </main>
+</body>
+
+</html>
