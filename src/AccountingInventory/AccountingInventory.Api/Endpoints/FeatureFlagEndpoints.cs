@@ -8,8 +8,25 @@ using Microsoft.EntityFrameworkCore;
 namespace AccountingInventory.Api.Endpoints;
 
 public record ToggleFeatureFlagRequest(string Key, bool IsEnabled, Guid? TenantId = null);
+public record ToggleAllFeatureFlagRequest(string? Key, bool IsEnabled, bool SyncAllTenants = true);
+public record ResetTenantOverrideRequest(string Key, Guid TenantId);
 public record SaveFeatureFlagRequest(string Key, string Name, string? Description, bool IsEnabled, string? Category, Guid? TenantId = null);
-public record FeatureFlagDto(Guid Id, string Key, string Name, string? Description, bool IsEnabled, string Category, Guid? TenantId, DateTimeOffset? ModifiedAt);
+
+public record TenantFlagOverrideDto(Guid TenantId, string TenantName, string TenantSlug, bool IsEnabled, DateTimeOffset? ModifiedAt);
+public record TenantSummaryDto(Guid Id, string Name, string Slug);
+
+public record FeatureFlagDto(
+    Guid Id,
+    string Key,
+    string Name,
+    string? Description,
+    bool IsEnabled,
+    string Category,
+    Guid? TenantId,
+    DateTimeOffset? ModifiedAt,
+    bool? GlobalEnabled = null,
+    int? OverridesCount = 0,
+    List<TenantFlagOverrideDto>? Overrides = null);
 
 public static class FeatureFlagEndpoints
 {
@@ -17,7 +34,7 @@ public static class FeatureFlagEndpoints
     {
         var group = app.MapGroup("/api").WithTags("Feature Flags");
 
-        // 1. GET /api/features or /api/feature-flags: Returns active feature flags
+        // 1. GET /api/features: Client-side resolution (checks X-Tenant-Id header or ?tenantId=)
         group.MapGet("/features", async (ITenantDirectoryContext directory, HttpContext httpContext, CancellationToken ct) =>
         {
             Guid? tenantId = null;
@@ -25,6 +42,11 @@ public static class FeatureFlagEndpoints
                 Guid.TryParse(tenantHeader.ToString(), out var tid))
             {
                 tenantId = tid;
+            }
+            else if (httpContext.Request.Query.TryGetValue("tenantId", out var qTid) &&
+                Guid.TryParse(qTid.ToString(), out var parsedQ))
+            {
+                tenantId = parsedQ;
             }
 
             var allFlags = await directory.FeatureFlags
@@ -44,7 +66,16 @@ public static class FeatureFlagEndpoints
                 if (flag != null)
                 {
                     dict[flag.Key] = flag.IsEnabled;
-                    items.Add(new FeatureFlagDto(flag.Id, flag.Key, flag.Name, flag.Description, flag.IsEnabled, flag.Category, flag.TenantId, flag.ModifiedAt));
+                    items.Add(new FeatureFlagDto(
+                        flag.Id,
+                        flag.Key,
+                        flag.Name,
+                        flag.Description,
+                        flag.IsEnabled,
+                        flag.Category,
+                        flag.TenantId,
+                        flag.ModifiedAt,
+                        GlobalEnabled: flag.TenantId == null ? flag.IsEnabled : null));
                 }
             }
 
@@ -60,7 +91,8 @@ public static class FeatureFlagEndpoints
                     true,
                     "Accessibility",
                     null,
-                    null));
+                    null,
+                    GlobalEnabled: true));
             }
 
             return Results.Ok(new { flags = dict, items });
@@ -68,6 +100,7 @@ public static class FeatureFlagEndpoints
         .WithName("GetFeatureFlags")
         .AllowAnonymous();
 
+        // 2. GET /api/features/{key}: Individual flag query
         group.MapGet("/features/{key}", async (string key, ITenantDirectoryContext directory, HttpContext httpContext, CancellationToken ct) =>
         {
             Guid? tenantId = null;
@@ -75,6 +108,11 @@ public static class FeatureFlagEndpoints
                 Guid.TryParse(tenantHeader.ToString(), out var tid))
             {
                 tenantId = tid;
+            }
+            else if (httpContext.Request.Query.TryGetValue("tenantId", out var qTid) &&
+                Guid.TryParse(qTid.ToString(), out var parsedQ))
+            {
+                tenantId = parsedQ;
             }
 
             var normalizedKey = key.Trim().ToLowerInvariant();
@@ -90,36 +128,116 @@ public static class FeatureFlagEndpoints
         .WithName("GetFeatureFlagByKey")
         .AllowAnonymous();
 
-        // 2. Admin endpoints: GET /api/admin/features and POST /api/admin/features/toggle
+        // 3. Admin endpoints
         var adminGroup = app.MapGroup("/api/admin/features").WithTags("Admin Feature Flags").AllowAnonymous();
 
-        adminGroup.MapGet("/", async (ITenantDirectoryContext directory, CancellationToken ct) =>
+        // GET /api/admin/features?tenantId=...
+        adminGroup.MapGet("/", async (ITenantDirectoryContext directory, HttpContext httpContext, CancellationToken ct) =>
         {
-            var flags = await directory.FeatureFlags
+            Guid? filterTenantId = null;
+            if (httpContext.Request.Query.TryGetValue("tenantId", out var qTid) &&
+                Guid.TryParse(qTid.ToString(), out var parsedQ))
+            {
+                filterTenantId = parsedQ;
+            }
+
+            var tenants = await directory.Tenants
                 .AsNoTracking()
-                .OrderBy(f => f.Category)
-                .ThenBy(f => f.Name)
+                .Where(t => !t.IsDeleted && t.IsActive)
+                .OrderBy(t => t.Name)
+                .Select(t => new TenantSummaryDto(t.Id, t.Name, t.Slug))
                 .ToListAsync(ct);
 
-            if (!flags.Any(f => f.Key.Equals("voice_typing", StringComparison.OrdinalIgnoreCase)))
+            var tenantMap = tenants.ToDictionary(t => t.Id, t => t);
+
+            var allFlags = await directory.FeatureFlags
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            // Ensure baseline voice_typing flag exists globally
+            if (!allFlags.Any(f => f.Key.Equals("voice_typing", StringComparison.OrdinalIgnoreCase) && f.TenantId == null))
             {
                 var defaultVoice = FeatureFlag.Create(
                     "voice_typing",
                     "Voice Typing & Speech Dictation",
                     "Enables automatic speech-to-text dictation across input fields and form controls via Web Speech API",
                     isEnabled: true,
-                    category: "Accessibility");
+                    category: "Accessibility",
+                    tenantId: null);
 
                 directory.FeatureFlags.Add(defaultVoice);
                 await directory.SaveChangesAsync(ct);
-                flags.Add(defaultVoice);
+                allFlags.Add(defaultVoice);
             }
 
-            var dict = flags.ToDictionary(f => f.Key, f => f.IsEnabled, StringComparer.OrdinalIgnoreCase);
-            return Results.Ok(new { flags = dict, items = flags });
+            var distinctKeys = allFlags.Select(f => f.Key).Distinct(StringComparer.OrdinalIgnoreCase);
+            var items = new List<FeatureFlagDto>();
+            var resolvedDict = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var key in distinctKeys)
+            {
+                var globalFlag = allFlags.FirstOrDefault(f => f.Key.Equals(key, StringComparison.OrdinalIgnoreCase) && f.TenantId == null);
+                var tenantOverrides = allFlags
+                    .Where(f => f.Key.Equals(key, StringComparison.OrdinalIgnoreCase) && f.TenantId != null)
+                    .Select(f => new TenantFlagOverrideDto(
+                        f.TenantId!.Value,
+                        tenantMap.TryGetValue(f.TenantId.Value, out var t) ? t.Name : "Tenant " + f.TenantId.Value.ToString()[..8],
+                        tenantMap.TryGetValue(f.TenantId.Value, out var ts) ? ts.Slug : "",
+                        f.IsEnabled,
+                        f.ModifiedAt))
+                    .ToList();
+
+                bool effectiveEnabled;
+                DateTimeOffset? currentModifiedAt = globalFlag?.ModifiedAt;
+
+                if (filterTenantId.HasValue)
+                {
+                    var matchOverride = tenantOverrides.FirstOrDefault(o => o.TenantId == filterTenantId.Value);
+                    if (matchOverride != null)
+                    {
+                        effectiveEnabled = matchOverride.IsEnabled;
+                        currentModifiedAt = matchOverride.ModifiedAt;
+                    }
+                    else
+                    {
+                        effectiveEnabled = globalFlag?.IsEnabled ?? true;
+                    }
+                }
+                else
+                {
+                    effectiveEnabled = globalFlag?.IsEnabled ?? true;
+                }
+
+                resolvedDict[key] = effectiveEnabled;
+
+                var sampleFlag = globalFlag ?? allFlags.First(f => f.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+                items.Add(new FeatureFlagDto(
+                    sampleFlag.Id,
+                    sampleFlag.Key,
+                    sampleFlag.Name,
+                    sampleFlag.Description,
+                    effectiveEnabled,
+                    sampleFlag.Category,
+                    filterTenantId,
+                    currentModifiedAt,
+                    GlobalEnabled: globalFlag?.IsEnabled ?? true,
+                    OverridesCount: tenantOverrides.Count,
+                    Overrides: tenantOverrides));
+            }
+
+            items = items.OrderBy(i => i.Category).ThenBy(i => i.Name).ToList();
+
+            return Results.Ok(new
+            {
+                flags = resolvedDict,
+                items,
+                tenants,
+                rawOverrides = allFlags.Where(f => f.TenantId != null).ToList()
+            });
         })
         .WithName("AdminGetAllFeatureFlags");
 
+        // POST /api/admin/features/toggle: Toggle for a particular tenant OR global default
         adminGroup.MapPost("/toggle", async (ToggleFeatureFlagRequest request, ITenantDirectoryContext directory, CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(request?.Key))
@@ -131,6 +249,17 @@ public static class FeatureFlagEndpoints
             var existing = await directory.FeatureFlags
                 .FirstOrDefaultAsync(f => f.Key == normalizedKey && f.TenantId == request.TenantId, ct);
 
+            string targetScopeDescription;
+            if (request.TenantId.HasValue)
+            {
+                var tenant = await directory.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == request.TenantId.Value, ct);
+                targetScopeDescription = tenant != null ? $"Tenant '{tenant.Name}'" : $"Tenant ID '{request.TenantId}'";
+            }
+            else
+            {
+                targetScopeDescription = "Global (All Tenants Default)";
+            }
+
             if (existing != null)
             {
                 existing.IsEnabled = request.IsEnabled;
@@ -138,22 +267,107 @@ public static class FeatureFlagEndpoints
             }
             else
             {
+                // Inherit name/description/category from global if creating a tenant override
+                var globalTemplate = await directory.FeatureFlags
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(f => f.Key == normalizedKey && f.TenantId == null, ct);
+
                 existing = FeatureFlag.Create(
                     normalizedKey,
-                    normalizedKey == "voice_typing" ? "Voice Typing & Speech Dictation" : normalizedKey,
-                    normalizedKey == "voice_typing" ? "Enables automatic speech-to-text dictation across input fields and form controls via Web Speech API" : null,
+                    globalTemplate?.Name ?? (normalizedKey == "voice_typing" ? "Voice Typing & Speech Dictation" : normalizedKey),
+                    globalTemplate?.Description ?? (normalizedKey == "voice_typing" ? "Enables automatic speech-to-text dictation across input fields and form controls via Web Speech API" : null),
                     request.IsEnabled,
-                    category: normalizedKey == "voice_typing" ? "Accessibility" : "General",
+                    category: globalTemplate?.Category ?? (normalizedKey == "voice_typing" ? "Accessibility" : "General"),
                     tenantId: request.TenantId);
 
                 directory.FeatureFlags.Add(existing);
             }
 
             await directory.SaveChangesAsync(ct);
-            return Results.Ok(new { success = true, flag = existing, message = $"Feature flag '{existing.Key}' set to {(existing.IsEnabled ? "Enabled" : "Disabled")} in database." });
+            return Results.Ok(new
+            {
+                success = true,
+                flag = existing,
+                message = $"Feature flag '{existing.Key}' set to {(existing.IsEnabled ? "Enabled" : "Disabled")} for {targetScopeDescription}."
+            });
         })
         .WithName("AdminToggleFeatureFlag");
 
+        // POST /api/admin/features/toggle-all: Toggle flag for ALL tenants at once
+        adminGroup.MapPost("/toggle-all", async (ToggleAllFeatureFlagRequest request, ITenantDirectoryContext directory, CancellationToken ct) =>
+        {
+            var normalizedKey = request?.Key?.Trim().ToLowerInvariant();
+
+            var query = directory.FeatureFlags.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(normalizedKey) && normalizedKey != "all")
+            {
+                query = query.Where(f => f.Key == normalizedKey);
+            }
+
+            var flagsToUpdate = await query.ToListAsync(ct);
+
+            // If a specific flag key was targeted and no global row existed, create it
+            if (!string.IsNullOrWhiteSpace(normalizedKey) && normalizedKey != "all" && !flagsToUpdate.Any(f => f.TenantId == null))
+            {
+                var globalFlag = FeatureFlag.Create(
+                    normalizedKey,
+                    normalizedKey == "voice_typing" ? "Voice Typing & Speech Dictation" : normalizedKey,
+                    normalizedKey == "voice_typing" ? "Enables automatic speech-to-text dictation across input fields and form controls via Web Speech API" : null,
+                    request.IsEnabled,
+                    category: normalizedKey == "voice_typing" ? "Accessibility" : "General",
+                    tenantId: null);
+
+                directory.FeatureFlags.Add(globalFlag);
+                flagsToUpdate.Add(globalFlag);
+            }
+
+            int count = 0;
+            foreach (var flag in flagsToUpdate)
+            {
+                flag.IsEnabled = request.IsEnabled;
+                flag.ModifiedAt = DateTimeOffset.UtcNow;
+                count++;
+            }
+
+            await directory.SaveChangesAsync(ct);
+
+            var keyName = !string.IsNullOrWhiteSpace(normalizedKey) && normalizedKey != "all" ? $"'{normalizedKey}'" : "ALL flags";
+            return Results.Ok(new
+            {
+                success = true,
+                updatedCount = count,
+                message = $"Feature flag {keyName} has been set to {(request.IsEnabled ? "Enabled" : "Disabled")} across ALL tenants ({count} records updated)."
+            });
+        })
+        .WithName("AdminToggleAllFeatureFlags");
+
+        // POST /api/admin/features/reset-override: Remove tenant custom override so it inherits global default
+        adminGroup.MapPost("/reset-override", async (ResetTenantOverrideRequest request, ITenantDirectoryContext directory, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(request?.Key))
+            {
+                return Results.BadRequest(new { message = "Key is required." });
+            }
+
+            var normalizedKey = request.Key.Trim().ToLowerInvariant();
+            var existing = await directory.FeatureFlags
+                .FirstOrDefaultAsync(f => f.Key == normalizedKey && f.TenantId == request.TenantId, ct);
+
+            if (existing != null)
+            {
+                directory.FeatureFlags.Remove(existing);
+                await directory.SaveChangesAsync(ct);
+            }
+
+            return Results.Ok(new
+            {
+                success = true,
+                message = $"Tenant custom override for '{normalizedKey}' removed. Tenant will now inherit global default."
+            });
+        })
+        .WithName("AdminResetTenantOverride");
+
+        // POST /api/admin/features/save: Create or edit flag metadata
         adminGroup.MapPost("/save", async (SaveFeatureFlagRequest request, ITenantDirectoryContext directory, CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(request?.Key) || string.IsNullOrWhiteSpace(request?.Name))
@@ -194,4 +408,3 @@ public static class FeatureFlagEndpoints
         return group;
     }
 }
-
