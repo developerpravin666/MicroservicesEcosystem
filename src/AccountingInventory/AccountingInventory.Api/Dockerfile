@@ -6,13 +6,11 @@ WORKDIR /src
 # (slow) NuGet restore layer.
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/BuildingBlocks/ src/BuildingBlocks/
-COPY src/Gateway/ src/Gateway/
-COPY src/Identity/ src/Identity/
-COPY src/Services/ src/Services/
+COPY src/AccountingInventory/ src/AccountingInventory/
 
-RUN dotnet restore "src/Identity/AccountingInventory.Api/AccountingInventory.Api.csproj"
+RUN dotnet restore "src/AccountingInventory/AccountingInventory.Api/AccountingInventory.Api.csproj"
 
-RUN dotnet publish "src/Identity/AccountingInventory.Api/AccountingInventory.Api.csproj" -c Release -o /app --no-restore
+RUN dotnet publish "src/AccountingInventory/AccountingInventory.Api/AccountingInventory.Api.csproj" -c Release -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app

@@ -23,10 +23,47 @@ builder.Services.AddPlatformMessaging(builder.Configuration, AccountingInventory
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendCorsPolicy", policy =>
+    {
+        var origins = new List<string>();
+        var frontendUrl = builder.Configuration["Frontend:BaseUrl"];
+        if (!string.IsNullOrWhiteSpace(frontendUrl))
+        {
+            origins.Add(frontendUrl.TrimEnd('/'));
+        }
+        var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+        origins.AddRange(configuredOrigins);
+
+        if (builder.Environment.IsDevelopment())
+        {
+            origins.Add("http://localhost:5173");
+            origins.Add("http://localhost:3000");
+        }
+
+        var distinctOrigins = origins.Where(o => !string.IsNullOrWhiteSpace(o)).Distinct().ToArray();
+        if (distinctOrigins.Length > 0)
+        {
+            policy.WithOrigins(distinctOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+    });
+});
+
 var app = builder.Build();
 
 app.UseWebDefaults();
 app.UseCorrelationId();
+app.UseCors("FrontendCorsPolicy");
 app.UseSharedRequestLogging();
 app.UsePlatformSecurity();
 
