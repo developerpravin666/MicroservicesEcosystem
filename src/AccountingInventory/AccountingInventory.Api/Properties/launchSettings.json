@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "AccountingInventory.Api": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "launchUrl": "swagger",
+      "applicationUrl": "https://localhost:64113;http://localhost:64114"
+    }
+  }
+}

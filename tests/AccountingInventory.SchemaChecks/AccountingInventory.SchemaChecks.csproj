@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/AccountingInventory/AccountingInventory.Infrastructure/AccountingInventory.Infrastructure.csproj" />
+    <Compile Include="../../src/AccountingInventory/AccountingInventory.Infrastructure/Migrations/AccountingInventoryDb/ExistingAccountingTableRepair.cs" Link="ExistingAccountingTableRepair.cs" />
+    <Compile Include="../../src/AccountingInventory/AccountingInventory.Infrastructure/Migrations/AccountingInventoryDb/JournalLedgerTableRepair.cs" Link="JournalLedgerTableRepair.cs" />
+  </ItemGroup>
+</Project>

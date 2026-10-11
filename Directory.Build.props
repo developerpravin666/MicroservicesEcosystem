@@ -1,0 +1,25 @@
+<Project>
+
+  <!--
+    Shared by every project in the solution, regardless of whether it's opened via the
+    .sln or as a standalone .csproj (MSBuild walks up the directory tree looking for
+    this file automatically — no solution load required, so "Open individual project"
+    in Visual Studio picks this up exactly the same way "Open solution" does).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>14.0</LangVersion>
+    <Deterministic>true</Deterministic>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- Central Package Management: every PackageReference across the whole solution
+         resolves its version from Directory.Packages.props instead of the individual
+         .csproj, so all services always share one consistent set of package versions. -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+</Project>

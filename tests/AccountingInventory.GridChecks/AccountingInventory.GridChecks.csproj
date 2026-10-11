@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/AccountingInventory/AccountingInventory.Infrastructure/AccountingInventory.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/BuildingBlocks/BuildingBlocks.WebDefaults/BuildingBlocks.WebDefaults.csproj" />
+    <Compile Include="../../src/AccountingInventory/AccountingInventory.Api/Endpoints/AccountingP0Endpoints.cs" Link="Api/AccountingP0Endpoints.cs" />
+    <Compile Include="../../src/AccountingInventory/AccountingInventory.Api/Endpoints/TenantHeaderEndpointFilter.cs" Link="Api/TenantHeaderEndpointFilter.cs" />
+    <Compile Include="../../src/AccountingInventory/AccountingInventory.Api/Endpoints/SalesAccountingEndpoints.cs" Link="Api/SalesAccountingEndpoints.cs" />
+  </ItemGroup>
+</Project>

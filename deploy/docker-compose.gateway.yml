@@ -1,0 +1,19 @@
+# ---------------------------------------------------------------------------
+# SEPARATE DEPLOYMENT: the YARP gateway on its own host, routing to whichever
+# hosts/ports Identity and Inventory are actually reachable at. Tenant
+# management lives inside IdentityService (see /api/tenants there), so there
+# is no separate tenant cluster to configure.
+#
+#   docker compose -f deploy/docker-compose.gateway.yml --env-file deploy/.env up -d
+# ---------------------------------------------------------------------------
+name: gateway-service
+
+services:
+  apigateway:
+    build:
+      context: ..
+      dockerfile: src/Gateway/ApiGateway/Dockerfile
+    ports: [ "8080:8080" ]
+    environment:
+      ReverseProxy__Clusters__identity-cluster__Destinations__identity-1__Address: ${IDENTITY_SERVICE_URL:-http://identityservice-api:8080/}
+      ReverseProxy__Clusters__inventory-cluster__Destinations__inventory-1__Address: ${INVENTORY_SERVICE_URL:-http://inventoryservice-api:8080/}

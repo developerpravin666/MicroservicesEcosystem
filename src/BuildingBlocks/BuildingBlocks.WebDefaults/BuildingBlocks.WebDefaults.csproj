@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>BuildingBlocks.WebDefaults</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="FluentValidation" />
+		<PackageReference Include="Swashbuckle.AspNetCore" />
+		<PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+		<ProjectReference Include="..\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+		<ProjectReference Include="..\BuildingBlocks.Observability\BuildingBlocks.Observability.csproj" />
+	</ItemGroup>
+
+</Project>

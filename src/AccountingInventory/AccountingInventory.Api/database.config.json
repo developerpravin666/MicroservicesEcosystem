@@ -1,0 +1,5 @@
+{
+  "ActiveTarget": "Local",
+  "LocalConnectionString": "Host=localhost;Port=5432;Database=accounting_inventory;Username=postgres;Password=siddhi123456",
+  "CloudConnectionString": "Host=sm-accounting-db-server.postgres.database.azure.com;Port=5432;Database=accounting_inventory;Username=smaccountinginventory;Password=!QAZ2wsx#EDC"
+}

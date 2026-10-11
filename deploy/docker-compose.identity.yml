@@ -1,0 +1,31 @@
+# ---------------------------------------------------------------------------
+# SEPARATE DEPLOYMENT: run ONLY identityservice-api on this host/server, pointed at
+# shared infrastructure (Postgres/Redis/RabbitMQ) running elsewhere — a
+# managed database, a dedicated infra server, or another compose stack
+# entirely. Deploy this file to its own VM/server independently of the other
+# services; each one scales, restarts, and redeploys on its own schedule.
+#
+#   docker compose -f deploy/docker-compose.identity.yml --env-file deploy/.env up -d
+#
+# Point the *_HOST / *_DB variables below at wherever your shared Postgres,
+# Redis, and RabbitMQ actually live — they default to "localhost" purely so
+# this file is self-documenting; override them for any real deployment.
+# ---------------------------------------------------------------------------
+name: identity-service
+
+services:
+  identityservice-api:
+    build:
+      context: ..
+      dockerfile: src/Identity/IdentityService.Api/Dockerfile
+    ports: [ "8082:8080" ]
+    environment:
+      ConnectionStrings__IdentityDb: Host=${POSTGRES_HOST:-localhost};Port=5432;Database=identity_db;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      ConnectionStrings__TenantDb: Host=${POSTGRES_HOST:-localhost};Port=5432;Database=tenant_db;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      RabbitMq__Host: ${RABBITMQ_HOST:-localhost}
+      RabbitMq__VirtualHost: /
+      RabbitMq__Username: ${RABBITMQ_USER:-guest}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD:-guest}
+      Jwt__Issuer: ${JWT_ISSUER:-microservices-ecosystem}
+      Jwt__Audience: ${JWT_AUDIENCE:-microservices-ecosystem-clients}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}

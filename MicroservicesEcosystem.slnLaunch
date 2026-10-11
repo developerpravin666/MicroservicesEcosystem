@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Local Development",
+    "Projects": [
+      {
+        "Path": "src\\AccountingInventory\\AccountingInventory.Api\\AccountingInventory.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\Gateway\\ApiGateway\\ApiGateway.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
