@@ -87,6 +87,18 @@ public sealed class Product : AggregateRoot
         IsActive = false;
     }
 
+    public void Activate()
+    {
+        if (IsSold) throw new InvalidOperationException("Sold products cannot be re-activated.");
+        IsActive = true;
+    }
+
+    public void SetActive(bool isActive)
+    {
+        if (IsSold && isActive) throw new InvalidOperationException("Sold products cannot be re-activated.");
+        IsActive = isActive;
+    }
+
     private static string? NormalizeBillNumber(string? billNumber)
         => string.IsNullOrWhiteSpace(billNumber) ? null : billNumber.Trim();
 

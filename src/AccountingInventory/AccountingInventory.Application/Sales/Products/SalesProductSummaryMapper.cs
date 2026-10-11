@@ -42,9 +42,26 @@ internal static class SalesProductSummaryMapper
         var customers = await db.Customers.AsNoTracking()
             .Where(customer => customerIds.Contains(customer.Id))
             .ToDictionaryAsync(customer => customer.Id, cancellationToken);
-        var paymentModes = await db.SalesPayments.AsNoTracking()
+
+        var payments = await db.SalesPayments.AsNoTracking()
             .Where(payment => saleIds.Contains(payment.SalesProductId))
-            .ToDictionaryAsync(payment => payment.SalesProductId, payment => payment.PaymentMode, cancellationToken);
+            .ToDictionaryAsync(payment => payment.SalesProductId, cancellationToken);
+
+        var receipts = await db.SalesReceipts.AsNoTracking()
+            .Where(receipt => saleIds.Contains(receipt.SalesProductId) && receipt.IsActive)
+            .GroupBy(receipt => receipt.SalesProductId)
+            .Select(g => new { SalesProductId = g.Key, TotalPaid = g.Sum(r => r.Amount) })
+            .ToDictionaryAsync(x => x.SalesProductId, x => x.TotalPaid, cancellationToken);
+
+        var financeVendorIds = payments.Values
+            .Where(p => p.FinanceVendorId.HasValue)
+            .Select(p => p.FinanceVendorId!.Value)
+            .Distinct()
+            .ToArray();
+
+        var financeVendors = await db.FinanceVendors.AsNoTracking()
+            .Where(v => financeVendorIds.Contains(v.Id))
+            .ToDictionaryAsync(v => v.Id, v => v.Name, cancellationToken);
 
         return sales.Select(sale =>
         {
@@ -60,6 +77,20 @@ internal static class SalesProductSummaryMapper
                     .Where(part => !string.IsNullOrWhiteSpace(part)));
             if (!string.IsNullOrWhiteSpace(serialNumber))
                 productName = $"{productName} — {serialNumber}";
+
+            payments.TryGetValue(sale.Id, out var paymentRecord);
+            var receiptPaid = receipts.GetValueOrDefault(sale.Id, 0m);
+
+            decimal totalPaid = receiptPaid;
+            if (paymentRecord != null && paymentRecord.DownPayment.HasValue && receiptPaid == 0m)
+            {
+                totalPaid += paymentRecord.DownPayment.Value;
+            }
+
+            var balanceAmount = Math.Max(0m, sale.TotalAmount - totalPaid);
+            var financeVendorName = paymentRecord?.FinanceVendorId.HasValue == true && financeVendors.TryGetValue(paymentRecord.FinanceVendorId.Value, out var fvName)
+                ? fvName
+                : null;
 
             return new SalesProductSummary(
                 sale.Id,
@@ -85,8 +116,15 @@ internal static class SalesProductSummaryMapper
                 sale.SgstAmount,
                 sale.TotalAmount,
                 sale.IsActive,
-                paymentModes.GetValueOrDefault(sale.Id),
-                sale.BillNumber);
+                paymentRecord?.PaymentMode,
+                sale.BillNumber,
+                PaidAmount: totalPaid,
+                BalanceAmount: balanceAmount,
+                DownPayment: paymentRecord?.DownPayment,
+                NumberOfEmi: paymentRecord?.NumberOfEmi,
+                EmiAmount: paymentRecord?.EmiAmount,
+                FirstInstallmentDate: paymentRecord?.FirstInstallmentDate,
+                FinanceVendorName: financeVendorName);
         }).ToArray();
     }
 }

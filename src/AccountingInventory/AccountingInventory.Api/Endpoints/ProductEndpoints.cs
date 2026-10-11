@@ -3,6 +3,7 @@ using AccountingInventory.Application.Purchases.Products.Commands.BulkCreateProd
 using AccountingInventory.Application.Purchases.Products.Commands.BulkUpdateProducts;
 using AccountingInventory.Application.Purchases.Products.Commands.DeleteProduct;
 using AccountingInventory.Application.Purchases.Products.Commands.UpdateProduct;
+using AccountingInventory.Application.Purchases.Products.Commands.ActivateProduct;
 using AccountingInventory.Application.Purchases.Products.Queries.GetProductById;
 using AccountingInventory.Application.Purchases.Products.Queries.GetProducts;
 using AccountingInventory.Application.Purchases.Products.Queries.GetProductsForDDL;
@@ -53,6 +54,18 @@ public static class ProductEndpoints
             return Results.Ok(await sender.Send(command, ct));
         })
             .WithName("UpdateProduct");
+
+        group.MapPost("/{id:guid}/activate", async (Guid id, ISender sender, CancellationToken ct) =>
+        {
+            await sender.Send(new ActivateProductCommand(id, true), ct);
+            return Results.Ok(new { success = true, message = "Product activated successfully." });
+        }).WithName("ActivateProduct");
+
+        group.MapPost("/{id:guid}/deactivate", async (Guid id, ISender sender, CancellationToken ct) =>
+        {
+            await sender.Send(new ActivateProductCommand(id, false), ct);
+            return Results.Ok(new { success = true, message = "Product deactivated successfully." });
+        }).WithName("DeactivateProduct");
 
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {

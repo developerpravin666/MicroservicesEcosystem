@@ -21,8 +21,9 @@ public sealed class UpdateProductCommandHandler(
                 && entry.SourceId == product.Id.ToString(), cancellationToken))
             throw new ConflictException("This purchased product is posted to the ledger and cannot be edited. Record a purchase adjustment instead.");
 
-        if (product.IsSold || !product.IsActive)
-            throw new ConflictException("Sold or written-off inventory cannot be edited.");
+        if (product.IsSold)
+            throw new ConflictException("Sold inventory cannot be edited.");
+
         if (product.BillNumber is { } paidBill && await dbContext.PurchasePayments.AnyAsync(payment =>
                 payment.VendorId == product.VendorId && payment.BillNumber.ToLower() == paidBill.ToLower(), cancellationToken))
             throw new ConflictException("Products on a bill with recorded payments cannot be edited.");
@@ -40,6 +41,12 @@ public sealed class UpdateProductCommandHandler(
             request.VariantId, request.ColorId, request.SerialNumber, request.SerialNumber1, request.BillNumber,
             request.PurchasePrice, request.Discount, request.Cgst, request.Sgst, request.Tax, request.PurchaseDate,
             request.PaymentTermsDays);
+
+        if (request.IsActive.HasValue)
+        {
+            product.SetActive(request.IsActive.Value);
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
         logger.LogInformation("Product {ProductId} ({SerialNumber}) updated successfully.", product.Id, product.SerialNumber);
         return new UpdateProductResult(product.Id, product.VendorId, product.BrandId, product.ProductTypeId,

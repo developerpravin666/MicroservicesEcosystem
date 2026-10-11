@@ -25,4 +25,11 @@ public sealed record SalesProductSummary(
     decimal TotalAmount,
     bool IsActive,
     string? PaymentMode,
-    string BillNumber);
+    string BillNumber,
+    decimal PaidAmount = 0m,
+    decimal BalanceAmount = 0m,
+    decimal? DownPayment = null,
+    int? NumberOfEmi = null,
+    decimal? EmiAmount = null,
+    DateOnly? FirstInstallmentDate = null,
+    string? FinanceVendorName = null);
