@@ -21,6 +21,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options)
     : DbContext(options), ITenantDirectoryContext
 {
     public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -32,6 +33,17 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options)
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new TenantConfiguration());
+        modelBuilder.Entity<FeatureFlag>(b =>
+        {
+            b.ToTable("feature_flags", "tenant");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Key).HasMaxLength(100).IsRequired();
+            b.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            b.Property(x => x.Category).HasMaxLength(50).IsRequired();
+            b.Property(x => x.Description).HasColumnType("text");
+            b.Property(x => x.IsEnabled).HasDefaultValue(true);
+            b.HasIndex(x => new { x.Key, x.TenantId }).IsUnique();
+        });
         base.OnModelCreating(modelBuilder);
     }
 }

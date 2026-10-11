@@ -78,5 +78,6 @@ public interface IAccountingInventoryDbContext
 public interface ITenantDirectoryContext
 {
     DbSet<Tenant> Tenants { get; }
+    DbSet<FeatureFlag> FeatureFlags { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

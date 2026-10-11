@@ -57,6 +57,7 @@ app.MapAccountingExtensionEndpoints();
 app.MapAccountingP0Endpoints();
 app.MapTaxEndpoints();
 app.MapDashboardEndpoints();
+app.MapFeatureFlagEndpoints();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = ServiceName }));
 app.MapGet("/health/ready", async (TenantDbContext db, CancellationToken ct) =>
 {
@@ -81,6 +82,25 @@ using (var scope = app.Services.CreateScope())
         ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS gstin character varying(20);
         ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS address character varying(500);
         ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS rejection_reason character varying(500);
+
+        CREATE TABLE IF NOT EXISTS tenant.feature_flags (
+            id uuid NOT NULL,
+            key character varying(100) NOT NULL,
+            name character varying(200) NOT NULL,
+            description text,
+            is_enabled boolean NOT NULL DEFAULT true,
+            category character varying(50) DEFAULT 'General',
+            tenant_id uuid,
+            created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            modified_at timestamp with time zone,
+            CONSTRAINT pk_feature_flags PRIMARY KEY (id)
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ix_feature_flags_key_tenant
+            ON tenant.feature_flags (key, COALESCE(tenant_id, '00000000-0000-0000-0000-000000000000'::uuid));
+
+        INSERT INTO tenant.feature_flags (id, key, name, description, is_enabled, category, tenant_id, created_at)
+        VALUES ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'voice_typing', 'Voice Typing & Speech Dictation', 'Enables automatic speech-to-text dictation across input fields and form controls via Web Speech API', true, 'Accessibility', NULL, CURRENT_TIMESTAMP)
+        ON CONFLICT DO NOTHING;
     ");
 }
 
