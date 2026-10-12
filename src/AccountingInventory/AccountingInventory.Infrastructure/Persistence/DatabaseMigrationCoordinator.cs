@@ -1,12 +1,8 @@
-using System.Data;
 using AccountingInventory.Application.Abstractions;
-using AccountingInventory.Infrastructure.Persistence.MultiTenancy;
 using BuildingBlocks.Domain;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging;
-using Npgsql;
+using System.Data;
 
 namespace AccountingInventory.Infrastructure.Persistence;
 
@@ -17,6 +13,9 @@ public sealed class DatabaseMigrationCoordinator(
     : IDatabaseMigrationCoordinator
 {
     internal const string ControlPlaneSupplementalSql = @"
+        CREATE TABLE IF NOT EXISTS tenant.__email_templates (
+            key varchar(100) PRIMARY KEY, subject text NOT NULL, html_body text NOT NULL
+        );
         ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS owner_name character varying(150);
         ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS owner_email character varying(150);
         ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS owner_mobile character varying(25);

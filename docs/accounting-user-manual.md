@@ -1,6 +1,6 @@
 # Accounting & Inventory User Manual
 
-Version: 1.15 | Updated: 12 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.18 | Updated: 12 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
 For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.
 
@@ -550,7 +550,7 @@ Siddhi Mobile SaaS provides an automated, multi-tenant onboarding process:
 1. Open the public registration link: `http://localhost:5173/register-tenant` (or click **"Create store workspace"** on the Sign In page).
 2. Enter the store information:
    - **Store / Business Name**: e.g., `Siddhi Electronics & Mobiles`
-   - **Store Slug**: e.g., `siddhi-electronics` (Auto-generated from store name; this is your unique login identifier)
+   - **Store Slug (Identifier)** is disabled for editing and updates automatically from the lowercase initials of the store name's words, ignoring symbols and using at most six characters. For example, `Siddhi Mobile & electronics` generates `sme`. This is your unique login identifier. If the identifier is already registered, change the store name so its initials generate a different identifier.
    - **GST State Code**: Select from 37 Indian states (e.g., `27 - Maharashtra`)
    - **GSTIN Number** *(Optional)*: 15-character GSTIN. The system automatically detects and selects your state code.
    - **Store Address** *(Optional)*: Physical shop address printed on sales invoices.
@@ -983,7 +983,17 @@ These pages belong to the Product Owner console. Store owners and staff should a
 
 Expected result: the feature setting is saved for the selected scope. A tenant override can differ from the global default; check both when diagnosing a missing screen.
 
-### 26.2 Inspect database tables
+### 26.2 Manage the registration welcome email
+
+1. Sign in as the platform admin and open **System Settings** → **Registration Welcome Email**.
+2. Edit **Email Subject** (maximum 500 characters, one line) and **Email HTML Body** (maximum 50,000 characters). Use `{{StoreName}}`, `{{StoreSlug}}`, `{{OwnerName}}`, `{{OwnerEmail}}` and `{{OwnerMobile}}` for registration details. Unknown placeholders are rejected; inserted customer values are escaped in HTML.
+3. Select **Preview Email** to view sample content without sending an email.
+4. Select **Save Email Template**. Future store registrations use the saved subject and format. Settings persist in the active database across restarts.
+5. To return to the original format, select **Load Default Format**, then **Save Email Template**. Loading the default alone does not change the saved template.
+
+Expected result: the store owner receives the customized registration-received email through the configured email delivery mode. The original format is used until an admin saves a template. Tenant accounts cannot edit this setting.
+
+### 26.3 Inspect database tables
 
 Prerequisite: sign in through **Admin Login** with the platform admin account, also called Product Owner or super admin. **Table Management** appears in the admin console alongside **Feature Flags**. Tenant accounts cannot access this page or its table management API, including scan, classification and clearing operations. **Database Tables** is absent from tenant Settings. Opening either `/settings/database-tables` or `/admin/database-tables` as a tenant displays an access restriction.
 

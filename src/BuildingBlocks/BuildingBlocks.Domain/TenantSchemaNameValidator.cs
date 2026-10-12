@@ -48,10 +48,10 @@ public static partial class TenantSchemaNameValidator
     /// separately at the database level as a human-facing safeguard, but the schema
     /// name itself never depends on it being right.
     /// </summary>
-    public static string BuildSchemaName(string name, Guid tenantId)
+    public static string BuildSchemaName(string tenantSlug, Guid tenantId)
     {
         var normalized = SlugNormalizationPattern()
-            .Replace(name.Trim().ToLowerInvariant(), "_")
+            .Replace(tenantSlug.Trim().ToLowerInvariant(), "_")
             .Trim('_');
 
         var idSuffix = tenantId.ToString("N")[..8];

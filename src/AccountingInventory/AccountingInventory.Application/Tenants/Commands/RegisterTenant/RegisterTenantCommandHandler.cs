@@ -19,6 +19,7 @@ namespace AccountingInventory.Application.Tenants.Commands.RegisterTenant;
 public sealed class RegisterTenantCommandHandler(
     ITenantDirectoryContext tenantDirectory,
     IEmailSender emailSender,
+    IRegistrationEmailTemplateStore templateStore,
     IConfiguration configuration,
     IPasswordHasher<User> passwordHasher,
     ILogger<RegisterTenantCommandHandler> logger)
@@ -67,46 +68,32 @@ public sealed class RegisterTenantCommandHandler(
         var baseUrl = (configuration["Frontend:BaseUrl"] ?? "http://localhost:5173").TrimEnd('/');
         var approvalsUrl = $"{baseUrl}/settings/tenant-approvals";
 
+        var values = new Dictionary<string, string> {
+            ["StoreName"] = request.Name,
+            ["StoreSlug"] = normalizedSlug,
+            ["OwnerName"] = request.OwnerName ?? "Store Owner",
+            ["OwnerEmail"] = request.OwnerEmail ?? "N/A",
+            ["OwnerMobile"] = request.OwnerMobile ?? "N/A",
+            ["Address"] = request.Address ?? "N/A",
+            ["StateCode"] = request.StateCode ?? "N/A",
+            ["Gstin"] = request.Gstin ?? "N/A",
+            ["ApprovalsUrl"] = approvalsUrl
+        };
+
         // 1. Send Thank You email to store owner
         if (!string.IsNullOrWhiteSpace(request.OwnerEmail))
         {
-            var thankYouSubject = $"Registration Received · {request.Name}";
-            var thankYouBody = $@"
-<div style=""font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6;"">
-    <h2 style=""color: #2563eb;"">Thank you for registering your store!</h2>
-    <p>Hello <strong>{request.OwnerName ?? "Store Owner"}</strong>,</p>
-    <p>We have received your registration for <strong>{request.Name}</strong>.</p>
-    <p>Your workspace is currently under review by our administration. Once approved, your store database will be provisioned automatically and you will receive a confirmation email to start using the system.</p>
-    <div style=""background: #f1f5f9; padding: 12px 16px; border-radius: 6px; margin: 16px 0;"">
-        <p style=""margin: 4px 0;""><strong>Store Name:</strong> {request.Name}</p>
-        <p style=""margin: 4px 0;""><strong>Store Slug:</strong> {normalizedSlug}</p>
-        <p style=""margin: 4px 0;""><strong>Contact Email:</strong> {request.OwnerEmail}</p>
-        <p style=""margin: 4px 0;""><strong>Mobile:</strong> {request.OwnerMobile ?? "N/A"}</p>
-    </div>
-    <p style=""color: #64748b; font-size: 13px;"">Siddhi Mobile Accounting & Inventory SaaS</p>
-</div>";
+            var storeTemplate = await templateStore.GetAsync(RegistrationEmailTemplate.StoreRegistrationKey, cancellationToken);
+            var thankYouSubject = RegistrationEmailTemplateRenderer.Render(storeTemplate.Subject, values, false);
+            var thankYouBody = RegistrationEmailTemplateRenderer.Render(storeTemplate.HtmlBody, values, true);
             await emailSender.SendAsync(request.OwnerEmail, thankYouSubject, thankYouBody, cancellationToken);
         }
 
         // 2. Send Approval Request email to Platform Administrator
         var adminEmail = configuration["Email:AdminEmail"] ?? "admin@siddhi-mobile.local";
-        var adminSubject = $"[Action Required] New Store Registration: {request.Name}";
-        var adminBody = $@"
-<div style=""font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6;"">
-    <h2 style=""color: #0f172a;"">New Store Registration Pending Approval</h2>
-    <p>A new store has registered and is waiting for your review and approval:</p>
-    <div style=""background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 6px; margin: 16px 0;"">
-        <p style=""margin: 4px 0;""><strong>Store Name:</strong> {request.Name}</p>
-        <p style=""margin: 4px 0;""><strong>Store Slug:</strong> {normalizedSlug}</p>
-        <p style=""margin: 4px 0;""><strong>Owner Name:</strong> {request.OwnerName ?? "N/A"}</p>
-        <p style=""margin: 4px 0;""><strong>Owner Email:</strong> {request.OwnerEmail ?? "N/A"}</p>
-        <p style=""margin: 4px 0;""><strong>Owner Mobile:</strong> {request.OwnerMobile ?? "N/A"}</p>
-        <p style=""margin: 4px 0;""><strong>State / GSTIN:</strong> {request.StateCode ?? "N/A"} / {request.Gstin ?? "N/A"}</p>
-    </div>
-    <p style=""margin-top: 20px;"">
-        <a href=""{approvalsUrl}"" style=""background: #2563eb; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;"">Review in Admin Panel</a>
-    </p>
-</div>";
+        var adminTemplate = await templateStore.GetAsync(RegistrationEmailTemplate.AdminApprovalRequestKey, cancellationToken);
+        var adminSubject = RegistrationEmailTemplateRenderer.Render(adminTemplate.Subject, values, false);
+        var adminBody = RegistrationEmailTemplateRenderer.Render(adminTemplate.HtmlBody, values, true);
         await emailSender.SendAsync(adminEmail, adminSubject, adminBody, cancellationToken);
 
         return new RegisterTenantResult(

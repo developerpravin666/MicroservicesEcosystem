@@ -12,7 +12,7 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 @media print{@page{size:A4;margin:18mm}body{background:white;font-size:11pt}main{margin:0;padding:0;max-width:none}.print-tools{display:none}h2,h3{break-after:avoid}tr{break-inside:avoid}a{color:inherit;text-decoration:none}table{font-size:9pt}}
 </style></head><body><main><div class="print-tools"><button onclick="window.print()">Print / Save PDF</button></div>
 <h1 id='accounting-inventory-user-manual'>Accounting &amp; Inventory User Manual</h1>
-<p>Version: 1.15 | Updated: 12 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import &amp; Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management</p>
+<p>Version: 1.18 | Updated: 12 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import &amp; Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management</p>
 <p>For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.</p>
 <p>To share this guide, send accounting-user-manual.html. Open that file in a browser and choose Print / Save PDF for a paper or PDF copy. Keep the version and date with any distributed copy.</p>
 <h2 id='contents'>Contents</h2>
@@ -505,7 +505,7 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 </ol>
 <ul>
 <li><strong>Store / Business Name</strong>: e.g., <code>Siddhi Electronics &amp; Mobiles</code></li>
-<li><strong>Store Slug</strong>: e.g., <code>siddhi-electronics</code> (Auto-generated from store name; this is your unique login identifier)</li>
+<li><strong>Store Slug (Identifier)</strong> is disabled for editing and updates automatically from the lowercase initials of the store name&#39;s words, ignoring symbols and using at most six characters. For example, <code>Siddhi Mobile &amp; electronics</code> generates <code>sme</code>. This is your unique login identifier. If the identifier is already registered, change the store name so its initials generate a different identifier.</li>
 <li><strong>GST State Code</strong>: Select from 37 Indian states (e.g., <code>27 - Maharashtra</code>)</li>
 <li><strong>GSTIN Number</strong> *(Optional)*: 15-character GSTIN. The system automatically detects and selects your state code.</li>
 <li><strong>Store Address</strong> *(Optional)*: Physical shop address printed on sales invoices.</li>
@@ -967,7 +967,16 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 <li>Ask the store user to refresh and verify that the feature is available. Staff still need the corresponding permissions.</li>
 </ol>
 <p>Expected result: the feature setting is saved for the selected scope. A tenant override can differ from the global default; check both when diagnosing a missing screen.</p>
-<h3 id='262-inspect-database-tables'>26.2 Inspect database tables</h3>
+<h3 id='262-manage-the-registration-welcome-email'>26.2 Manage the registration welcome email</h3>
+<ol>
+<li>Sign in as the platform admin and open <strong>System Settings</strong> → <strong>Registration Welcome Email</strong>.</li>
+<li>Edit <strong>Email Subject</strong> (maximum 500 characters, one line) and <strong>Email HTML Body</strong> (maximum 50,000 characters). Use <code>{{StoreName}}</code>, <code>{{StoreSlug}}</code>, <code>{{OwnerName}}</code>, <code>{{OwnerEmail}}</code> and <code>{{OwnerMobile}}</code> for registration details. Unknown placeholders are rejected; inserted customer values are escaped in HTML.</li>
+<li>Select <strong>Preview Email</strong> to view sample content without sending an email.</li>
+<li>Select <strong>Save Email Template</strong>. Future store registrations use the saved subject and format. Settings persist in the active database across restarts.</li>
+<li>To return to the original format, select <strong>Load Default Format</strong>, then <strong>Save Email Template</strong>. Loading the default alone does not change the saved template.</li>
+</ol>
+<p>Expected result: the store owner receives the customized registration-received email through the configured email delivery mode. The original format is used until an admin saves a template. Tenant accounts cannot edit this setting.</p>
+<h3 id='263-inspect-database-tables'>26.3 Inspect database tables</h3>
 <p>Prerequisite: sign in through <strong>Admin Login</strong> with the platform admin account, also called Product Owner or super admin. <strong>Table Management</strong> appears in the admin console alongside <strong>Feature Flags</strong>. Tenant accounts cannot access this page or its table management API, including scan, classification and clearing operations. <strong>Database Tables</strong> is absent from tenant Settings. Opening either <code>/settings/database-tables</code> or <code>/admin/database-tables</code> as a tenant displays an access restriction.</p>
 <ol>
 <li>In the administrator console, open <strong>Table Management</strong>. The page title is <strong>Database Tables &amp; Classification</strong>.</li>
