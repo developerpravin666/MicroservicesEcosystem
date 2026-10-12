@@ -82,6 +82,53 @@ using (var scope = host.Services.CreateScope())
 }
 await using var connection = new NpgsqlConnection(connectionString);
 await connection.OpenAsync();
+var recoverySchema = "recovery_check_" + Guid.NewGuid().ToString("N");
+Guid? recoveryId = null;
+async Task RecoverySql(string sql) { await using var command = new NpgsqlCommand(sql, connection); await command.ExecuteNonQueryAsync(); }
+try
+{
+    await RecoverySql($"CREATE SCHEMA {recoverySchema}; CREATE TABLE {recoverySchema}.masters (id int PRIMARY KEY); CREATE TABLE {recoverySchema}.children (id int PRIMARY KEY, master_id int REFERENCES {recoverySchema}.masters); INSERT INTO {recoverySchema}.masters VALUES(1); INSERT INTO {recoverySchema}.children VALUES(2,1);");
+    recoveryId = await TableClearRecovery.ClearAsync(connectionString, recoverySchema, ["masters"], CancellationToken.None);
+    await RecoverySql($"INSERT INTO {recoverySchema}.masters VALUES(3);");
+    try { await TableClearRecovery.RestoreAsync(connectionString, recoveryId.Value, recoverySchema, CancellationToken.None); throw new Exception("Restore should reject new records."); }
+    catch (InvalidOperationException exception) when (exception.Message.Contains("new records")) { }
+    await RecoverySql($"DELETE FROM {recoverySchema}.masters WHERE id=3;");
+    await RecoverySql($"ALTER TABLE {recoverySchema}.masters ADD COLUMN changed text;");
+    try { await TableClearRecovery.RestoreAsync(connectionString, recoveryId.Value, recoverySchema, CancellationToken.None); throw new Exception("Restore should reject changed table structure."); }
+    catch (InvalidOperationException exception) when (exception.Message.Contains("structure changed")) { }
+    await RecoverySql($"ALTER TABLE {recoverySchema}.masters DROP COLUMN changed;");
+    await TableClearRecovery.RestoreAsync(connectionString, recoveryId.Value, recoverySchema, CancellationToken.None);
+    await using var count = new NpgsqlCommand($"SELECT (SELECT count(*) FROM {recoverySchema}.masters) + (SELECT count(*) FROM {recoverySchema}.children)", connection);
+    if ((long)(await count.ExecuteScalarAsync())! != 2) throw new Exception("Recovery did not restore all cascade records.");
+    Console.WriteLine("PASS: durable recovery restores master and cascade records; restore rejects new data.");
+}
+finally
+{
+    await RecoverySql($"DROP SCHEMA IF EXISTS {recoverySchema} CASCADE;");
+    if (recoveryId is { } id) {
+        await RecoverySql($"DROP SCHEMA IF EXISTS table_clear_{id:N} CASCADE;");
+        await using var remove = new NpgsqlCommand("DELETE FROM admin_table_clear.operations WHERE id=@id", connection);
+        remove.Parameters.AddWithValue("id", id); await remove.ExecuteNonQueryAsync();
+    }
+}
+// Verify clearing on temporary tables; roll back all schema and data changes.
+await using (var transaction = await connection.BeginTransactionAsync())
+{
+    var temporarySchema = "master_clear_check_" + Guid.NewGuid().ToString("N");
+    async Task Execute(string sql) {
+        await using var command = new NpgsqlCommand(sql, connection, transaction);
+        await command.ExecuteNonQueryAsync();
+    }
+    await Execute($"CREATE SCHEMA {temporarySchema}; CREATE TABLE {temporarySchema}.catalog (id int PRIMARY KEY); INSERT INTO {temporarySchema}.catalog VALUES (1); TRUNCATE TABLE {temporarySchema}.catalog RESTRICT;");
+    await using (var count = new NpgsqlCommand($"SELECT COUNT(*) FROM {temporarySchema}.catalog", connection, transaction))
+        if ((long)(await count.ExecuteScalarAsync())! != 0) throw new Exception("Standalone master clearing failed.");
+    await Execute($"INSERT INTO {temporarySchema}.catalog VALUES (1); CREATE TABLE {temporarySchema}.orders (catalog_id int REFERENCES {temporarySchema}.catalog(id)); INSERT INTO {temporarySchema}.orders VALUES (1); SAVEPOINT before_clear;");
+    await Execute($"TRUNCATE TABLE {temporarySchema}.catalog CASCADE;");
+    await using (var count = new NpgsqlCommand($"SELECT (SELECT COUNT(*) FROM {temporarySchema}.catalog) + (SELECT COUNT(*) FROM {temporarySchema}.orders)", connection, transaction))
+        if ((long)(await count.ExecuteScalarAsync())! != 0) throw new Exception("Master clearing must also clear dependent records with CASCADE.");
+    await transaction.RollbackAsync();
+    Console.WriteLine("PASS: master clearing succeeds and clears dependent records with CASCADE.");
+}
 var schemas = new List<string>();
 await using (var command = new NpgsqlCommand("SELECT DISTINCT schema_name FROM tenant.tenants WHERE is_active AND NOT is_deleted", connection))
 await using (var reader = await command.ExecuteReaderAsync())

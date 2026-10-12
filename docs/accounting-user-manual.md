@@ -1,6 +1,6 @@
 # Accounting & Inventory User Manual
 
-Version: 1.12 | Updated: 12 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.15 | Updated: 12 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
 For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.
 
@@ -992,6 +992,10 @@ Prerequisite: sign in through **Admin Login** with the platform admin account, a
 3. Select **Scan & Sync DB** to refresh the table registry for that schema.
 4. Search by table name, category or description. Use **All Types**, **Master**, **Data** and the category filter to narrow the list.
 5. Review the table classifications and row information for administration or support.
+
+To remove records from an individual Master or Data table, select **Clear Data** and confirm. A Master table requires typing its exact table name. Use row checkboxes (or the header checkbox for visible tables), then **Clear Selected**, review the listed tables and schema, type **CLEAR SELECTED TABLES**, and confirm. **Clear All Tables** requires **CLEAR ALL TABLES**. Related tables may also be cleared by foreign-key relationships. Internal system tables and migration history are excluded. Table structures and classifications remain.
+
+Each clear saves a database recovery copy before removing records. Select **Revert Last Clear**, type **RESTORE DATA**, and confirm to restore the latest clear for the selected schema, including related records. The revert option persists across page reloads in the same browser. Restore is blocked if any affected table contains new records; it does not overwrite newer work. Recovery survives API restarts but depends on the saved database copy and unchanged table structure. Circular non-deferrable foreign keys can block restore. Keep independent backups for long-term recovery. Successful restoration consumes that recovery operation.
 
 If loading fails, the page shows **Failed to load tables** and stops loading without continuously retrying. For a 404 error, ask support to verify that the API gateway points to the current Accounting Inventory service with the table management endpoints. Once the service is restored, reload the page.
 

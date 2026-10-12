@@ -183,10 +183,11 @@ public static class TableRegistryEndpoints
         })
         .WithName("SyncTableRegistry");
 
-        // 4. POST /api/admin/tables/{tableName}/clear - Clear specific Data table (BLOCKED for Master tables)
+        // 4. Clear a specific table; master tables require explicit confirmation.
         group.MapPost("/{tableName}/clear", async (
             string tableName,
             [FromQuery] string? schema,
+            [FromBody] ClearTableRequest request,
             TenantDbContext tenantDb,
             ITenantContext? tenantContext,
             CancellationToken ct) =>
@@ -202,14 +203,14 @@ public static class TableRegistryEndpoints
                 return Results.NotFound(new { message = $"Table '{tableName}' not found in registry for schema '{targetSchema}'." });
             }
 
-            // CRITICAL INTEGRITY CHECK: Master tables must never be deleted!
-            if (string.Equals(table.TableType, "Master", StringComparison.OrdinalIgnoreCase))
+            var isMaster = string.Equals(table.TableType, "Master", StringComparison.OrdinalIgnoreCase);
+            if (isMaster && !string.Equals(request.ConfirmTableName, tableName, StringComparison.Ordinal))
             {
                 return Results.BadRequest(new
                 {
                     success = false,
-                    error = "PROTECTED_MASTER_TABLE",
-                    message = $"Cannot clear data from Master table '{tableName}'. Master tables are strictly protected to safeguard reference catalogs (brands, models, taxes, etc.). If you genuinely intend to delete records from this table, update its table type to 'Data' first."
+                    error = "MASTER_TABLE_CONFIRMATION_REQUIRED",
+                    message = $"Type the exact table name '{tableName}' to confirm deletion of its master records."
                 });
             }
 
@@ -231,29 +232,13 @@ public static class TableRegistryEndpoints
                 return Results.BadRequest(new { message = "Invalid schema or table identifier." });
             }
 
-            await using (var conn = new NpgsqlConnection(connectionString))
-            {
-                await conn.OpenAsync(ct);
-                await using var tx = await conn.BeginTransactionAsync(ct);
-                try
-                {
-                    await using var cmd = conn.CreateCommand();
-                    cmd.Transaction = tx;
-                    cmd.CommandText = $"TRUNCATE TABLE \"{targetSchema}\".\"{tableName}\" CASCADE;";
-                    await cmd.ExecuteNonQueryAsync(ct);
-                    await tx.CommitAsync(ct);
-                }
-                catch
-                {
-                    await tx.RollbackAsync(ct);
-                    throw;
-                }
-            }
+            var operationId = await TableClearRecovery.ClearAsync(connectionString, targetSchema, [tableName], ct);
 
             return Results.Ok(new
             {
                 success = true,
-                message = $"Successfully cleared all data from table '{tableName}' in schema '{targetSchema}'. Master reference tables remained protected.",
+                message = $"Successfully cleared all data from table '{tableName}' in schema '{targetSchema}'.",
+                operationId,
                 tableName,
                 schema = targetSchema,
                 rowCount = 0
@@ -261,14 +246,18 @@ public static class TableRegistryEndpoints
         })
         .WithName("ClearDataTable");
 
-        // 5. POST /api/admin/tables/clear-all-data - Bulk clear all Data tables (Master tables remain protected)
+        // 5. POST /api/admin/tables/clear-all-data - Bulk clear both Master and Data tables
         group.MapPost("/clear-all-data", async (
             [FromQuery] string? schema,
+            [FromBody] ClearAllTablesRequest request,
             TenantDbContext tenantDb,
             ITenantContext? tenantContext,
             CancellationToken ct) =>
         {
             var targetSchema = ResolveTargetSchema(schema, tenantContext, tenantDb);
+            var conf = request.Confirmation?.Trim().ToUpperInvariant();
+            if (conf != "CLEAR ALL TABLES" && conf != "DELETE ALL" && conf != "DELETE")
+                return Results.BadRequest(new { message = "Type 'DELETE' or 'CLEAR ALL TABLES' to confirm deletion of Master and Data records." });
             await EnsureSchemaSyncedAsync(tenantDb, targetSchema, ct);
 
             var allTables = await tenantDb.TableRegistries
@@ -276,67 +265,289 @@ public static class TableRegistryEndpoints
                 .Where(t => t.SchemaName == targetSchema)
                 .ToListAsync(ct);
 
-            var dataTables = allTables
-                .Where(t => string.Equals(t.TableType, "Data", StringComparison.OrdinalIgnoreCase) && !t.IsSystem && !t.TableName.StartsWith("__"))
+            var eligibleTables = allTables
+                .Where(t => t.TableName != "table_registry" && !t.TableName.StartsWith("__"))
                 .Select(t => t.TableName)
                 .ToList();
 
-            var masterTables = allTables
-                .Where(t => string.Equals(t.TableType, "Master", StringComparison.OrdinalIgnoreCase))
+            var systemTables = allTables
+                .Where(t => t.TableName == "table_registry" || t.TableName.StartsWith("__"))
                 .Select(t => t.TableName)
                 .ToList();
 
-            if (dataTables.Count == 0)
+            if (eligibleTables.Count == 0)
             {
                 return Results.Ok(new
                 {
                     success = true,
-                    message = "No eligible Data tables found to clear.",
+                    message = "No eligible tables found to clear.",
                     clearedTables = Array.Empty<string>(),
-                    preservedMasterTables = masterTables
+                    preservedSystemTables = systemTables
                 });
             }
 
             var connectionString = tenantDb.Database.GetConnectionString()
                 ?? throw new InvalidOperationException("Database connection string not configured.");
 
-            if (!IsValidSqlIdentifier(targetSchema) || !dataTables.All(IsValidSqlIdentifier))
+            if (!IsValidSqlIdentifier(targetSchema) || !eligibleTables.All(IsValidSqlIdentifier))
             {
                 return Results.BadRequest(new { message = "Invalid schema or table identifier." });
             }
 
-            var truncateStatements = string.Join(", ", dataTables.Select(t => $"\"{targetSchema}\".\"{t}\""));
-
-            await using (var conn = new NpgsqlConnection(connectionString))
-            {
-                await conn.OpenAsync(ct);
-                await using var tx = await conn.BeginTransactionAsync(ct);
-                try
-                {
-                    await using var cmd = conn.CreateCommand();
-                    cmd.Transaction = tx;
-                    cmd.CommandText = $"TRUNCATE TABLE {truncateStatements} CASCADE;";
-                    await cmd.ExecuteNonQueryAsync(ct);
-                    await tx.CommitAsync(ct);
-                }
-                catch
-                {
-                    await tx.RollbackAsync(ct);
-                    throw;
-                }
-            }
+            var operationId = await TableClearRecovery.ClearAsync(connectionString, targetSchema, eligibleTables, ct);
 
             return Results.Ok(new
             {
                 success = true,
-                message = $"Successfully cleared data from {dataTables.Count} Data tables in schema '{targetSchema}'. All {masterTables.Count} Master tables remain safely preserved.",
-                clearedCount = dataTables.Count,
-                clearedTables = dataTables,
-                preservedCount = masterTables.Count,
-                preservedMasterTables = masterTables
+                message = $"Successfully cleared data from {eligibleTables.Count} tables (Master and Data) in schema '{targetSchema}'.",
+                operationId,
+                clearedCount = eligibleTables.Count,
+                clearedTables = eligibleTables,
+                preservedCount = systemTables.Count,
+                preservedSystemTables = systemTables
             });
         })
         .WithName("ClearAllDataTables");
+
+        group.MapPost("/clear-selected", async ([FromBody] ClearSelectedTablesRequest request,
+            [FromQuery] string schema, TenantDbContext db, CancellationToken ct) =>
+        {
+            if (request.Tables is null || request.Tables.Length == 0 || !IsValidSqlIdentifier(schema))
+                return Results.BadRequest(new { message = "Please select at least one table to delete records from." });
+
+            var conf = request.Confirmation?.Trim().ToUpperInvariant();
+            if (conf != "CLEAR SELECTED TABLES" && conf != "DELETE" && conf != "CONFIRM" && conf != "DELETE SELECTED")
+                return Results.BadRequest(new { message = "Select tables and type 'DELETE' or 'CLEAR SELECTED TABLES' to confirm." });
+
+            var names = request.Tables.Distinct().ToArray();
+            var allowed = await db.TableRegistries.Where(t => t.SchemaName == schema && names.Contains(t.TableName)
+                && t.TableName != "table_registry" && !t.TableName.StartsWith("__")).Select(t => t.TableName).ToListAsync(ct);
+            if (allowed.Count != names.Length || !names.All(IsValidSqlIdentifier))
+                return Results.BadRequest(new { message = "The selection includes unknown or protected tables." });
+            var id = await TableClearRecovery.ClearAsync(db.Database.GetConnectionString()!, schema, names, ct);
+            return Results.Ok(new {
+                success = true,
+                operationId = id,
+                deletedTables = names,
+                message = $"Successfully deleted data from {names.Length} selected table(s). A recovery copy was saved."
+            });
+        });
+        group.MapPost("/restore/{operationId:guid}", async (Guid operationId, [FromQuery] string schema,
+            [FromBody] RestoreTablesRequest request, TenantDbContext db, CancellationToken ct) =>
+        {
+            if (request.Confirmation != "RESTORE DATA") return Results.BadRequest(new { message = "Type RESTORE DATA to confirm." });
+            try { await TableClearRecovery.RestoreAsync(db.Database.GetConnectionString()!, operationId, schema, ct); }
+            catch (InvalidOperationException ex) { return Results.Conflict(new { message = ex.Message }); }
+            catch (PostgresException) { return Results.Conflict(new { message = "Restore could not be completed with the current database structure or constraints. No records were changed; the recovery copy was retained." }); }
+            return Results.Ok(new { message = "Cleared records were restored." });
+        });
+
+        // 6. GET /api/admin/tables/{tableName}/records - Paginated view of table records
+        group.MapGet("/{tableName}/records", async (
+            string tableName,
+            [FromQuery] string? schema,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
+            [FromQuery] string? search,
+            TenantDbContext tenantDb,
+            ITenantContext? tenantContext,
+            CancellationToken ct) =>
+        {
+            var targetSchema = ResolveTargetSchema(schema, tenantContext, tenantDb);
+            if (!IsValidSqlIdentifier(targetSchema) || !IsValidSqlIdentifier(tableName))
+                return Results.BadRequest(new { message = "Invalid schema or table identifier." });
+
+            var connectionString = tenantDb.Database.GetConnectionString()
+                ?? throw new InvalidOperationException("Database connection string not configured.");
+
+            int currentPage = Math.Max(1, page ?? 1);
+            int take = Math.Clamp(pageSize ?? 25, 1, 100);
+            int offset = (currentPage - 1) * take;
+
+            await using var conn = new NpgsqlConnection(connectionString);
+            await conn.OpenAsync(ct);
+
+            // Fetch Columns
+            var columns = new List<TableColumnMetaDto>();
+            await using (var colCmd = new NpgsqlCommand(@"
+                SELECT column_name, data_type, is_nullable
+                FROM information_schema.columns
+                WHERE table_schema = @schema AND table_name = @table
+                ORDER BY ordinal_position", conn))
+            {
+                colCmd.Parameters.AddWithValue("schema", targetSchema);
+                colCmd.Parameters.AddWithValue("table", tableName);
+                await using var reader = await colCmd.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
+                {
+                    columns.Add(new TableColumnMetaDto(
+                        reader.GetString(0),
+                        reader.GetString(1),
+                        reader.GetString(2) == "YES"
+                    ));
+                }
+            }
+
+            if (columns.Count == 0)
+                return Results.NotFound(new { message = $"Table '{targetSchema}.{tableName}' not found or has no columns." });
+
+            // Identify Primary Key
+            string? pkColumn = null;
+            await using (var pkCmd = new NpgsqlCommand(@"
+                SELECT kcu.column_name
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu 
+                  ON tc.constraint_name = kcu.constraint_name 
+                 AND tc.table_schema = kcu.table_schema
+                WHERE tc.constraint_type = 'PRIMARY KEY' 
+                  AND tc.table_schema = @schema 
+                  AND tc.table_name = @table
+                LIMIT 1", conn))
+            {
+                pkCmd.Parameters.AddWithValue("schema", targetSchema);
+                pkCmd.Parameters.AddWithValue("table", tableName);
+                var pkObj = await pkCmd.ExecuteScalarAsync(ct);
+                if (pkObj != null && pkObj != DBNull.Value)
+                    pkColumn = pkObj.ToString();
+            }
+
+            pkColumn ??= columns.FirstOrDefault(c => c.Name.Equals("id", StringComparison.OrdinalIgnoreCase))?.Name ?? columns[0].Name;
+
+            // Count Total
+            long totalCount = 0;
+            string countSql = $"SELECT COUNT(*) FROM \"{targetSchema}\".\"{tableName}\"";
+            var textCols = columns.Where(c => c.DataType.Contains("char") || c.DataType.Contains("text")).Take(5).ToList();
+            if (!string.IsNullOrWhiteSpace(search) && textCols.Count > 0)
+            {
+                var searchClauses = string.Join(" OR ", textCols.Select(c => $"\"{c.Name}\"::text ILIKE @search"));
+                countSql += $" WHERE ({searchClauses})";
+            }
+
+            await using (var countCmd = new NpgsqlCommand(countSql, conn))
+            {
+                if (!string.IsNullOrWhiteSpace(search) && textCols.Count > 0)
+                    countCmd.Parameters.AddWithValue("search", $"%{search.Trim()}%");
+                var cnt = await countCmd.ExecuteScalarAsync(ct);
+                totalCount = Convert.ToInt64(cnt);
+            }
+
+            // Fetch Rows
+            var records = new List<Dictionary<string, object?>>();
+            string selectSql = $"SELECT * FROM \"{targetSchema}\".\"{tableName}\"";
+            if (!string.IsNullOrWhiteSpace(search) && textCols.Count > 0)
+            {
+                var searchClauses = string.Join(" OR ", textCols.Select(c => $"\"{c.Name}\"::text ILIKE @search"));
+                selectSql += $" WHERE ({searchClauses})";
+            }
+            selectSql += $" ORDER BY \"{pkColumn}\" DESC LIMIT @limit OFFSET @offset";
+
+            await using (var selectCmd = new NpgsqlCommand(selectSql, conn))
+            {
+                if (!string.IsNullOrWhiteSpace(search) && textCols.Count > 0)
+                    selectCmd.Parameters.AddWithValue("search", $"%{search.Trim()}%");
+                selectCmd.Parameters.AddWithValue("limit", take);
+                selectCmd.Parameters.AddWithValue("offset", offset);
+
+                await using var reader = await selectCmd.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
+                {
+                    var row = new Dictionary<string, object?>();
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        var colName = reader.GetName(i);
+                        var val = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                        if (val is DateTime dt)
+                            val = dt.ToString("o");
+                        else if (val is DateTimeOffset dto)
+                            val = dto.ToString("o");
+                        else if (val is Guid g)
+                            val = g.ToString();
+                        else if (val is byte[] bytes)
+                            val = Convert.ToBase64String(bytes);
+
+                        row[colName] = val;
+                    }
+                    records.Add(row);
+                }
+            }
+
+            return Results.Ok(new TableRecordsResult(
+                targetSchema,
+                tableName,
+                pkColumn,
+                columns,
+                totalCount,
+                currentPage,
+                take,
+                (int)Math.Ceiling((double)totalCount / take),
+                records
+            ));
+        })
+        .WithName("GetTableRecords");
+
+        // 7. POST /api/admin/tables/{tableName}/delete-records - Delete specific individual records
+        group.MapPost("/{tableName}/delete-records", async (
+            string tableName,
+            [FromQuery] string? schema,
+            [FromBody] DeleteRecordsRequest request,
+            TenantDbContext tenantDb,
+            ITenantContext? tenantContext,
+            CancellationToken ct) =>
+        {
+            var targetSchema = ResolveTargetSchema(schema, tenantContext, tenantDb);
+            if (!IsValidSqlIdentifier(targetSchema) || !IsValidSqlIdentifier(tableName))
+                return Results.BadRequest(new { message = "Invalid schema or table identifier." });
+
+            if (string.IsNullOrWhiteSpace(request?.KeyColumn) || !IsValidSqlIdentifier(request.KeyColumn))
+                return Results.BadRequest(new { message = "Invalid key column identifier." });
+
+            if (request.RecordKeys == null || request.RecordKeys.Length == 0)
+                return Results.BadRequest(new { message = "No record keys provided for deletion." });
+
+            var table = await tenantDb.TableRegistries
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.SchemaName == targetSchema && t.TableName == tableName, ct);
+
+            if (table != null && (table.IsSystem || tableName.StartsWith("__")))
+                return Results.BadRequest(new { message = $"Cannot delete records from internal system table '{tableName}'." });
+
+            var connectionString = tenantDb.Database.GetConnectionString()
+                ?? throw new InvalidOperationException("Database connection string not configured.");
+
+            await using var conn = new NpgsqlConnection(connectionString);
+            await conn.OpenAsync(ct);
+
+            try
+            {
+                string deleteSql = $"DELETE FROM \"{targetSchema}\".\"{tableName}\" WHERE \"{request.KeyColumn}\"::text = ANY(@keys)";
+                await using var cmd = new NpgsqlCommand(deleteSql, conn);
+                cmd.Parameters.AddWithValue("keys", request.RecordKeys);
+
+                var affected = await cmd.ExecuteNonQueryAsync(ct);
+                return Results.Ok(new {
+                    success = true,
+                    deletedCount = affected,
+                    message = $"Successfully deleted {affected} record(s) from '{targetSchema}.{tableName}'."
+                });
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
+            {
+                return Results.Conflict(new {
+                    success = false,
+                    error = "FOREIGN_KEY_VIOLATION",
+                    message = "One or more records cannot be deleted because other dependent records reference them (Foreign Key constraint)."
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new {
+                    success = false,
+                    error = "DELETE_FAILED",
+                    message = ex.Message
+                });
+            }
+        })
+        .WithName("DeleteTableRecords");
 
         return group;
     }
@@ -379,12 +590,19 @@ public static class TableRegistryEndpoints
         var sql = @"
             DO $$
             BEGIN
+                UPDATE tenant.table_registry
+                SET is_system = (table_name LIKE '__%' OR table_name = 'table_registry')
+                WHERE schema_name = '" + schemaName + @"';
+
                 IF EXISTS (
                     SELECT 1 FROM pg_proc p 
                     JOIN pg_namespace n ON p.pronamespace = n.oid 
                     WHERE n.nspname = 'tenant' AND p.proname = 'sync_table_registry'
                 ) THEN
                     PERFORM tenant.sync_table_registry('" + schemaName + @"');
+                    UPDATE tenant.table_registry
+                    SET is_system = (table_name LIKE '__%' OR table_name = 'table_registry')
+                    WHERE schema_name = '" + schemaName + @"';
                 ELSE
                     -- Fallback: insert directly from information_schema
                     INSERT INTO tenant.table_registry (id, schema_name, table_name, display_name, table_type, category, description, is_system, created_at)
@@ -443,6 +661,11 @@ public sealed record UpdateTableTypeRequest(
     string? Description = null,
     string? Schema = null);
 
+public sealed record ClearTableRequest(string? ConfirmTableName = null);
+public sealed record ClearAllTablesRequest(string? Confirmation = null);
+public sealed record ClearSelectedTablesRequest(string[] Tables, string? Confirmation);
+public sealed record RestoreTablesRequest(string? Confirmation);
+
 public sealed record TableRegistryDto(
     Guid Id,
     string SchemaName,
@@ -464,4 +687,20 @@ public sealed record TableRegistryDashboardResult(
     int DataTables,
     long TotalDataRecords,
     IReadOnlyList<TableRegistryDto> Tables);
+
+public sealed record DeleteRecordsRequest(string KeyColumn, string[] RecordKeys);
+
+public sealed record TableColumnMetaDto(string Name, string DataType, bool IsNullable);
+
+public sealed record TableRecordsResult(
+    string Schema,
+    string TableName,
+    string PrimaryKeyColumn,
+    IReadOnlyList<TableColumnMetaDto> Columns,
+    long TotalRecords,
+    int Page,
+    int PageSize,
+    int TotalPages,
+    IReadOnlyList<Dictionary<string, object?>> Records);
+
 
