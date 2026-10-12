@@ -9,31 +9,37 @@ namespace AccountingInventory.Infrastructure.Persistence;
 
 internal static class TenantSchemaMigrator
 {
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> SchemaLocks = new();
+
     public static async Task MigrateAsync(
         string connectionString,
         string schemaName,
         CancellationToken cancellationToken)
     {
         TenantSchemaNameValidator.EnsureValid(schemaName);
-        var tenantProvider = new StaticTenantProvider(schemaName);
-        var tenantConnectionString = CreateTenantConnectionString(connectionString, schemaName);
+        var semaphore = SchemaLocks.GetOrAdd(schemaName, _ => new SemaphoreSlim(1, 1));
+        await semaphore.WaitAsync(cancellationToken);
+        try
+        {
+            var tenantProvider = new StaticTenantProvider(schemaName);
+            var tenantConnectionString = CreateTenantConnectionString(connectionString, schemaName);
 
-        var options = new DbContextOptionsBuilder<AccountingInventoryDbContext>()
-            .UseNpgsql(
-                tenantConnectionString,
-                npgsql => npgsql.MigrationsHistoryTable("__TenantSchemaHistory", tenantProvider.SchemaName))
-            .UseSnakeCaseNamingConvention()
-            .ReplaceService<IModelCacheKeyFactory, TenantModelCacheKeyFactory>()
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .Options;
+            var options = new DbContextOptionsBuilder<AccountingInventoryDbContext>()
+                .UseNpgsql(
+                    tenantConnectionString,
+                    npgsql => npgsql.MigrationsHistoryTable("__TenantSchemaHistory", tenantProvider.SchemaName))
+                .UseSnakeCaseNamingConvention()
+                .ReplaceService<IModelCacheKeyFactory, TenantModelCacheKeyFactory>()
+                .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
+                .Options;
 
-        await using var applicationDbContext = new AccountingInventoryDbContext(options, tenantProvider);
+            await using var applicationDbContext = new AccountingInventoryDbContext(options, tenantProvider);
 
-        // PostgreSQL identifiers cannot be parameters. Validation guarantees this
-        // value is a valid tenant-schema identifier before it is interpolated.
-        await applicationDbContext.Database.ExecuteSqlRawAsync(
-            $"CREATE SCHEMA IF NOT EXISTS \"{tenantProvider.SchemaName}\";", cancellationToken);
-        await applicationDbContext.Database.MigrateAsync(cancellationToken);
+            // PostgreSQL identifiers cannot be parameters. Validation guarantees this
+            // value is a valid tenant-schema identifier before it is interpolated.
+            await applicationDbContext.Database.ExecuteSqlRawAsync(
+                $"CREATE SCHEMA IF NOT EXISTS \"{tenantProvider.SchemaName}\";", cancellationToken);
+            await applicationDbContext.Database.MigrateAsync(cancellationToken);
 
         // Idempotent safety fallback executed inside an explicit database transaction:
         // ensures staging tables and indexes exist even if historical schemas were bootstrapped
@@ -127,6 +133,11 @@ internal static class TenantSchemaMigrator
             throw;
         }
     }
+    finally
+    {
+        semaphore.Release();
+    }
+}
 
     internal static string CreateTenantConnectionString(string connectionString, string schemaName)
     {

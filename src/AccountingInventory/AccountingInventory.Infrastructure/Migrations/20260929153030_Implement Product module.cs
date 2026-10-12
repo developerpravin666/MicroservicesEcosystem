@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,42 +11,42 @@ namespace AccountingInventory.Infrastructure.Migrations.AccountingInventoryDb
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "products",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    vendor_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    brand_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    product_type_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    product_model_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    variant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    color_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    serial_number = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    serial_number1 = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    quantity = table.Column<int>(type: "integer", nullable: false),
-                    purchase_price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    discount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    cgst = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: false),
-                    sgst = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: false),
-                    tax = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    modified_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    modified_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_products", x => x.id);
-                });
+            migrationBuilder.Sql(@"
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.tables 
+                        WHERE table_schema = current_schema() AND table_name = 'products'
+                    ) THEN
+                        CREATE TABLE products (
+                            id uuid NOT NULL,
+                            vendor_id uuid NOT NULL,
+                            brand_id uuid NOT NULL,
+                            product_type_id uuid NOT NULL,
+                            product_model_id uuid NOT NULL,
+                            variant_id uuid NOT NULL,
+                            color_id uuid NOT NULL,
+                            serial_number character varying(100) NOT NULL,
+                            serial_number1 character varying(100),
+                            quantity integer NOT NULL,
+                            purchase_price numeric(18,2) NOT NULL,
+                            discount numeric(18,2) NOT NULL,
+                            cgst numeric(5,2) NOT NULL,
+                            sgst numeric(5,2) NOT NULL,
+                            tax numeric(5,2) NOT NULL,
+                            created_at timestamp with time zone NOT NULL,
+                            created_by uuid,
+                            modified_at timestamp with time zone,
+                            modified_by uuid,
+                            is_active boolean NOT NULL,
+                            is_deleted boolean NOT NULL,
+                            CONSTRAINT pk_products PRIMARY KEY (id)
+                        );
+                    END IF;
+                END $$;
+            ");
 
-            migrationBuilder.CreateIndex(
-                name: "ix_products_serial_number",
-                table: "products",
-                column: "serial_number",
-                unique: true);
+            migrationBuilder.Sql("CREATE UNIQUE INDEX IF NOT EXISTS ix_products_serial_number ON products (serial_number);");
         }
 
         /// <inheritdoc />
