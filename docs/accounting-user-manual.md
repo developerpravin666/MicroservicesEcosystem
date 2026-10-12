@@ -1,6 +1,6 @@
 # Accounting & Inventory User Manual
 
-Version: 1.18 | Updated: 12 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.19 | Updated: 12 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
 For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.
 
@@ -46,6 +46,8 @@ To share this guide, send accounting-user-manual.html. Open that file in a brows
 1. For a new account, open the invitation email and follow the activation link. Invitations expire after 24 hours and can be used once.
 2. Set a password containing at least 12 characters, including an uppercase letter, a lowercase letter and a number.
 3. Open the sign-in page. Enter your Tenant slug, Username and Password, then sign in.
+After signing in, the header shows your tenant name and an icon with its first letter. Existing saved sessions show the Tenant slug until you sign out and sign in again. The footer also shows your tenant name.
+
 4. Expand the sidebar sections to find Product, Purchase, Sale, Accounting and Settings.
 5. Ask the owner for the permissions needed for your work. Activation alone does not give staff permission to enter transactions.
 

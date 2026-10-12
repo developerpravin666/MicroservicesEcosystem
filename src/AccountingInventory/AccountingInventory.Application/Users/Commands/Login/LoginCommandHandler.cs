@@ -113,6 +113,6 @@ public sealed class LoginCommandHandler(
             "User {UserId} ({UserName}) logged in to tenant {TenantId} with roles [{Roles}].",
             user.Id, user.UserName, tenant.Id, string.Join(", ", roleNames));
 
-        return new LoginResult(user.Id, tenant.Id, pair.AccessToken, pair.RefreshToken, pair.AccessTokenExpiresAtUtc);
+        return new LoginResult(user.Id, tenant.Id, pair.AccessToken, pair.RefreshToken, pair.AccessTokenExpiresAtUtc, tenant.Name);
     }
 }
