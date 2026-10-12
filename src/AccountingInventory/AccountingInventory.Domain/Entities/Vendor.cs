@@ -16,13 +16,14 @@ public sealed class Vendor : AggregateRoot
     // Properties changed from 'init' to 'private set' to support mutations via domain methods
     public string Name { get; private set; } = null!;
     public string Code { get; private set; } = null!;
+    public string? GstNumber { get; private set; }
     public string Mobile { get; private set; } = null!;
     public string Email { get; private set; } = null!;
     public string? Description { get; private set; }
     public string? Address { get; private set; }
 
     public static Vendor Create(string name, string code, string mobile, string email,
-        string? description = null, string? address = null)
+        string? description = null, string? address = null, string? gstNumber = null)
     {
         ValidateInput(name, code, mobile, email);
 
@@ -31,6 +32,7 @@ public sealed class Vendor : AggregateRoot
             Id = Guid.NewGuid(),
             Name = name.Trim(),
             Code = code.Trim(),
+            GstNumber = NormalizeGst(gstNumber),
             Mobile = mobile.Trim(),
             Email = email.Trim(),
             IsActive = true,
@@ -43,13 +45,8 @@ public sealed class Vendor : AggregateRoot
     /// Updates the vendor's core details with validation constraints.
     /// </summary>
     public static Vendor Update(Guid id, string name, string code, string mobile, string email, bool isActive,
-        string? description = null, string? address = null)
+        string? description = null, string? address = null, string? gstNumber = null)
     {
-        //if (IsDeleted)
-        //{
-        //    throw new AccountingInventoryDomainException("Cannot update a deleted vendor.");
-        //}
-
         ValidateInput(name, code, mobile, email);
 
         return new Vendor
@@ -57,14 +54,19 @@ public sealed class Vendor : AggregateRoot
             Id = id,
             Name = name.Trim(),
             Code = code.Trim(),
+            GstNumber = NormalizeGst(gstNumber),
             Mobile = mobile.Trim(),
             Email = email.Trim(),
             IsActive = isActive,
             Description = description?.Trim(),
             Address = address?.Trim()
         };
-        // If your AggregateRoot base class has a tracked modified date, update it here
-        // UpdatedAt = DateTime.UtcNow; 
+    }
+
+    private static string? NormalizeGst(string? gst)
+    {
+        if (string.IsNullOrWhiteSpace(gst)) return null;
+        return gst.Trim().ToUpperInvariant();
     }
 
     /// <summary>

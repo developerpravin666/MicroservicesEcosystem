@@ -15,7 +15,7 @@ public sealed class GetVendorByIdQueryHandler(IAccountingInventoryDbContext acco
             .FirstOrDefaultAsync(t => t.Id== request.Id, cancellationToken)
             ?? throw new NotFoundException($"No vendor exists.");
 
-        return new VendorSummary(vendor.Id, vendor.Name, vendor.Code, vendor.Mobile, vendor.Email, vendor.Description, vendor.Address, vendor.IsActive);
+        return new VendorSummary(vendor.Id, vendor.Name, vendor.Code, vendor.Mobile, vendor.Email, vendor.Description, vendor.Address, vendor.IsActive, vendor.GstNumber);
     }
 
 }

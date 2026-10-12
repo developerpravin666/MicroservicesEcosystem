@@ -17,6 +17,7 @@ public sealed class VendorConfiguration : IEntityTypeConfiguration<Vendor>
         builder.Property(u => u.Mobile).IsRequired().HasMaxLength(20);
         builder.Property(u => u.Email).IsRequired().HasMaxLength(256);
         builder.Property(u => u.Code).IsRequired();
+        builder.Property(u => u.GstNumber).HasMaxLength(20);
 
         builder.HasIndex(u => u.Code).IsUnique();
         builder.HasIndex(u => u.Email).IsUnique();

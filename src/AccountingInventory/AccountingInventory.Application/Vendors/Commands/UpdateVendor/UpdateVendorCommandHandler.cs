@@ -29,7 +29,7 @@ public sealed class UpdateVendorCommandHandler(
         }
 
         var vendor = Vendor.Update(request.Id, request.Name, request.Code, request.Mobile, request.Email, request.IsActive,
-            request.Description, request.Address);
+            request.Description, request.Address, request.GstNumber);
 
         accountingInventoryDbContext.Vendors.Update(vendor);
         await accountingInventoryDbContext.SaveChangesAsync(cancellationToken);
@@ -38,6 +38,6 @@ public sealed class UpdateVendorCommandHandler(
             "Vendor {VendorId} - ({Name}) - {Code} update successfully.",
             vendor.Id, vendor.Name, vendor.Code);
 
-        return new UpdateVendorResult(vendor.Id, vendor.Name, vendor.Code, vendor.Mobile, vendor.Email, vendor.IsActive, vendor.Description!, vendor.Address!);
+        return new UpdateVendorResult(vendor.Id, vendor.Name, vendor.Code, vendor.Mobile, vendor.Email, vendor.IsActive, vendor.Description!, vendor.Address!, vendor.GstNumber);
     }
 }

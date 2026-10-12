@@ -28,7 +28,7 @@ public sealed class AddVendorCommandHandler(
             throw new ConflictException($"A vendor with code '{normalizedCode}' already exists.");
         }
 
-        var vendor = Vendor.Create(request.Name, request.Code, request.Mobile, request.Email, request.Description, request.Address);
+        var vendor = Vendor.Create(request.Name, request.Code, request.Mobile, request.Email, request.Description, request.Address, request.GstNumber);
 
         vendor.Activate();
         accountingInventoryDbContext.Vendors.Add(vendor);
@@ -38,17 +38,6 @@ public sealed class AddVendorCommandHandler(
             "Vendor {VendorId} - ({Name}) - {Code} added successfully.",
             vendor.Id, vendor.Name, vendor.Code);
 
-       
-        //await schemaProvisioner.ProvisionAsync(tenant.Id, tenant.SchemaName, cancellationToken);       
-        //await db.SaveChangesAsync(cancellationToken);
-
-        //tenant.Activate();
-        //await db.SaveChangesAsync(cancellationToken);
-
-        //logger.LogInformation(
-        //    "Vendor {VendorId} ({Name}) fully provisioned and activated: schema {SchemaName}, default roles Admin/User seeded.",
-        //    tenant.Id, tenant.Name, tenant.SchemaName);
-
-        return new AddVendorResult(vendor.Id, vendor.Name, vendor.Code, vendor.Mobile, vendor.Email, vendor.Description!, vendor.Address!);
+        return new AddVendorResult(vendor.Id, vendor.Name, vendor.Code, vendor.Mobile, vendor.Email, vendor.Description!, vendor.Address!, vendor.GstNumber);
     }
 }

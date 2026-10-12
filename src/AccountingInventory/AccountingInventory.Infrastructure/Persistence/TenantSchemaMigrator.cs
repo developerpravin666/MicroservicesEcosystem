@@ -113,6 +113,9 @@ internal static class TenantSchemaMigrator
                 CREATE INDEX IF NOT EXISTS ix_master_import_staging_rows_batch_id_row_index
                     ON ""{tenantProvider.SchemaName}"".master_import_staging_rows (batch_id, row_index);
 
+                ALTER TABLE ""{tenantProvider.SchemaName}"".vendors 
+                    ADD COLUMN IF NOT EXISTS gst_number character varying(20);
+
                 DO $$
                 BEGIN
                     IF EXISTS (
