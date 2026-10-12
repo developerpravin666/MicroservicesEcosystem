@@ -3,6 +3,7 @@ using AccountingInventory.Application.Abstractions;
 using AccountingInventory.Domain.Entities;
 using AccountingInventory.Infrastructure.Persistence;
 using BuildingBlocks.Domain.MultiTenancy;
+using BuildingBlocks.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -13,7 +14,10 @@ public static class TableRegistryEndpoints
 {
     public static RouteGroupBuilder MapTableRegistryEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/admin/tables").WithTags("Table Management");
+        var group = app.MapGroup("/api/admin/tables").WithTags("Table Management")
+            .RequireAuthorization(policy => policy.RequireAuthenticatedUser()
+                .RequireRole("ProductOwner", "SuperAdmin")
+                .RequireClaim(TenantClaimTypes.TenantId, Guid.Empty.ToString()));
 
         // 1. GET /api/admin/tables - List all tables with live row counts & KPI summary
         group.MapGet("/", async (
@@ -97,7 +101,7 @@ public static class TableRegistryEndpoints
 
             return Results.Ok(resultSummary);
         })
-        .WithName("GetTableRegistry").AllowAnonymous()
+        .WithName("GetTableRegistry")
         .Produces<TableRegistryDashboardResult>();
 
         // 2. PUT /api/admin/tables/{tableName}/type - Update table type (Master <-> Data)
@@ -159,7 +163,7 @@ public static class TableRegistryEndpoints
                 table = record
             });
         })
-        .WithName("UpdateTableType").AllowAnonymous();
+        .WithName("UpdateTableType");
 
         // 3. POST /api/admin/tables/sync - Discover & sync new tables
         group.MapPost("/sync", async (
@@ -177,7 +181,7 @@ public static class TableRegistryEndpoints
                 message = $"Successfully scanned and synchronized table registry for schema '{targetSchema}'."
             });
         })
-        .WithName("SyncTableRegistry").AllowAnonymous();
+        .WithName("SyncTableRegistry");
 
         // 4. POST /api/admin/tables/{tableName}/clear - Clear specific Data table (BLOCKED for Master tables)
         group.MapPost("/{tableName}/clear", async (
@@ -255,7 +259,7 @@ public static class TableRegistryEndpoints
                 rowCount = 0
             });
         })
-        .WithName("ClearDataTable").AllowAnonymous();
+        .WithName("ClearDataTable");
 
         // 5. POST /api/admin/tables/clear-all-data - Bulk clear all Data tables (Master tables remain protected)
         group.MapPost("/clear-all-data", async (
@@ -332,7 +336,7 @@ public static class TableRegistryEndpoints
                 preservedMasterTables = masterTables
             });
         })
-        .WithName("ClearAllDataTables").AllowAnonymous();
+        .WithName("ClearAllDataTables");
 
         return group;
     }

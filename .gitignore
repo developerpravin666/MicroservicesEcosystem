@@ -4,6 +4,8 @@
 [Oo]ut/
 .artifacts/
 .validation/
+artifacts/
+*.slnLaunch
 
 # Visual Studio
 .vs/

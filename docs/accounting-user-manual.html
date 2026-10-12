@@ -12,7 +12,7 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 @media print{@page{size:A4;margin:18mm}body{background:white;font-size:11pt}main{margin:0;padding:0;max-width:none}.print-tools{display:none}h2,h3{break-after:avoid}tr{break-inside:avoid}a{color:inherit;text-decoration:none}table{font-size:9pt}}
 </style></head><body><main><div class="print-tools"><button onclick="window.print()">Print / Save PDF</button></div>
 <h1 id='accounting-inventory-user-manual'>Accounting &amp; Inventory User Manual</h1>
-<p>Version: 1.8 | Updated: 11 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import &amp; Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management</p>
+<p>Version: 1.12 | Updated: 12 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import &amp; Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management</p>
 <p>For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.</p>
 <p>To share this guide, send accounting-user-manual.html. Open that file in a browser and choose Print / Save PDF for a paper or PDF copy. Keep the version and date with any distributed copy.</p>
 <h2 id='contents'>Contents</h2>
@@ -895,6 +895,7 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 <p>---</p>
 <h3 id='233-product-owner-master-import-console-adminmasters-import'>23.3 Product Owner Master Import Console (<code>/admin/masters-import</code>)</h3>
 <p>The <strong>Product Owner</strong> (Super Administrator) can oversee and manage master imports across all stores:</p>
+<p>A tenant awaiting approval or provisioning has no store database yet. Selecting it shows an empty import batch list. Approve it through <strong>Store Approvals</strong> before exporting or managing imports. If an active store reports <strong>Tenant store is not ready for master imports</strong>, apply its database migrations from <strong>Database Migrations</strong>, then reload the import page.</p>
 <ol>
 <li>Sign in to the Product Owner console at <code>/admin/login</code>.</li>
 <li>In the sidebar, click <strong>Master Data Import</strong> (<code>/admin/masters-import</code>).</li>
@@ -967,12 +968,14 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 </ol>
 <p>Expected result: the feature setting is saved for the selected scope. A tenant override can differ from the global default; check both when diagnosing a missing screen.</p>
 <h3 id='262-inspect-database-tables'>26.2 Inspect database tables</h3>
+<p>Prerequisite: sign in through <strong>Admin Login</strong> with the platform admin account, also called Product Owner or super admin. <strong>Table Management</strong> appears in the admin console alongside <strong>Feature Flags</strong>. Tenant accounts cannot access this page or its table management API, including scan, classification and clearing operations. <strong>Database Tables</strong> is absent from tenant Settings. Opening either <code>/settings/database-tables</code> or <code>/admin/database-tables</code> as a tenant displays an access restriction.</p>
 <ol>
-<li>Open <strong>Table Management</strong>. The page title is <strong>Database Tables &amp; Classification</strong>.</li>
+<li>In the administrator console, open <strong>Table Management</strong>. The page title is <strong>Database Tables &amp; Classification</strong>.</li>
 <li>Select the intended <strong>Schema</strong>, when the selector is available. Check whether it is Control Plane or a specific Tenant Store.</li>
 <li>Select <strong>Scan &amp; Sync DB</strong> to refresh the table registry for that schema.</li>
 <li>Search by table name, category or description. Use <strong>All Types</strong>, <strong>Master</strong>, <strong>Data</strong> and the category filter to narrow the list.</li>
 <li>Review the table classifications and row information for administration or support.</li>
 </ol>
+<p>If loading fails, the page shows <strong>Failed to load tables</strong> and stops loading without continuously retrying. For a 404 error, ask support to verify that the API gateway points to the current Accounting Inventory service with the table management endpoints. Once the service is restored, reload the page.</p>
 <p>Expected result: a table overview for the selected schema. Master tables hold reference catalogs; Data tables hold operational records. Clearing table data is a destructive administrator maintenance operation, not part of ordinary sales, returns or corrections. Arrange backup and recovery through the deployment/recovery guide before using those controls.</p>
 </main></body></html>

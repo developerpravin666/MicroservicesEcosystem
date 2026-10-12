@@ -1,6 +1,6 @@
 # Accounting & Inventory User Manual
 
-Version: 1.8 | Updated: 11 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.12 | Updated: 12 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
 For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.
 
@@ -895,6 +895,8 @@ The **Review Workspace** displays:
 ### 23.3 Product Owner Master Import Console (`/admin/masters-import`)
 
 The **Product Owner** (Super Administrator) can oversee and manage master imports across all stores:
+
+A tenant awaiting approval or provisioning has no store database yet. Selecting it shows an empty import batch list. Approve it through **Store Approvals** before exporting or managing imports. If an active store reports **Tenant store is not ready for master imports**, apply its database migrations from **Database Migrations**, then reload the import page.
 1. Sign in to the Product Owner console at `/admin/login`.
 2. In the sidebar, click **Master Data Import** (`/admin/masters-import`).
 3. Select any store from the **Select Tenant Store** dropdown.
@@ -983,10 +985,14 @@ Expected result: the feature setting is saved for the selected scope. A tenant o
 
 ### 26.2 Inspect database tables
 
-1. Open **Table Management**. The page title is **Database Tables & Classification**.
+Prerequisite: sign in through **Admin Login** with the platform admin account, also called Product Owner or super admin. **Table Management** appears in the admin console alongside **Feature Flags**. Tenant accounts cannot access this page or its table management API, including scan, classification and clearing operations. **Database Tables** is absent from tenant Settings. Opening either `/settings/database-tables` or `/admin/database-tables` as a tenant displays an access restriction.
+
+1. In the administrator console, open **Table Management**. The page title is **Database Tables & Classification**.
 2. Select the intended **Schema**, when the selector is available. Check whether it is Control Plane or a specific Tenant Store.
 3. Select **Scan & Sync DB** to refresh the table registry for that schema.
 4. Search by table name, category or description. Use **All Types**, **Master**, **Data** and the category filter to narrow the list.
 5. Review the table classifications and row information for administration or support.
+
+If loading fails, the page shows **Failed to load tables** and stops loading without continuously retrying. For a 404 error, ask support to verify that the API gateway points to the current Accounting Inventory service with the table management endpoints. Once the service is restored, reload the page.
 
 Expected result: a table overview for the selected schema. Master tables hold reference catalogs; Data tables hold operational records. Clearing table data is a destructive administrator maintenance operation, not part of ordinary sales, returns or corrections. Arrange backup and recovery through the deployment/recovery guide before using those controls.

@@ -97,6 +97,7 @@ internal static class TenantSchemaMigrator
                     IF NOT EXISTS (
                         SELECT 1 FROM pg_constraint 
                         WHERE conname = 'fk_master_import_staging_rows_master_import_batches_batch_id'
+                          AND conrelid = '""{tenantProvider.SchemaName}"".master_import_staging_rows'::regclass
                     ) THEN
                         ALTER TABLE ""{tenantProvider.SchemaName}"".master_import_staging_rows
                             ADD CONSTRAINT fk_master_import_staging_rows_master_import_batches_batch_id

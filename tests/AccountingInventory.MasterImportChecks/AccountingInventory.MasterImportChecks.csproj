@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/AccountingInventory/AccountingInventory.Api/Endpoints/AdminImportStoreEndpointFilter.cs" Link="AdminImportStoreEndpointFilter.cs" />
+    <ProjectReference Include="../../src/AccountingInventory/AccountingInventory.Infrastructure/AccountingInventory.Infrastructure.csproj" />
+    <Compile Include="../../src/AccountingInventory/AccountingInventory.Infrastructure/Persistence/TenantSchemaMigrator.cs" Link="TenantSchemaMigrator.cs" />
+    <Compile Include="../../src/AccountingInventory/AccountingInventory.Infrastructure/Persistence/MultiTenancy/StaticTenantProvider.cs" Link="StaticTenantProvider.cs" />
+  </ItemGroup>
+</Project>
