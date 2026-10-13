@@ -78,7 +78,7 @@ public static class DependencyInjection
         app.UseExceptionHandler(_ => { });
         app.UseMiddleware<ApiResponseEnvelopeMiddleware>();
 
-        if (app.Environment.IsDevelopment())
+        if (app.Environment.IsDevelopment() || (bool.TryParse(app.Configuration["Swagger:Enabled"], out var swaggerEnabled) && swaggerEnabled))
         {
             app.UseSwagger();
             app.UseSwaggerUI();
