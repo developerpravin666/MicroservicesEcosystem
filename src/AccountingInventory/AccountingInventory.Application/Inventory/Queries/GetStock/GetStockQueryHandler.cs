@@ -31,7 +31,9 @@ public sealed class GetStockQueryHandler(IAccountingInventoryDbContext db)
                 group.Key.BrandId,
                 group.Key.ProductModelId,
                 group.Key.VariantId,
-                TotalProductCost = group.Sum(product => product.PurchasePrice - product.Discount),
+                TotalCostWithoutGst = group.Sum(product => product.PurchasePrice - product.Discount),
+                TotalCostWithGst = group.Sum(product => product.TotalAmount),
+                GstRate = group.Average(product => product.Tax),
                 TotalQuantity = group.Count()
             });
         var totalCount = await aggregates.CountAsync(cancellationToken);
@@ -45,19 +47,78 @@ public sealed class GetStockQueryHandler(IAccountingInventoryDbContext db)
             {
                 aggregate.BrandId, aggregate.ProductModelId, aggregate.VariantId,
                 BrandName = brand.Name, ModelName = model.Name, VariantName = variant.Name,
-                aggregate.TotalProductCost, aggregate.TotalQuantity
+                TotalProductCostWithoutGst = aggregate.TotalCostWithoutGst,
+                TotalGstAmount = aggregate.TotalCostWithGst - aggregate.TotalCostWithoutGst,
+                TotalProductCostWithGst = aggregate.TotalCostWithGst,
+                GstRate = aggregate.GstRate,
+                aggregate.TotalQuantity,
+                TotalProductCost = aggregate.TotalCostWithoutGst
             });
         var rows = await GridSorting.Apply(groupRows, request.SortBy, request.SortDirection,
-            "BrandName,ModelName,VariantName,BrandId,ProductModelId,VariantId")
+            "BrandName,ModelName,VariantName,BrandId,ProductModelId,VariantId,TotalQuantity,TotalProductCost,TotalProductCostWithoutGst,TotalProductCostWithGst,TotalGstAmount,GstRate")
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        var groups = rows.Select(row => new StockGroupSummary(row.BrandId, row.ProductModelId,
-            row.VariantId, row.BrandName, row.ModelName, row.VariantName, row.TotalProductCost, row.TotalQuantity)).ToArray();
+        var groups = rows.Select(row =>
+        {
+            var unitCostWithoutGst = row.TotalQuantity > 0 ? Math.Round(row.TotalProductCostWithoutGst / row.TotalQuantity, 2) : 0m;
+            var unitCostWithGst = row.TotalQuantity > 0 ? Math.Round(row.TotalProductCostWithGst / row.TotalQuantity, 2) : 0m;
+            var gstRate = Math.Round(row.GstRate, 2);
+            return new StockGroupSummary(
+                row.BrandId, row.ProductModelId, row.VariantId,
+                row.BrandName, row.ModelName, row.VariantName,
+                row.TotalProductCostWithoutGst,
+                row.TotalGstAmount,
+                row.TotalProductCostWithGst,
+                gstRate,
+                unitCostWithoutGst,
+                unitCostWithGst,
+                row.TotalQuantity,
+                row.TotalProductCost);
+        }).ToArray();
+
+        var overallQuantity = await products.CountAsync(cancellationToken);
+        var overallCostWithoutGst = overallQuantity > 0
+            ? await products.SumAsync(product => product.PurchasePrice - product.Discount, cancellationToken)
+            : 0m;
+        var overallCostWithGst = overallQuantity > 0
+            ? await products.SumAsync(product => product.TotalAmount, cancellationToken)
+            : 0m;
+        var overallSummary = new StockTotalsSummary(
+            overallQuantity,
+            overallCostWithoutGst,
+            overallCostWithGst - overallCostWithoutGst,
+            overallCostWithGst);
 
         return new PagedResult<StockGroupSummary>(groups, page, pageSize, totalCount,
-            totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize));
+            totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize), overallSummary);
+    }
+}
+
+public sealed class GetStockSummaryQueryHandler(IAccountingInventoryDbContext db)
+    : IRequestHandler<GetStockSummaryQuery, StockTotalsSummary>
+{
+    public async Task<StockTotalsSummary> Handle(
+        GetStockSummaryQuery request,
+        CancellationToken cancellationToken)
+    {
+        var products = db.Products.AsNoTracking()
+            .Where(product => product.IsActive && !product.IsSold);
+
+        var totalQuantity = await products.CountAsync(cancellationToken);
+        var costWithoutGst = totalQuantity > 0
+            ? await products.SumAsync(product => product.PurchasePrice - product.Discount, cancellationToken)
+            : 0m;
+        var costWithGst = totalQuantity > 0
+            ? await products.SumAsync(product => product.TotalAmount, cancellationToken)
+            : 0m;
+
+        return new StockTotalsSummary(
+            totalQuantity,
+            costWithoutGst,
+            costWithGst - costWithoutGst,
+            costWithGst);
     }
 }
 
@@ -80,6 +141,9 @@ public sealed class GetAvailableStockProductsQueryHandler(IAccountingInventoryDb
                            product.SerialNumber,
                            product.SerialNumber1,
                            ColorName = color.Name,
+                           CostWithoutGst = product.PurchasePrice - product.Discount,
+                           GstRate = product.Tax,
+                           GstAmount = product.TotalAmount - (product.PurchasePrice - product.Discount),
                            product.TotalAmount
                        };
 
@@ -92,6 +156,18 @@ public sealed class GetAvailableStockProductsQueryHandler(IAccountingInventoryDb
         }
 
         var totalCount = await products.CountAsync(cancellationToken);
+        var groupCostWithoutGst = totalCount > 0
+            ? await products.SumAsync(p => p.CostWithoutGst, cancellationToken)
+            : 0m;
+        var groupCostWithGst = totalCount > 0
+            ? await products.SumAsync(p => p.TotalAmount, cancellationToken)
+            : 0m;
+        var groupSummary = new StockTotalsSummary(
+            totalCount,
+            groupCostWithoutGst,
+            groupCostWithGst - groupCostWithoutGst,
+            groupCostWithGst);
+
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
         var rows = await GridSorting.Apply(products, request.SortBy, request.SortDirection, "SerialNumber")
@@ -99,9 +175,10 @@ public sealed class GetAvailableStockProductsQueryHandler(IAccountingInventoryDb
             .Take(pageSize)
             .ToListAsync(cancellationToken);
         var items = rows.Select(item => new AvailableStockProductSummary(
-            item.Id, item.SerialNumber, item.SerialNumber1, item.ColorName, item.TotalAmount)).ToArray();
+            item.Id, item.SerialNumber, item.SerialNumber1, item.ColorName,
+            item.CostWithoutGst, item.GstRate, item.GstAmount, item.TotalAmount)).ToArray();
 
         return new PagedResult<AvailableStockProductSummary>(items, page, pageSize, totalCount,
-            totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize));
+            totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize), groupSummary);
     }
 }

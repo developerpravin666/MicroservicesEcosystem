@@ -23,6 +23,11 @@ public static class InventoryEndpoints
             .WithName("GetStockInventory")
             .Produces<PagedResult<StockGroupSummary>>();
 
+        group.MapGet("/stock/summary", async (ISender sender, CancellationToken cancellationToken) =>
+            Results.Ok(await sender.Send(new GetStockSummaryQuery(), cancellationToken)))
+            .WithName("GetStockInventorySummary")
+            .Produces<StockTotalsSummary>();
+
         group.MapGet("/stock/products", async ([FromQuery] Guid brandId, [FromQuery] Guid productModelId,
             [FromQuery] Guid variantId, [FromQuery] int? page, [FromQuery] int? pageSize,
             [FromQuery] string? search, [FromQuery] string? sortBy, [FromQuery] string? sortDirection, ISender sender, CancellationToken cancellationToken) =>
