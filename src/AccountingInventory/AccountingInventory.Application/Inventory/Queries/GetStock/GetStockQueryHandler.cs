@@ -21,16 +21,19 @@ public sealed class GetStockQueryHandler(IAccountingInventoryDbContext db)
             products = products.Where(product =>
                 db.Brands.Any(item => item.Id == product.BrandId && item.Name.ToLower().Contains(search))
                 || db.ProductModels.Any(item => item.Id == product.ProductModelId && item.Name.ToLower().Contains(search))
-                || db.Variants.Any(item => item.Id == product.VariantId && item.Name.ToLower().Contains(search)));
+                || db.Variants.Any(item => item.Id == product.VariantId && item.Name.ToLower().Contains(search))
+                || db.Colors.Any(item => item.Id == product.ColorId && item.Name.ToLower().Contains(search))
+            );
         }
 
         var aggregates = products
-            .GroupBy(product => new { product.BrandId, product.ProductModelId, product.VariantId })
+            .GroupBy(product => new { product.BrandId, product.ProductModelId, product.VariantId, product.ColorId })
             .Select(group => new
             {
                 group.Key.BrandId,
                 group.Key.ProductModelId,
                 group.Key.VariantId,
+                group.Key.ColorId,
                 TotalCostWithoutGst = group.Sum(product => product.PurchasePrice - product.Discount),
                 TotalCostWithGst = group.Sum(product => product.TotalAmount),
                 GstRate = group.Average(product => product.Tax),
@@ -40,22 +43,28 @@ public sealed class GetStockQueryHandler(IAccountingInventoryDbContext db)
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
         var groupRows = (from aggregate in aggregates
-            join brand in db.Brands.AsNoTracking() on aggregate.BrandId equals brand.Id
-            join model in db.ProductModels.AsNoTracking() on aggregate.ProductModelId equals model.Id
-            join variant in db.Variants.AsNoTracking() on aggregate.VariantId equals variant.Id
-            select new
-            {
-                aggregate.BrandId, aggregate.ProductModelId, aggregate.VariantId,
-                BrandName = brand.Name, ModelName = model.Name, VariantName = variant.Name,
-                TotalProductCostWithoutGst = aggregate.TotalCostWithoutGst,
-                TotalGstAmount = aggregate.TotalCostWithGst - aggregate.TotalCostWithoutGst,
-                TotalProductCostWithGst = aggregate.TotalCostWithGst,
-                GstRate = aggregate.GstRate,
-                aggregate.TotalQuantity,
-                TotalProductCost = aggregate.TotalCostWithoutGst
-            });
+                         join brand in db.Brands.AsNoTracking() on aggregate.BrandId equals brand.Id
+                         join model in db.ProductModels.AsNoTracking() on aggregate.ProductModelId equals model.Id
+                         join variant in db.Variants.AsNoTracking() on aggregate.VariantId equals variant.Id
+                         join color in db.Colors.AsNoTracking() on aggregate.ColorId equals color.Id
+                         select new
+                         {
+                             aggregate.BrandId,
+                             aggregate.ProductModelId,
+                             aggregate.VariantId,
+                             BrandName = brand.Name,
+                             ModelName = model.Name,
+                             VariantName = variant.Name,
+                             ColorName = color.Name,
+                             TotalProductCostWithoutGst = aggregate.TotalCostWithoutGst,
+                             TotalGstAmount = aggregate.TotalCostWithGst - aggregate.TotalCostWithoutGst,
+                             TotalProductCostWithGst = aggregate.TotalCostWithGst,
+                             GstRate = aggregate.GstRate,
+                             aggregate.TotalQuantity,
+                             TotalProductCost = aggregate.TotalCostWithoutGst
+                         });
         var rows = await GridSorting.Apply(groupRows, request.SortBy, request.SortDirection,
-            "BrandName,ModelName,VariantName,BrandId,ProductModelId,VariantId,TotalQuantity,TotalProductCost,TotalProductCostWithoutGst,TotalProductCostWithGst,TotalGstAmount,GstRate")
+            "BrandName,ModelName,VariantName,BrandId,ProductModelId,VariantId,ColorId,TotalQuantity,TotalProductCost,TotalProductCostWithoutGst,TotalProductCostWithGst,TotalGstAmount,GstRate")
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
@@ -68,6 +77,7 @@ public sealed class GetStockQueryHandler(IAccountingInventoryDbContext db)
             return new StockGroupSummary(
                 row.BrandId, row.ProductModelId, row.VariantId,
                 row.BrandName, row.ModelName, row.VariantName,
+                row.ColorName,
                 row.TotalProductCostWithoutGst,
                 row.TotalGstAmount,
                 row.TotalProductCostWithGst,

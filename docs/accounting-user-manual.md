@@ -1,6 +1,6 @@
 # Accounting & Inventory User Manual
 
-Version: 1.22 | Updated: 13 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.23 | Updated: 13 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
 For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.
 
@@ -171,7 +171,7 @@ Prerequisites: access to Settings > Tax, product catalog maintenance and the app
 
 Expected result: a future slab takes effect for transactions with a matching tax-effective date. Backdated transactions use their historical version. A missing or inactive applicable version blocks selection; the software does not fall back to an older active slab. Inactivating an old version also prevents new backdated transactions that require it, so retain active historical versions when those transactions are needed.
 
-Existing tax records are migrated to separate profiles available from the earliest date, preserving their existing percentages. Existing stock without a profile requires a type default or explicit selection when sold. No existing invoice or inventory cost is recalculated. Adding a new version does not require changing Product Type or SKU defaults.
+Existing tax records are migrated to separate profiles available from the earliest date, preserving their existing percentages. When adding an individual Product Sale, choosing a product auto-selects its linked tax profile. For older stock without a profile link, the saved purchase CGST/SGST can identify a profile only when exactly one profile matches; otherwise select GST rate explicitly. Multiple historical versions of the same profile count as one match. Changing the product refreshes this selection; a manual override remains until the product changes. The actual sale rate is still resolved on the sale date. No existing invoice or inventory cost is recalculated. Adding a new version does not require changing Product Type or SKU defaults.
 
 Tax Treatment distinguishes Taxable, Exempt, NilRated, NonGst and ZeroRated in invoice lines and GST report/CSV groups. The latter four require zero percentages; ZeroRated here represents a zero-tax posting, not export tax/refund eligibility. This release supports percentage CGST/SGST and IGST; special cess, reverse-charge and statutory return generation require their own workflows. Rates and effective dates are maintained by authorized staff after checking the applicable notification; government changes are not downloaded automatically.
 

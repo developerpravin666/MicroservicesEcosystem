@@ -21,6 +21,7 @@ public sealed record StockGroupSummary(
     string BrandName,
     string ModelName,
     string VariantName,
+    string ColorName,
     decimal TotalProductCostWithoutGst,
     decimal TotalGstAmount,
     decimal TotalProductCostWithGst,
