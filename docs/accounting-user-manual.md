@@ -1,6 +1,6 @@
 # Accounting & Inventory User Manual
 
-Version: 1.23 | Updated: 13 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.24 | Updated: 13 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
 For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.
 
@@ -343,6 +343,14 @@ These tasks require the corresponding permission. Open Accounting > Controls & B
 Use a training business for this exercise; each saved step creates real accounting records within the selected business.
 
 ## 16. Common problems and help
+
+### Page not found (404)
+
+1. If you open an incorrect or outdated page address, the application redirects to `/not-found` and displays **404 — Page not found**. This page is available before and after signing in.
+2. Check the address for typing mistakes, or select **Go to home**.
+3. If you are signed in, the home page opens your dashboard. Otherwise, you are directed to the sign-in page.
+
+Expected result: an unknown page address shows a clear recovery option. A valid page address with an invalid record ID may instead show that page's record or loading error.
 
 | Message or symptom | What to do |
 | --- | --- |
