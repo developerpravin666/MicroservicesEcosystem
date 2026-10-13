@@ -4,8 +4,9 @@ public sealed class RabbitMqOptions
 {
     public const string SectionName = "RabbitMq";
 
-    public required string Host { get; set; }
-    public required string VirtualHost { get; set; }
-    public required string Username { get; set; }
-    public required string Password { get; set; }
+    public bool UseInMemory { get; set; } = false;
+    public string Host { get; set; } = string.Empty;
+    public string VirtualHost { get; set; } = "/";
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
 }

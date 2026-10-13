@@ -19,7 +19,7 @@ public static class DependencyInjection
         this IServiceCollection services, IConfiguration configuration, params Assembly[] consumerAssemblies)
     {
         var rabbitMqOptions = configuration.GetSection(RabbitMqOptions.SectionName).Get<RabbitMqOptions>()
-            ?? throw new InvalidOperationException("RabbitMq configuration section is missing.");
+            ?? new RabbitMqOptions { UseInMemory = true };
 
         services.AddScoped<IEventPublisher, EventPublisher>();
 
@@ -32,27 +32,40 @@ public static class DependencyInjection
                 busConfigurator.AddConsumers(assembly);
             }
 
-            busConfigurator.UsingRabbitMq((context, cfg) =>
+            if (rabbitMqOptions.UseInMemory ||
+                string.Equals(rabbitMqOptions.Host, "in-memory", StringComparison.OrdinalIgnoreCase) ||
+                string.IsNullOrWhiteSpace(rabbitMqOptions.Host))
             {
-                cfg.Host(rabbitMqOptions.Host, rabbitMqOptions.VirtualHost, h =>
+                busConfigurator.UsingInMemory((context, cfg) =>
                 {
-                    h.Username(rabbitMqOptions.Username);
-                    h.Password(rabbitMqOptions.Password);
+                    cfg.UsePublishFilter(typeof(CorrelationIdPublishFilter<>), context);
+                    cfg.ConfigureEndpoints(context);
                 });
+            }
+            else
+            {
+                busConfigurator.UsingRabbitMq((context, cfg) =>
+                {
+                    cfg.Host(rabbitMqOptions.Host, rabbitMqOptions.VirtualHost, h =>
+                    {
+                        h.Username(rabbitMqOptions.Username);
+                        h.Password(rabbitMqOptions.Password);
+                    });
 
-                cfg.UsePublishFilter(typeof(CorrelationIdPublishFilter<>), context);
+                    cfg.UsePublishFilter(typeof(CorrelationIdPublishFilter<>), context);
 
-                // Automatic retry with exponential backoff, then MassTransit routes
-                // the message to a per-queue dead-letter exchange/queue after
-                // exhausting retries.
-                cfg.UseMessageRetry(retry => retry.Exponential(
-                    retryLimit: 5,
-                    minInterval: TimeSpan.FromSeconds(1),
-                    maxInterval: TimeSpan.FromSeconds(30),
-                    intervalDelta: TimeSpan.FromSeconds(5)));
+                    // Automatic retry with exponential backoff, then MassTransit routes
+                    // the message to a per-queue dead-letter exchange/queue after
+                    // exhausting retries.
+                    cfg.UseMessageRetry(retry => retry.Exponential(
+                        retryLimit: 5,
+                        minInterval: TimeSpan.FromSeconds(1),
+                        maxInterval: TimeSpan.FromSeconds(30),
+                        intervalDelta: TimeSpan.FromSeconds(5)));
 
-                cfg.ConfigureEndpoints(context);
-            });
+                    cfg.ConfigureEndpoints(context);
+                });
+            }
         });
 
         return services;
