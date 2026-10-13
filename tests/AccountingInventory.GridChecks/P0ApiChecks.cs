@@ -116,6 +116,7 @@ internal static class P0ApiChecks
     private sealed class FixtureDirectory(DbContextOptions<FixtureDirectory> options):DbContext(options),ITenantDirectoryContext
     {
         public DbSet<Tenant> Tenants=>Set<Tenant>();
+        public DbSet<FeatureFlag> FeatureFlags=>Set<FeatureFlag>();
         protected override void OnModelCreating(ModelBuilder model){model.Entity<Tenant>().ToTable("tenants");model.Entity<Tenant>().HasKey(x=>x.Id);model.Entity<Tenant>().Ignore(x=>x.DomainEvents);}
     }
 }

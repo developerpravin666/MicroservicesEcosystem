@@ -813,7 +813,7 @@ public sealed partial class MasterDataImportService(
             var existing = await db.ProductTypes.FirstOrDefaultAsync(t => t.Name.ToLower() == data.Name.ToLower().Trim(), ct);
             if (existing != null)
             {
-                var updated = ProductType.Update(existing.Id, data.Name, data.Description, existing.IsActive);
+                var updated = ProductType.Update(existing.Id, data.Name, data.Description, existing.IsActive, existing.HsnSac);
                 db.ProductTypes.Entry(existing).CurrentValues.SetValues(updated);
             }
             else

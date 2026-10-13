@@ -5,6 +5,7 @@ namespace AccountingInventory.Domain.Entities;
 /// <summary>A product purchased from a vendor, including its identifying serials and cost.</summary>
 public sealed class Product : AggregateRoot
 {
+    public string? HsnSac { get; private set; }
     public Guid VendorId { get; private set; }
     public Guid BrandId { get; private set; }
     public Guid ProductTypeId { get; private set; }
@@ -31,7 +32,7 @@ public sealed class Product : AggregateRoot
     public static Product Create(Guid vendorId, Guid brandId, Guid productTypeId, Guid productModelId,
         Guid variantId, Guid colorId, string serialNumber, string? serialNumber1, string? billNumber,
         decimal purchasePrice, decimal discount, decimal cgst, decimal sgst, decimal tax, DateOnly? purchaseDate = null,
-        int paymentTermsDays = 0)
+        int paymentTermsDays = 0, string? hsnSac = null)
     {
         Validate(vendorId, brandId, productTypeId, productModelId, variantId, colorId,
             serialNumber, purchasePrice, discount, cgst, sgst, tax);
@@ -45,6 +46,7 @@ public sealed class Product : AggregateRoot
             BillNumber = NormalizeBillNumber(billNumber), PurchaseDate = invoiceDate,
             PaymentTermsDays = ValidateTerms(paymentTermsDays),
             DueDate = invoiceDate.AddDays(paymentTermsDays), IsSold = false,
+            HsnSac = HsnSacCode.Normalize(hsnSac),
             PurchasePrice = purchasePrice, Discount = discount,
             Cgst = cgst, Sgst = sgst, Tax = tax,
             TotalAmount = CalculateTotalAmount(purchasePrice, discount, cgst, sgst)
@@ -54,7 +56,7 @@ public sealed class Product : AggregateRoot
     public void Update(Guid vendorId, Guid brandId, Guid productTypeId, Guid productModelId,
         Guid variantId, Guid colorId, string serialNumber, string? serialNumber1, string? billNumber,
         decimal purchasePrice, decimal discount, decimal cgst, decimal sgst, decimal tax, DateOnly? purchaseDate = null,
-        int paymentTermsDays = 0)
+        int paymentTermsDays = 0, string? hsnSac = null)
     {
         Validate(vendorId, brandId, productTypeId, productModelId, variantId, colorId,
             serialNumber, purchasePrice, discount, cgst, sgst, tax);
@@ -66,6 +68,7 @@ public sealed class Product : AggregateRoot
         if (purchaseDate.HasValue) PurchaseDate = purchaseDate.Value;
         PaymentTermsDays = ValidateTerms(paymentTermsDays);
         DueDate = PurchaseDate.AddDays(paymentTermsDays);
+        HsnSac = HsnSacCode.Normalize(hsnSac);
         PurchasePrice = purchasePrice; Discount = discount;
         Cgst = cgst; Sgst = sgst; Tax = tax;
         TotalAmount = CalculateTotalAmount(purchasePrice, discount, cgst, sgst);

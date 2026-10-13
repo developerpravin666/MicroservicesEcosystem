@@ -29,7 +29,7 @@ public sealed class AddProductTypeCommandHandler(
             throw new ConflictException($"A ProductType with name '{request.Name}' already exists.");
         }
 
-        var productType = ProductType.Create( request.Name, request.Description);
+        var productType = ProductType.Create( request.Name, request.Description, request.HsnSac);
 
         productType.Activate();
         accountingInventoryDbContext.ProductTypes.Add(productType);
@@ -39,7 +39,7 @@ public sealed class AddProductTypeCommandHandler(
             "ProductType {ProductTypeId} - ({Name}) added successfully.",
             productType.Id, productType.Name);
 
-        return new AddProductTypeResult(productType.Id, productType.Name, productType.Description!);
+        return new AddProductTypeResult(productType.Id, productType.Name, productType.Description!, productType.HsnSac);
     }
 }
 

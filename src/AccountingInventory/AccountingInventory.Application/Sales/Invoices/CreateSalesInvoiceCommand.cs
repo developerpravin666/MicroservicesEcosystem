@@ -55,7 +55,6 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
         if (!string.IsNullOrWhiteSpace(seller?.TaxRegistrationNumber))
         {
             if (supplierState == null || posCode == null) throw new ConflictException("Configure supplier state and choose a place of supply before issuing a GST invoice.");
-            if (request.Lines.Any(l => string.IsNullOrWhiteSpace(l.HsnSac))) throw new ConflictException("HSN/SAC is required on GST invoice lines.");
         }
         var customer = await CustomerResolver.GetOrCreateAsync(
             db,
@@ -128,6 +127,9 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
                 l = l with { ItemDescription = sku.Name, HsnSac = sku.HsnSac, UnitOfMeasure = sku.UnitOfMeasure };
             }
             var product = l.ProductId.HasValue ? productsToRelieve.SingleOrDefault(p => p.Id == l.ProductId.Value) : null;
+            l = l with { HsnSac = HsnSacCode.Normalize(l.HsnSac ?? product?.HsnSac) };
+            if (!string.IsNullOrWhiteSpace(seller?.TaxRegistrationNumber) && l.HsnSac is null)
+                throw new ConflictException("HSN/SAC is required on GST invoice lines.");
             var tax = l.TaxId.HasValue && taxes.TryGetValue(l.TaxId.Value, out var selectedTax) ? selectedTax : null;
             if (tax is null && (l.CgstRate != 0 || l.SgstRate != 0 || l.IgstRate != 0))
                 throw new ConflictException("Select an active tax rate instead of supplying arbitrary rates.");

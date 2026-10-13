@@ -1,6 +1,6 @@
 # Accounting & Inventory User Manual
 
-Version: 1.19 | Updated: 12 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.21 | Updated: 13 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
 For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.
 
@@ -145,6 +145,17 @@ Expected result: one opening journal, individual outstanding items and active op
 4. Select Save settlement and verify the reduced balance.
 
 Use this workflow for brought-forward invoices. Opening stock does not create a new supplier bill or new input GST claim in the normal purchase workflow.
+
+### Default HSN/SAC codes
+
+Prerequisites: access to Product Types and permission to create purchases or sales invoices.
+
+1. Open Product > Product Types and add or edit a type. Enter **Default HSN/SAC Code** using 4, 6 or 8 digits, or leave it empty. Save. The default appears in the Product Types list. On the Add Product Types form, enter a separate default code for each row; use Add another for additional types, then Create Product Types.
+2. Open Purchase > Products and add products. Select the Product Type. **HSN/SAC Code** fills from that type; check it against the vendor invoice and edit it if needed. Changing the type replaces this default. Invoice scanning uses a valid extracted HSN code first, otherwise the type default.
+3. Save the purchase. Every serial-number unit receives the entered code, visible in the Products list. Existing restrictions on editing posted or sold stock still apply.
+4. Add a serialized product to a Sales Invoice. Its saved HSN/SAC fills on the line; review it before issuing. The printed invoice shows the saved invoice-line code. Services use their line code and stocked accessories retain their SKU code.
+
+Changing a Product Type default affects new purchases. It does not backfill existing stock or change issued invoices. For existing stock without a code, enter the appropriate code on the sales invoice. Codes are stored as text to preserve leading zeroes. A code is optional on product types and purchases; GST invoices for a seller with a tax registration number still require HSN/SAC on every line. The software validates digit format, not whether the classification is correct for the item.
 
 ## 5. Record a new purchase
 

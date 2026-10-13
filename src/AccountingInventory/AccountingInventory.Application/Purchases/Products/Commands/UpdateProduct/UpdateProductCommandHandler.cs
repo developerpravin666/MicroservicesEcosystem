@@ -40,7 +40,7 @@ public sealed class UpdateProductCommandHandler(
         product.Update(request.VendorId, request.BrandId, request.ProductTypeId, request.ProductModelId,
             request.VariantId, request.ColorId, request.SerialNumber, request.SerialNumber1, request.BillNumber,
             request.PurchasePrice, request.Discount, request.Cgst, request.Sgst, request.Tax, request.PurchaseDate,
-            request.PaymentTermsDays);
+            request.PaymentTermsDays, request.HsnSac ?? (request.ProductTypeId == product.ProductTypeId ? product.HsnSac : await dbContext.ProductTypes.Where(t => t.Id == request.ProductTypeId).Select(t => t.HsnSac).FirstOrDefaultAsync(cancellationToken)));
 
         if (request.IsActive.HasValue)
         {
@@ -52,6 +52,6 @@ public sealed class UpdateProductCommandHandler(
         return new UpdateProductResult(product.Id, product.VendorId, product.BrandId, product.ProductTypeId,
             product.ProductModelId, product.VariantId, product.ColorId, product.SerialNumber, product.SerialNumber1,
             product.PurchasePrice, product.TotalAmount, product.Discount, product.Cgst, product.Sgst,
-            product.Tax, product.IsActive, product.IsSold, product.BillNumber);
+            product.Tax, product.IsActive, product.IsSold, product.BillNumber, product.HsnSac);
     }
 }

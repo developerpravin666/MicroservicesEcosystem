@@ -1917,6 +1917,8 @@ namespace AccountingInventory.Infrastructure.Migrations.AccountingInventoryDb
 
             modelBuilder.Entity("AccountingInventory.Domain.Entities.Product", b =>
                 {
+                    b.Property<string>("HsnSac").HasMaxLength(8).HasColumnType("character varying(8)").HasColumnName("hsn_sac");
+
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
@@ -2115,6 +2117,8 @@ namespace AccountingInventory.Infrastructure.Migrations.AccountingInventoryDb
 
             modelBuilder.Entity("AccountingInventory.Domain.Entities.ProductType", b =>
                 {
+                    b.Property<string>("HsnSac").HasMaxLength(8).HasColumnType("character varying(8)").HasColumnName("hsn_sac");
+
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")

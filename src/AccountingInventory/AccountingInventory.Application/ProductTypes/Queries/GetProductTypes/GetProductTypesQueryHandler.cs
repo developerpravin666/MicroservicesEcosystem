@@ -29,7 +29,7 @@ public sealed class GetProductTypesQueryHandler(IAccountingInventoryDbContext ac
                 ProductType.Id,
                 ProductType.Name,
                 ProductType.Description ?? string.Empty,
-                ProductType.IsActive))
+                ProductType.IsActive, ProductType.HsnSac))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<ProductTypeSummary>(items, page, pageSize, totalCount,

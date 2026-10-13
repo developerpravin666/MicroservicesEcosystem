@@ -21,7 +21,7 @@ public sealed class GetProductByIdQueryHandler(IAccountingInventoryDbContext dbC
                 dbContext.ProductTypes.Where(v => v.Id == x.ProductTypeId).Select(v => v.Name).FirstOrDefault() ?? string.Empty,
                 dbContext.ProductModels.Where(v => v.Id == x.ProductModelId).Select(v => v.Name).FirstOrDefault() ?? string.Empty,
                 dbContext.Variants.Where(v => v.Id == x.VariantId).Select(v => v.Name).FirstOrDefault() ?? string.Empty,
-                dbContext.Colors.Where(v => v.Id == x.ColorId).Select(v => v.Name).FirstOrDefault() ?? string.Empty))
+                dbContext.Colors.Where(v => v.Id == x.ColorId).Select(v => v.Name).FirstOrDefault() ?? string.Empty, x.HsnSac))
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException($"A Product with ID '{request.Id}' was not found.");
         return product;

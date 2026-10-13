@@ -15,7 +15,7 @@ public sealed class GetProductTypeByIdQueryHandler(IAccountingInventoryDbContext
             .FirstOrDefaultAsync(t => t.Id == request.Id, cancellationToken)
             ?? throw new NotFoundException($"No ProductType exists.");
 
-        return new ProductTypeSummary(productType.Id, productType.Name, productType.Description!, productType.IsActive);
+        return new ProductTypeSummary(productType.Id, productType.Name, productType.Description!, productType.IsActive, productType.HsnSac);
     }
 
 }

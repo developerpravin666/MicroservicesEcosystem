@@ -30,16 +30,16 @@ internal static class InvoiceWorkflowChecks
         var customer = Customer.Create("Invoice customer", "8123456789", "Customer address", null);
         var owner = User.Create("invoice-owner", "9123456789", "owner@example.com"); owner.SetOwner(true); owner.AcceptInvitation();
         var vendor = Vendor.Create("Invoice supplier", "INV-V", "7123456789", "vendor@example.com", null, "Supplier address");
-        var brand = Brand.Create("Invoice brand", null); var type = ProductType.Create("Phone", null);
+        var brand = Brand.Create("Invoice brand", null); var type = ProductType.Create("Phone", null, "85171300");
         var model = ProductModel.Create(brand.Id, type.Id, "INV-M", "Model", null);
         var variant = Variant.Create("128GB", null); var color = Color.Create("Blue", null); var tax = Tax.Create(9, 9);
-        var stock = Product.Create(vendor.Id, brand.Id, type.Id, model.Id, variant.Id, color.Id, "INV-IMEI", "INV-ALT", "INV-PURCHASE", 100, 0, 9, 9, 18, date);
+        var stock = Product.Create(vendor.Id, brand.Id, type.Id, model.Id, variant.Id, color.Id, "INV-IMEI", "INV-ALT", "INV-PURCHASE", 100, 0, 9, 9, 18, date, hsnSac: type.HsnSac);
         var settings = CustomerBillSettings.Create("Frozen seller", "Seller address", "9123456780", null, "27AABCU9603R1ZM", "TAX INVOICE", "Thank you", "A4", true, true, true, true, true, "27", "Maharashtra");
         db.AddRange(customer, owner, vendor, brand, type, model, variant, color, tax, stock, settings);
         var accounts = await LedgerPosting.EnsureSystemAccountsAsync(db, default);
         LedgerPosting.Add(db, LedgerPosting.ForPurchase(stock, accounts)); await db.SaveChangesAsync();
         await db.Database.ExecuteSqlRawAsync("CREATE SEQUENCE invoice_fixture_counter; CREATE FUNCTION generate_sales_bill_number(integer) RETURNS text LANGUAGE sql AS $$ SELECT 'INV-' || nextval('invoice_fixture_counter')::text $$");
-        var line = new CreateSalesInvoiceLineCommandDto(InvoiceItemType.SerializedProduct, stock.Id, "Phone", "CLIENT-FAKE", null, 1, 200, TaxId: tax.Id, HsnSac: "8517");
+        var line = new CreateSalesInvoiceLineCommandDto(InvoiceItemType.SerializedProduct, stock.Id, "Phone", "CLIENT-FAKE", null, 1, 200, TaxId: tax.Id);
         var fractional = new CreateSalesInvoiceLineCommandDto(InvoiceItemType.Service, null, "Service", null, null, 0.3333m, 10, HsnSac: "998599");
         var command = new CreateSalesInvoiceCommand(customer.Name, customer.Mobile, customer.Address, null, date, 30, null,
             [line, fractional, fractional], new(50, "Cash", date), PlaceOfSupplyStateCode: "27");
@@ -48,6 +48,12 @@ internal static class InvoiceWorkflowChecks
         await Reject(() => new CreateSalesInvoiceCommandHandler(db).Handle(command with { SupplyType = GstSupplyType.InterState }, default), "Contradictory supply type must be rejected.");
         var details = await new CreateSalesInvoiceCommandHandler(db).Handle(command, default);
         var id = details.Invoice.Id;
+        Check(details.Lines.First().HsnSac == "85171300", "Invoice must default to the stored purchase HSN when the API caller omits it.");
+        db.ChangeTracker.Clear();
+        db.ProductTypes.Update(ProductType.Update(type.Id, type.Name, type.Description, true, "8517"));
+        await db.SaveChangesAsync();
+        Check((await db.Products.SingleAsync(p => p.Id == stock.Id)).HsnSac == "85171300", "Changing a type default must preserve purchased stock classification.");
+        Check((await new GetSalesInvoiceDetailsQueryHandler(db).Handle(new(id), default)).Lines.First().HsnSac == "85171300", "Changing a type default must preserve issued invoice classification.");
         Check(details.Invoice.TotalAmount == 242.66m && details.Invoice.SubTotal == 206.66m, "Fractional lines must round consistently and post a balanced invoice.");
         Check(details.Lines.First().SerialNumber == stock.SerialNumber, "Inventory serials must be authoritative.");
         Check(await db.SalesInvoiceReceipts.CountAsync() == 1 && await db.SalesReceipts.CountAsync() == 0, "Invoice receipt must persist without a legacy sales-product FK.");
@@ -99,7 +105,7 @@ internal static class InvoiceWorkflowChecks
         var snapshot = await db.InvoiceSnapshots.SingleAsync(s => s.SourceId == id);
         Check(JsonDocument.Parse(snapshot.DetailsJson).RootElement.GetProperty("seller").GetProperty("companyName").GetString() == "Frozen seller", "Snapshot must freeze seller identity.");
         // IGST invoice and full return must reverse the tax as well as the revenue.
-        var inter = await new CreateSalesInvoiceCommandHandler(db).Handle(command with { Lines = [line with { ItemType = InvoiceItemType.Service, ProductId = null }],
+        var inter = await new CreateSalesInvoiceCommandHandler(db).Handle(command with { Lines = [line with { ItemType = InvoiceItemType.Service, ProductId = null, HsnSac = "998599" }],
             InitialPayment = null, InvoiceDate = date.AddDays(4), PlaceOfSupplyStateCode = "29" }, default);
         Check(inter.Invoice.IgstAmount == 36 && inter.Invoice.CgstAmount == 0, "Interstate invoice uses IGST.");
         var interNote = await corrections.Handle(new ReturnInvoiceCommand("Sale", inter.Invoice.Id, date.AddDays(5), "Interstate cancellation", "Restock"), default);
@@ -117,7 +123,38 @@ internal static class InvoiceWorkflowChecks
         } catch (Npgsql.PostgresException e) when (e.SqlState == "P0001") { blocked = true; await tx.RollbackToSavepointAsync("invoice_down_guard"); }
         Check(blocked && await db.SalesInvoiceReceipts.AnyAsync(), "Used invoice history must block downgrade.");
         await SkuWorkflowChecks.RunAsync(db,customer,vendor,tax,owner.Id,date.AddDays(10));
+        await CheckHsnPurchasesAsync(db, vendor, brand, type, model, variant, color, date);
         Console.WriteLine($"PASS: {count} new invoice, advance, return, historical report and migration checks.");
+    }
+    private static async Task CheckHsnPurchasesAsync(AccountingInventoryDbContext db, Vendor vendor, Brand brand, ProductType type, ProductModel model, Variant variant, Color color, DateOnly date)
+    {
+        var tx = db.Database.CurrentTransaction!;
+        await tx.CreateSavepointAsync("hsn_purchases");
+        var command = new AccountingInventory.Application.Purchases.Products.Commands.CreateProduct.CreateProductCommand(
+            vendor.Id, brand.Id, type.Id, model.Id, variant.Id, color.Id, "HSN-A", "HSN-B", "HSN-BILL", 100, 0, 9, 9, 18, date);
+        var single = await new AccountingInventory.Application.Purchases.Products.Commands.CreateProduct.CreateProductCommandHandler(db,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<AccountingInventory.Application.Purchases.Products.Commands.CreateProduct.CreateProductCommandHandler>.Instance).Handle(command, default);
+        if (single.HsnSac != "8517") throw new Exception("Single purchase must resolve the type default on the server.");
+        var bulk = await new AccountingInventory.Application.Purchases.Products.Commands.BulkCreateProducts.BulkCreateProductsCommandHandler(db,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<AccountingInventory.Application.Purchases.Products.Commands.BulkCreateProducts.BulkCreateProductsCommandHandler>.Instance).Handle(new([
+                command with { SerialNumber = "HSN-C", SerialNumber1 = "HSN-D" },
+                command with { SerialNumber = "HSN-E", SerialNumber1 = "HSN-F", HsnSac = "001234" }]), default);
+        if (bulk.First().HsnSac != "8517" || bulk.Last().HsnSac != "001234") throw new Exception("Bulk purchase must preserve defaults, overrides and leading zeroes.");
+        var editable = Product.Create(vendor.Id, brand.Id, type.Id, model.Id, variant.Id, color.Id, "HSN-G", "HSN-H", "HSN-UNPOSTED", 100, 0, 9, 9, 18, date, hsnSac: "001234");
+        db.Products.Add(editable); await db.SaveChangesAsync();
+        var update = new AccountingInventory.Application.Purchases.Products.Commands.UpdateProduct.UpdateProductCommand(
+            editable.Id, vendor.Id, brand.Id, type.Id, model.Id, variant.Id, color.Id, editable.SerialNumber, editable.SerialNumber1, editable.BillNumber, 100, 0, 9, 9, 18, date);
+        var updated = await new AccountingInventory.Application.Purchases.Products.Commands.UpdateProduct.UpdateProductCommandHandler(db,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<AccountingInventory.Application.Purchases.Products.Commands.UpdateProduct.UpdateProductCommandHandler>.Instance).Handle(update, default);
+        if (updated.HsnSac != "001234") throw new Exception("Editing without a new code must preserve the saved purchase classification.");
+        var bulkUpdated = await new AccountingInventory.Application.Purchases.Products.Commands.BulkUpdateProducts.BulkUpdateProductsCommandHandler(db).Handle(new([update with { HsnSac = "85171300" }]), default);
+        if (bulkUpdated.Single().HsnSac != "85171300") throw new Exception("Bulk editing must persist an explicit classification override.");
+        var validator = new AccountingInventory.Application.Purchases.Products.Commands.CreateProduct.CreateProductCommandValidator();
+        if (validator.Validate(command with { HsnSac = "AB1234" }).IsValid || validator.Validate(command with { HsnSac = "12345" }).IsValid)
+            throw new Exception("Invalid purchase classifications must be rejected.");
+        await tx.RollbackToSavepointAsync("hsn_purchases");
+        db.ChangeTracker.Clear();
+        Console.WriteLine("PASS: HSN single/bulk defaults, overrides, leading zeroes and validation.");
     }
     private static async Task CheckUpgradeAsync(AccountingInventoryDbContext db)
     {
@@ -126,6 +163,12 @@ internal static class InvoiceWorkflowChecks
         var tx = db.Database.CurrentTransaction!;
         await tx.CreateSavepointAsync("invoice_upgrade");
         var generator = db.GetService<IMigrationsSqlGenerator>();
+        foreach (var sql in generator.Generate(new AddProductHsnSac().DownOperations, db.Model))
+            await db.Database.ExecuteSqlRawAsync(sql.CommandText);
+        foreach (var sql in generator.Generate(new AddProductHsnSac().UpOperations, db.Model))
+            await db.Database.ExecuteSqlRawAsync(sql.CommandText);
+        foreach (var sql in generator.Generate(new AddProductHsnSac().UpOperations, db.Model))
+            await db.Database.ExecuteSqlRawAsync(sql.CommandText);
         foreach (var sql in generator.Generate(new AccessorySkuInventory().DownOperations,db.Model))
             await db.Database.ExecuteSqlRawAsync(sql.CommandText);
         foreach (var sql in generator.Generate(new AccessorySkuInventory().UpOperations,db.Model))

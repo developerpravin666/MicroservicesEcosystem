@@ -31,10 +31,11 @@ public sealed class BulkCreateProductsCommandHandler(IAccountingInventoryDbConte
         if (existing is not null)
             throw new ConflictException($"Serial number '{existing}' is already assigned to another product.");
 
+        var typeCodes = await dbContext.ProductTypes.ToDictionaryAsync(t => t.Id, t => t.HsnSac, cancellationToken);
         var entities = products.Select(item => Product.Create(item.VendorId, item.BrandId,
             item.ProductTypeId, item.ProductModelId, item.VariantId, item.ColorId,
             item.SerialNumber, item.SerialNumber1, item.BillNumber, item.PurchasePrice,
-            item.Discount, item.Cgst, item.Sgst, item.Tax, item.PurchaseDate, item.PaymentTermsDays)).ToArray();
+            item.Discount, item.Cgst, item.Sgst, item.Tax, item.PurchaseDate, item.PaymentTermsDays, item.HsnSac ?? typeCodes.GetValueOrDefault(item.ProductTypeId))).ToArray();
         dbContext.Products.AddRange(entities);
         var ledgerAccounts = await LedgerPosting.EnsureSystemAccountsAsync(dbContext, cancellationToken);
         foreach (var product in entities)
@@ -48,6 +49,6 @@ public sealed class BulkCreateProductsCommandHandler(IAccountingInventoryDbConte
             product.BrandId, product.ProductTypeId, product.ProductModelId, product.VariantId,
             product.ColorId, product.SerialNumber, product.SerialNumber1,
             product.PurchasePrice, product.TotalAmount, product.Discount, product.Cgst,
-            product.Sgst, product.Tax, product.IsActive, product.IsSold, product.BillNumber)).ToArray();
+            product.Sgst, product.Tax, product.IsActive, product.IsSold, product.BillNumber, product.HsnSac)).ToArray();
     }
 }
