@@ -5,11 +5,11 @@ using BuildingBlocks.Application.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 namespace AccountingInventory.Application.Inventory;
-public sealed record SkuSummary(Guid Id, string Code, string Name, string HsnSac, string UnitOfMeasure, decimal Quantity, decimal InventoryValue, bool IsActive);
+public sealed record SkuSummary(Guid Id, string Code, string Name, string HsnSac, string UnitOfMeasure, decimal Quantity, decimal InventoryValue, bool IsActive, Guid? DefaultTaxId = null);
 public sealed record SkuPurchaseSummary(Guid Id,string BillNumber,string Description,decimal Quantity,DateOnly Date);
 public sealed record GetSkuPurchasesQuery : IRequest<IReadOnlyList<SkuPurchaseSummary>>;
 public sealed record GetStockSkusQuery : IRequest<IReadOnlyList<SkuSummary>>;
-public sealed record CreateStockSkuCommand(string Code, string Name, string HsnSac, string UnitOfMeasure) : IRequest<Guid>, IBusinessPermissionRequest
+public sealed record CreateStockSkuCommand(string Code, string Name, string HsnSac, string UnitOfMeasure, Guid? DefaultTaxId = null) : IRequest<Guid>, IBusinessPermissionRequest
 { public string BusinessPermission => "catalog.manage"; }
 public sealed record ReceiveSkuStockCommand(Guid SkuId, Guid VendorId, string BillNumber, DateOnly Date, decimal Quantity, decimal UnitCost,
     Guid? TaxId = null, bool InterState = false, int PaymentTermsDays = 0) : IRequest<Guid>, IBusinessPermissionRequest
@@ -24,10 +24,10 @@ public sealed class SkuInventoryHandler(IAccountingInventoryDbContext db) : IReq
         => await db.SkuMovements.Where(m => m.Kind == "Purchase" && !db.InvoiceCorrections.Any(n => n.Kind == "Purchase" && n.SourceId == m.Id))
             .OrderByDescending(m => m.MovementDate).Select(m => new SkuPurchaseSummary(m.Id,m.BillNumber!,m.Description,m.Quantity,m.MovementDate)).ToListAsync(ct);
     public async Task<IReadOnlyList<SkuSummary>> Handle(GetStockSkusQuery q, CancellationToken ct)
-        => await db.StockSkus.AsNoTracking().OrderBy(s => s.Code).Select(s => new SkuSummary(s.Id,s.Code,s.Name,s.HsnSac,s.UnitOfMeasure,s.Quantity,s.InventoryValue,s.IsActive)).ToListAsync(ct);
+        => await db.StockSkus.AsNoTracking().OrderBy(s => s.Code).Select(s => new SkuSummary(s.Id,s.Code,s.Name,s.HsnSac,s.UnitOfMeasure,s.Quantity,s.InventoryValue,s.IsActive,s.DefaultTaxId)).ToListAsync(ct);
     public async Task<Guid> Handle(CreateStockSkuCommand q, CancellationToken ct)
     {
-        var sku = StockSku.Create(q.Code,q.Name,q.HsnSac,q.UnitOfMeasure);
+        var sku = StockSku.Create(q.Code,q.Name,q.HsnSac,q.UnitOfMeasure, (await AccountingInventory.Application.Taxes.TaxRateResolver.LoadAsync(db, ct)).ProfileId(q.DefaultTaxId));
         if (await db.StockSkus.AnyAsync(s => s.Code == sku.Code,ct)) throw new ConflictException("SKU code already exists.");
         db.StockSkus.Add(sku); await db.SaveChangesAsync(ct); return sku.Id;
     }
@@ -45,12 +45,12 @@ public sealed class SkuInventoryHandler(IAccountingInventoryDbContext db) : IReq
         if(await AccountingInventory.Application.Purchases.Accounting.PurchaseStockRows.Query(db).AnyAsync(p => p.VendorId == q.VendorId && p.BillNumber != null
             && p.BillNumber.ToLower() == bill.ToLower() && (p.PurchaseDate != q.Date || p.PaymentTermsDays != q.PaymentTermsDays),ct))
             throw new ConflictException("All items on a supplier bill require the same date and payment terms.");
-        Tax? tax = null;
-        if (q.TaxId.HasValue) tax = await db.Taxes.SingleOrDefaultAsync(t => t.Id == q.TaxId && t.IsActive,ct) ?? throw new NotFoundException("Active tax not found.");
+        var tax = (await AccountingInventory.Application.Taxes.TaxRateResolver.LoadAsync(db, ct)).Resolve(q.TaxId ?? sku.DefaultTaxId, q.Date);
         var value = decimal.Round(q.Quantity*q.UnitCost,2,MidpointRounding.AwayFromZero);
         sku.Receive(q.Quantity,value,q.Date);
         var movement = SkuMovement.Create(sku.Id,q.Date,"Purchase",Guid.NewGuid(),q.Quantity,value,sku.Name,q.VendorId,bill,q.PaymentTermsDays,
             q.InterState ? 0 : tax?.Cgst ?? 0,q.InterState ? 0 : tax?.Sgst ?? 0,q.InterState ? (tax?.Cgst ?? 0)+(tax?.Sgst ?? 0) : 0);
+        movement.SetTaxDetails(tax?.Id, tax?.Treatment ?? "NonGst");
         db.SkuMovements.Add(movement);
         var accounts = await LedgerPosting.EnsureSystemAccountsAsync(db,ct);
         var lines = new List<(Guid,decimal,decimal,string?)>();
@@ -70,6 +70,7 @@ public sealed class SkuInventoryHandler(IAccountingInventoryDbContext db) : IReq
         if(await db.SkuMovements.AnyAsync(m => m.SkuId == sku.Id,ct)) throw new ConflictException("Opening staging requires a new SKU with no movements.");
         var value=decimal.Round(q.Quantity*q.UnitCost,2,MidpointRounding.AwayFromZero);sku.Receive(q.Quantity,value,q.Date);sku.StageOpening();
         var movement=SkuMovement.Create(sku.Id,q.Date,"OpeningStock",Guid.NewGuid(),q.Quantity,value,"Staged opening accessory stock");
+
         db.SkuMovements.Add(movement);await db.SaveChangesAsync(ct);return movement.Id;
     }
     public async Task<Guid> Handle(WriteOffSkuStockCommand q, CancellationToken ct)
@@ -79,6 +80,7 @@ public sealed class SkuInventoryHandler(IAccountingInventoryDbContext db) : IReq
         await LedgerPosting.EnsurePeriodOpenAsync(db,q.Date,ct);
         var sku = await db.StockSkus.SingleOrDefaultAsync(s => s.Id == q.SkuId,ct) ?? throw new NotFoundException("SKU not found.");
         var cost=sku.Issue(q.Quantity,q.Date); var movement=SkuMovement.Create(sku.Id,q.Date,"WriteOff",Guid.NewGuid(),-q.Quantity,-cost,q.Reason);
+
         db.SkuMovements.Add(movement); var accounts=await LedgerPosting.EnsureSystemAccountsAsync(db,ct);
         if(cost>0) LedgerPosting.Add(db,JournalEntry.Post(q.Date,q.Reason,"SkuWriteOff",movement.Id.ToString(),[(accounts["5100"],cost,0m,(string?)q.Reason),(accounts["1200"],0m,cost,(string?)"Accessory write-off")]));
         await db.SaveChangesAsync(ct);return movement.Id;

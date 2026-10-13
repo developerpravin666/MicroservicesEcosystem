@@ -2,6 +2,7 @@ using BuildingBlocks.Domain;
 namespace AccountingInventory.Domain.Entities;
 public sealed class StockSku : AggregateRoot
 {
+    public Guid? DefaultTaxId { get; private set; }
     public string Code { get; private set; } = null!;
     public string Name { get; private set; } = null!;
     public string HsnSac { get; private set; } = null!;
@@ -9,12 +10,12 @@ public sealed class StockSku : AggregateRoot
     public decimal Quantity { get; private set; }
     public decimal InventoryValue { get; private set; }
     public DateOnly? LastMovementDate { get; private set; }
-    public static StockSku Create(string code, string name, string hsn, string unit)
+    public static StockSku Create(string code, string name, string hsn, string unit, Guid? defaultTaxId = null)
     {
         if (string.IsNullOrWhiteSpace(code) || code.Length > 40 || string.IsNullOrWhiteSpace(name) || name.Length > 200
             || !System.Text.RegularExpressions.Regex.IsMatch(hsn ?? "", @"^(\d{4}|\d{6}|\d{8})$")
             || string.IsNullOrWhiteSpace(unit) || unit.Length > 10) throw new ArgumentException("Provide SKU code, name, HSN and unit.");
-        return new() { Id = Guid.NewGuid(), IsActive = true, Code = code.Trim().ToUpperInvariant(), Name = name.Trim(), HsnSac = hsn!, UnitOfMeasure = unit.Trim().ToUpperInvariant() };
+        return new() { Id = Guid.NewGuid(), IsActive = true, DefaultTaxId = defaultTaxId, Code = code.Trim().ToUpperInvariant(), Name = name.Trim(), HsnSac = hsn!, UnitOfMeasure = unit.Trim().ToUpperInvariant() };
     }
     public void StageOpening() { IsActive=false; }
     public void ActivateOpening() { IsActive=true; }
@@ -42,6 +43,9 @@ public sealed class StockSku : AggregateRoot
 }
 public sealed class SkuMovement : AggregateRoot
 {
+    public Guid? TaxId { get; private set; }
+    public string TaxTreatment { get; private set; } = "Taxable";
+    public void SetTaxDetails(Guid? id, string treatment) { TaxId = id; TaxTreatment = treatment; }
     public Guid SkuId { get; private set; }
     public DateOnly MovementDate { get; private set; }
     public string Kind { get; private set; } = null!;

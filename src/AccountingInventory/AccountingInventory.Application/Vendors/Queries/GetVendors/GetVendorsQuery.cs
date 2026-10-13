@@ -10,5 +10,5 @@ public sealed record GetVendorsQuery(
     string? SortDirection = null,
     string? Search = null) : IRequest<PagedResult<VendorSummary>>;
 
-public sealed record VendorSummary(Guid Id, string Name, string Code, string Mobile, string Email, string Description, string Address, bool IsActive);
+public sealed record VendorSummary(Guid Id, string Name, string Code, string Mobile, string Email, string Description, string Address, bool IsActive, string? GstNumber = null);
 

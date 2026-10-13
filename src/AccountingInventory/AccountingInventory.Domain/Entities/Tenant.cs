@@ -51,7 +51,7 @@ public sealed class Tenant : AggregateRoot
 
         var tenantId = Guid.NewGuid();
         var normalizedSlug = slug.Trim().ToLowerInvariant();
-        var schemaName = TenantSchemaNameValidator.BuildSchemaName(name, tenantId);
+        var schemaName = TenantSchemaNameValidator.BuildSchemaName(normalizedSlug, tenantId);
 
         var tenant = new Tenant
         {

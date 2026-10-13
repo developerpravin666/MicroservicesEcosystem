@@ -10,6 +10,9 @@ public sealed class TaxConfiguration : IEntityTypeConfiguration<Tax>
     {
         builder.ToTable("taxes");
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Name).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.Treatment).HasMaxLength(20).IsRequired();
+        builder.HasIndex(x => new { x.ProfileId, x.EffectiveFrom }).IsUnique().HasFilter("NOT is_deleted");
         builder.Property(x => x.Cgst).HasPrecision(5, 2).IsRequired();
         builder.Property(x => x.Sgst).HasPrecision(5, 2).IsRequired();
         builder.Property(x => x.TotalTax).HasPrecision(5, 2).IsRequired();

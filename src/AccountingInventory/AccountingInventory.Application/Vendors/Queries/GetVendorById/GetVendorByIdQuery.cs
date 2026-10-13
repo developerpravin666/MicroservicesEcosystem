@@ -6,5 +6,5 @@ namespace AccountingInventory.Application.Vendors.Queries.GetVendorById;
 /// info before authentication.</summary>
 public sealed record GetVendorByIdQuery(Guid Id) : IRequest<VendorSummary>;
 
-public sealed record VendorSummary(Guid Id, string Name, string Code, string Mobile, string Email, string? Description, string? Address, bool IsActive);
+public sealed record VendorSummary(Guid Id, string Name, string Code, string Mobile, string Email, string? Description, string? Address, bool IsActive, string? GstNumber = null);
 

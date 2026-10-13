@@ -160,10 +160,10 @@ public static class AdminEndpoints
         group.MapGet("/migrations/status", GetMigrationStatusHandler).WithName("AdminGetMigrationStatusShort").AllowAnonymous();
 
         // 10. Database Migrations Apply (POST /api/admin/database-migrations/apply and /api/admin/migrations/apply)
-        async Task<IResult> ApplyMigrationsHandler(IServiceProvider services, CancellationToken ct)
+        async Task<IResult> ApplyMigrationsHandler(IDatabaseMigrationCoordinator migrationCoordinator, CancellationToken ct)
         {
-            await services.ApplyTenantSchemaMigrationsAsync(ct);
-            return Results.Ok(new { success = true, message = "Migrations successfully executed across all active tenant schemas." });
+            var result = await migrationCoordinator.MigrateAllAsync(ct);
+            return Results.Ok(result);
         }
 
         group.MapPost("/database-migrations/apply", ApplyMigrationsHandler).WithName("AdminApplyMigrationsFull").AllowAnonymous();

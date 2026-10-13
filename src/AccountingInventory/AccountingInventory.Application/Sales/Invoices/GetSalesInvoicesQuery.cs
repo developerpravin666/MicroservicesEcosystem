@@ -166,9 +166,9 @@ public sealed class GetSalesInvoiceDetailsQueryHandler(IAccountingInventoryDbCon
             l.CgstAmount,
             l.SgstAmount,
             l.IgstAmount,
-            l.TotalAmount, l.HsnSac, l.UnitOfMeasure, l.SkuId)).ToList();
+            l.TotalAmount, l.HsnSac, l.UnitOfMeasure, l.SkuId, l.TaxTreatment)).ToList();
 
-        return new SalesInvoiceDetailsDto(summary, lines, receipts);
+        return new SalesInvoiceDetailsDto(summary, lines, receipts, invoice.TaxPointDate, invoice.TaxDateReason);
     }
 }
 

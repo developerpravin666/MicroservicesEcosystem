@@ -6,5 +6,5 @@ namespace AccountingInventory.Application.ProductTypes.Queries.GetProductTypeByI
 /// info before authentication.</summary>
 public sealed record GetProductTypeByIdQuery(Guid Id) : IRequest<ProductTypeSummary>;
 
-public sealed record ProductTypeSummary(Guid Id, string Name, string Description, bool IsActive);
+public sealed record ProductTypeSummary(Guid Id, string Name, string Description, bool IsActive, string? HsnSac = null, Guid? DefaultTaxId = null);
 

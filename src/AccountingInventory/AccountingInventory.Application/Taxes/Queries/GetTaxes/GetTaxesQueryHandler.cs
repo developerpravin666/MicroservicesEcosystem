@@ -15,7 +15,7 @@ public sealed class GetTaxesQueryHandler(IAccountingInventoryDbContext db) : IRe
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
         var items = await query.Skip((page - 1) * pageSize).Take(pageSize).Select(x => new TaxSummary(
-            x.Id, x.Cgst, x.Sgst, x.TotalTax, x.IsActive, x.CreatedAt, x.CreatedBy, x.ModifiedAt, x.ModifiedBy)).ToListAsync(cancellationToken);
+            x.Id, x.Cgst, x.Sgst, x.TotalTax, x.IsActive, x.CreatedAt, x.CreatedBy, x.ModifiedAt, x.ModifiedBy, x.Name, x.ProfileId, x.EffectiveFrom, x.Treatment)).ToListAsync(cancellationToken);
         return new(items, page, pageSize, total, total == 0 ? 0 : (int)Math.Ceiling(total / (double)pageSize));
     }
 }

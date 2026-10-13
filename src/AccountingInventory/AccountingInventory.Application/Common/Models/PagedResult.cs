@@ -6,4 +6,5 @@ public sealed record PagedResult<T>(
     int Page,
     int PageSize,
     int TotalCount,
-    int TotalPages);
+    int TotalPages,
+    object? Summary = null);

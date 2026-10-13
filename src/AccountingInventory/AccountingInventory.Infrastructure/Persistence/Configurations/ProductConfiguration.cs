@@ -9,6 +9,7 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
     public void Configure(EntityTypeBuilder<Product> builder)
     {
         builder.ToTable(Constants.DBConstants.DBTableNames.Products);
+        builder.Property(x => x.HsnSac).HasColumnName("hsn_sac").HasMaxLength(8);
         builder.HasKey(x => x.Id);
         builder.Property(x => x.SerialNumber).IsRequired().HasMaxLength(100);
         builder.Property(x => x.SerialNumber1).HasMaxLength(100);

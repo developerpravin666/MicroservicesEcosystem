@@ -10,5 +10,5 @@ public sealed record GetProductTypesQuery(
     string? SortDirection = null,
     string? Search = null) : IRequest<PagedResult<ProductTypeSummary>>;
 
-public sealed record ProductTypeSummary(Guid Id, string Name, string Description, bool IsActive);
+public sealed record ProductTypeSummary(Guid Id, string Name, string Description, bool IsActive, string? HsnSac = null, Guid? DefaultTaxId = null);
 

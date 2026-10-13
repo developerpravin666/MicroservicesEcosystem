@@ -44,15 +44,15 @@ public sealed class UpdateSalesProductCommandHandler(IAccountingInventoryDbConte
             throw new ConflictException("A sale cannot precede the stock purchase date.");
         var customer = await CustomerResolver.GetOrCreateAsync(db, request.CustomerName,
             request.CustomerMobile, request.CustomerAddress, request.CustomerEmail, cancellationToken);
-        var tax = request.TaxId.HasValue && request.TaxId.Value != Guid.Empty
-            ? await db.Taxes.SingleOrDefaultAsync(item => item.Id == request.TaxId.Value && item.IsActive, cancellationToken)
-                ?? throw new NotFoundException($"Tax rate '{request.TaxId}' was not found or is inactive.")
-            : null;
+        var resolver = await AccountingInventory.Application.Taxes.TaxRateResolver.LoadAsync(db, cancellationToken);
+        var defaultTaxId = stock.TaxId ?? await db.ProductTypes.Where(t => t.Id == stock.ProductTypeId).Select(t => t.DefaultTaxId).FirstOrDefaultAsync(cancellationToken);
+        var tax = resolver.Resolve(request.TaxId ?? defaultTaxId, request.SaleDate);
         sale.Update(requestedProductId.ToString(), customer.Id, request.SaleDate, decimal.Round(stock.PurchasePrice - stock.Discount, 2, MidpointRounding.AwayFromZero),
             request.SellingPrice, request.Discount, tax?.Id, tax?.Cgst ?? 0m, tax?.Sgst ?? 0m,
             request.PaymentTermsDays);
         try
         {
+            sale.SetTaxTreatment(tax?.Treatment ?? "NonGst");
             await db.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException)

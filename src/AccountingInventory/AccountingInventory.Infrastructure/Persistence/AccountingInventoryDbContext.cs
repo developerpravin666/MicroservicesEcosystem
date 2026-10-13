@@ -217,6 +217,15 @@ public sealed class AccountingInventoryDbContext(
         base.OnModelCreating(modelBuilder);
     }
 
-    public Task ResetConnectionAsync(CancellationToken cancellationToken)
-        => Database.CloseConnectionAsync();
+    public async Task ResetConnectionAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        await Database.CloseConnectionAsync();
+        var connectionString = Database.GetConnectionString()
+            ?? throw new InvalidOperationException("Database connection string is not configured.");
+        // Admin handlers resolve their target tenant after this context is created.
+        // Reopening must use that tenant, rather than the original admin search path.
+        Database.SetConnectionString(TenantSchemaMigrator.CreateTenantConnectionString(
+            connectionString, tenantProvider.SchemaName));
+    }
 }

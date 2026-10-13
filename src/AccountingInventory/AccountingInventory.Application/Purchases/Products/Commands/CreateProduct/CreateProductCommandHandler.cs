@@ -14,6 +14,9 @@ public sealed class CreateProductCommandHandler(
 {
     public async Task<CreateProductResult> Handle(CreateProductCommand request, CancellationToken cancellationToken)
     {
+        var selectedTaxId = request.TaxId ?? await dbContext.ProductTypes.Where(t => t.Id == request.ProductTypeId).Select(t => t.DefaultTaxId).FirstOrDefaultAsync(cancellationToken);
+        var rate = (await AccountingInventory.Application.Taxes.TaxRateResolver.LoadAsync(dbContext, cancellationToken)).Resolve(selectedTaxId, request.PurchaseDate ?? DateOnly.FromDateTime(DateTime.UtcNow));
+        if (rate != null) request = request with { TaxId = rate.Id, Cgst = rate.Cgst, Sgst = rate.Sgst, Tax = rate.TotalTax, TaxTreatment = rate.Treatment };
         await PurchaseIntegrity.ValidateAsync(dbContext, [new PurchaseReference(request.VendorId, request.BrandId, request.ProductTypeId, request.ProductModelId,
             request.VariantId, request.ColorId, request.BillNumber, request.PurchaseDate, request.PaymentTermsDays)], cancellationToken);
         var serialNumber = request.SerialNumber.Trim().ToLowerInvariant();
@@ -27,7 +30,8 @@ public sealed class CreateProductCommandHandler(
         var product = Product.Create(request.VendorId, request.BrandId, request.ProductTypeId, request.ProductModelId,
             request.VariantId, request.ColorId, request.SerialNumber, request.SerialNumber1, request.BillNumber,
             request.PurchasePrice, request.Discount, request.Cgst, request.Sgst, request.Tax, request.PurchaseDate,
-            request.PaymentTermsDays);
+            request.PaymentTermsDays, request.HsnSac ?? await dbContext.ProductTypes.Where(t => t.Id == request.ProductTypeId).Select(t => t.HsnSac).FirstOrDefaultAsync(cancellationToken));
+        product.SetTaxDetails(request.TaxId == Guid.Empty ? null : request.TaxId, request.TaxTreatment);
         dbContext.Products.Add(product);
         var ledgerAccounts = await LedgerPosting.EnsureSystemAccountsAsync(dbContext, cancellationToken);
         LedgerPosting.Add(dbContext, LedgerPosting.ForPurchase(product, ledgerAccounts));
@@ -37,6 +41,6 @@ public sealed class CreateProductCommandHandler(
         return new CreateProductResult(product.Id, product.VendorId, product.BrandId, product.ProductTypeId,
             product.ProductModelId, product.VariantId, product.ColorId, product.SerialNumber, product.SerialNumber1,
             product.PurchasePrice, product.TotalAmount, product.Discount, product.Cgst, product.Sgst,
-            product.Tax, product.IsActive, product.IsSold, product.BillNumber);
+            product.Tax, product.IsActive, product.IsSold, product.BillNumber, product.HsnSac, product.TaxId, product.TaxTreatment);
     }
 }

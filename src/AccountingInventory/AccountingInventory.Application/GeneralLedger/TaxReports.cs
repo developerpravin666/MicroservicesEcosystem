@@ -13,7 +13,7 @@ public sealed record TaxReportRateSummary(
     decimal SgstAmount,
     decimal TotalTax,
     decimal IgstRate = 0m,
-    decimal IgstAmount = 0m);
+    decimal IgstAmount = 0m, string TaxTreatment = "Taxable");
 
 public sealed record TaxReportSummary(
     DateOnly FromDate,
@@ -45,9 +45,10 @@ public sealed class GetTaxReportHandler(IAccountingInventoryDbContext db)
         var singleSalesResult = await db.SalesProducts
             .Where(s => !s.IsDeleted)
             .Where(s => s.SaleDate >= fromDate && s.SaleDate <= to)
-            .GroupBy(s => new { s.CgstRate, s.SgstRate })
+            .GroupBy(s => new { s.CgstRate, s.SgstRate, s.TaxTreatment })
             .Select(g => new
             {
+                TaxTreatment = g.Key.TaxTreatment,
                 CgstRate = g.Key.CgstRate,
                 SgstRate = g.Key.SgstRate,
                 TaxableAmount = g.Sum(e => e.TaxableAmount),
@@ -65,19 +66,20 @@ public sealed class GetTaxReportHandler(IAccountingInventoryDbContext db)
             x.SgstAmount,
             x.CgstAmount + x.SgstAmount,
             0m,
-            0m
+            0m, x.TaxTreatment
         )).ToList();
 
         // Include Multi-line sales invoices
         var multiSalesResult = await db.SalesInvoices
             .Where(s => s.InvoiceDate >= fromDate && s.InvoiceDate <= to)
             .SelectMany(s => s.Lines)
-            .GroupBy(l => new { l.CgstRate, l.SgstRate, l.IgstRate })
+            .GroupBy(l => new { l.CgstRate, l.SgstRate, l.IgstRate, l.TaxTreatment })
             .Select(g => new
             {
                 g.Key.CgstRate,
                 g.Key.SgstRate,
                 g.Key.IgstRate,
+                g.Key.TaxTreatment,
                 TaxableAmount = g.Sum(e => e.TaxableAmount),
                 CgstAmount = g.Sum(e => e.CgstAmount),
                 SgstAmount = g.Sum(e => e.SgstAmount),
@@ -95,15 +97,15 @@ public sealed class GetTaxReportHandler(IAccountingInventoryDbContext db)
                 row.SgstAmount,
                 row.CgstAmount + row.SgstAmount + row.IgstAmount,
                 row.IgstRate,
-                row.IgstAmount));
+                row.IgstAmount, row.TaxTreatment));
         }
 
         var purchaseRows = await db.Products.AsNoTracking()
             .Where(item => !item.IsOpeningStock && item.PurchaseDate >= fromDate && item.PurchaseDate <= to)
-            .Select(item => new { item.Cgst, item.Sgst, item.PurchasePrice, item.Discount, item.TotalAmount })
+            .Select(item => new { item.Cgst, item.Sgst, item.PurchasePrice, item.Discount, item.TotalAmount, item.TaxTreatment })
             .ToListAsync(ct);
 
-        var purchases = purchaseRows.GroupBy(item => new { item.Cgst, item.Sgst }).Select(group =>
+        var purchases = purchaseRows.GroupBy(item => new { item.Cgst, item.Sgst, item.TaxTreatment }).Select(group =>
         {
             var taxable = group.Sum(item => item.PurchasePrice - item.Discount);
             var cgst = group.Sum(item => decimal.Round((item.PurchasePrice - item.Discount) * item.Cgst / 100m, 2, MidpointRounding.AwayFromZero));
@@ -116,18 +118,20 @@ public sealed class GetTaxReportHandler(IAccountingInventoryDbContext db)
                 sgst,
                 group.Sum(item => item.TotalAmount - (item.PurchasePrice - item.Discount)),
                 0m,
-                0m);
+                0m, group.Key.TaxTreatment);
         }).OrderBy(row => row.CgstRate + row.SgstRate).ToList();
 
         var skuPurchases = await db.SkuMovements.AsNoTracking().Where(m => m.Kind == "Purchase" && m.MovementDate >= fromDate && m.MovementDate <= to).ToListAsync(ct);
         purchases.AddRange(skuPurchases.Select(m => new TaxReportRateSummary(m.CgstRate,m.SgstRate,m.InventoryValue,m.CgstAmount,m.SgstAmount,
-            m.CgstAmount+m.SgstAmount+m.IgstAmount,m.IgstRate,m.IgstAmount)));
+            m.CgstAmount+m.SgstAmount+m.IgstAmount,m.IgstRate,m.IgstAmount,m.TaxTreatment)));
         var notes = await db.InvoiceCorrections.AsNoTracking().Where(x => x.NoteDate >= fromDate && x.NoteDate <= to).ToListAsync(ct);
         var correctedInvoiceIds = notes.Where(n => n.Kind == "Sale").Select(n => n.SourceId).ToArray();
         var correctedInvoices = await db.SalesInvoices.AsNoTracking().Include(i => i.Lines)
             .Where(i => correctedInvoiceIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id, ct);
         var purchaseNoteIds=notes.Where(n => n.Kind == "Purchase").Select(n => n.SourceId).ToArray();
         var correctedSkuPurchases=await db.SkuMovements.Where(m => purchaseNoteIds.Contains(m.Id) && m.Kind == "Purchase").ToDictionaryAsync(m => m.Id,ct);
+        var correctedLegacySales = await db.SalesProducts.AsNoTracking().Where(s => correctedInvoiceIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, s => s.TaxTreatment, ct);
+        var correctedLegacyPurchases = await db.Products.AsNoTracking().Where(p => purchaseNoteIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id, p => p.TaxTreatment, ct);
         foreach (var note in notes)
         {
             if (note.Kind == "Sale" && correctedInvoices.TryGetValue(note.SourceId, out var invoice))
@@ -135,17 +139,17 @@ public sealed class GetTaxReportHandler(IAccountingInventoryDbContext db)
                 // Full invoice returns reverse each original rate bucket, including mixed GST rates.
                 foreach (var line in invoice.Lines)
                     sales.Add(new(line.CgstRate, line.SgstRate, -line.TaxableAmount, -line.CgstAmount,
-                        -line.SgstAmount, -(line.CgstAmount + line.SgstAmount + line.IgstAmount), line.IgstRate, -line.IgstAmount));
+                        -line.SgstAmount, -(line.CgstAmount + line.SgstAmount + line.IgstAmount), line.IgstRate, -line.IgstAmount, line.TaxTreatment));
                 continue;
             }
             if(note.Kind == "Purchase" && correctedSkuPurchases.TryGetValue(note.SourceId,out var skuPurchase)) {
                 purchases.Add(new(skuPurchase.CgstRate,skuPurchase.SgstRate,-note.TaxableAmount,-note.CgstAmount,-note.SgstAmount,
-                    -(note.CgstAmount+note.SgstAmount+note.IgstAmount),skuPurchase.IgstRate,-note.IgstAmount));
+                    -(note.CgstAmount+note.SgstAmount+note.IgstAmount),skuPurchase.IgstRate,-note.IgstAmount,skuPurchase.TaxTreatment));
                 continue;
             }
             var rows = note.Kind == "Sale" ? sales : purchases;
             rows.Add(new(note.CgstRate, note.SgstRate, -note.TaxableAmount, -note.CgstAmount, -note.SgstAmount,
-                -(note.CgstAmount + note.SgstAmount + note.IgstAmount), 0m, -note.IgstAmount));
+                -(note.CgstAmount + note.SgstAmount + note.IgstAmount), 0m, -note.IgstAmount, note.Kind == "Sale" ? correctedLegacySales.GetValueOrDefault(note.SourceId, "Taxable") : correctedLegacyPurchases.GetValueOrDefault(note.SourceId, "Taxable")));
         }
         sales = Combine(sales);
         purchases = Combine(purchases);
@@ -175,7 +179,7 @@ public sealed class GetTaxReportHandler(IAccountingInventoryDbContext db)
     }
 
     private static List<TaxReportRateSummary> Combine(IEnumerable<TaxReportRateSummary> rows) => rows
-        .GroupBy(x => new { x.CgstRate, x.SgstRate, x.IgstRate })
+        .GroupBy(x => new { x.CgstRate, x.SgstRate, x.IgstRate, x.TaxTreatment })
         .Select(g => new TaxReportRateSummary(
             g.Key.CgstRate,
             g.Key.SgstRate,
@@ -184,7 +188,7 @@ public sealed class GetTaxReportHandler(IAccountingInventoryDbContext db)
             g.Sum(x => x.SgstAmount),
             g.Sum(x => x.TotalTax),
             g.Key.IgstRate,
-            g.Sum(x => x.IgstAmount)))
+            g.Sum(x => x.IgstAmount), g.Key.TaxTreatment))
         .OrderBy(x => x.CgstRate + x.SgstRate + x.IgstRate)
         .ToList();
 }

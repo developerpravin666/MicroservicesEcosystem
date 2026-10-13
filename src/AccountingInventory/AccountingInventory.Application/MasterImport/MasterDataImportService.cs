@@ -31,11 +31,11 @@ public sealed partial class MasterDataImportService(
         {
             (
                 "Vendors",
-                new List<string> { "Name", "Code", "Mobile", "Email", "Description", "Address" },
+                new List<string> { "Name", "Code", "GSTNumber", "Mobile", "Email", "Description", "Address" },
                 new List<List<string>>()
                 {
-                    new() { "Apple Distribution India", "VEN-APP-001", "9876543210", "distro@apple.in", "Official Apple national distributor", "BKC Bandra Kurla Complex Mumbai" },
-                    new() { "Samsung India Electronics", "VEN-SAM-001", "9876501234", "support@samsung.in", "Official Samsung direct distributor", "Two Horizon Center DLF Phase 5 Gurugram" }
+                    new() { "Apple Distribution India", "VEN-APP-001", "27AAACA6171Q1ZZ", "9876543210", "distro@apple.in", "Official Apple national distributor", "BKC Bandra Kurla Complex Mumbai" },
+                    new() { "Samsung India Electronics", "VEN-SAM-001", "06AABCS1234D1Z2", "9876501234", "support@samsung.in", "Official Samsung direct distributor", "Two Horizon Center DLF Phase 5 Gurugram" }
                 }
             ),
             (
@@ -107,11 +107,12 @@ public sealed partial class MasterDataImportService(
         {
             (
                 "Vendors",
-                new List<string> { "Name", "Code", "Mobile", "Email", "Description", "Address" },
+                new List<string> { "Name", "Code", "GSTNumber", "Mobile", "Email", "Description", "Address" },
                 vendors.Select(v => new List<string>
                 {
                     v.Name ?? "",
                     v.Code ?? "",
+                    v.GstNumber ?? "",
                     v.Mobile ?? "",
                     v.Email ?? "",
                     v.Description ?? "",
@@ -198,11 +199,11 @@ public sealed partial class MasterDataImportService(
         // 1. Vendors Sheet
         sb.AppendLine(" <Worksheet ss:Name=\"Vendors\"><Table>");
         sb.AppendLine("  <Row ss:StyleID=\"Header\">");
-        sb.AppendLine("   <Cell><Data ss:Type=\"String\">Name</Data></Cell><Cell><Data ss:Type=\"String\">Code</Data></Cell><Cell><Data ss:Type=\"String\">Mobile</Data></Cell><Cell><Data ss:Type=\"String\">Email</Data></Cell><Cell><Data ss:Type=\"String\">Description</Data></Cell><Cell><Data ss:Type=\"String\">Address</Data></Cell>");
+        sb.AppendLine("   <Cell><Data ss:Type=\"String\">Name</Data></Cell><Cell><Data ss:Type=\"String\">Code</Data></Cell><Cell><Data ss:Type=\"String\">GSTNumber</Data></Cell><Cell><Data ss:Type=\"String\">Mobile</Data></Cell><Cell><Data ss:Type=\"String\">Email</Data></Cell><Cell><Data ss:Type=\"String\">Description</Data></Cell><Cell><Data ss:Type=\"String\">Address</Data></Cell>");
         sb.AppendLine("  </Row>");
         foreach (var v in vendors)
         {
-            sb.AppendLine($"  <Row><Cell><Data ss:Type=\"String\">{EscapeXml(v.Name)}</Data></Cell><Cell><Data ss:Type=\"String\">{EscapeXml(v.Code)}</Data></Cell><Cell><Data ss:Type=\"String\">{EscapeXml(v.Mobile)}</Data></Cell><Cell><Data ss:Type=\"String\">{EscapeXml(v.Email)}</Data></Cell><Cell><Data ss:Type=\"String\">{EscapeXml(v.Description)}</Data></Cell><Cell><Data ss:Type=\"String\">{EscapeXml(v.Address)}</Data></Cell></Row>");
+            sb.AppendLine($"  <Row><Cell><Data ss:Type=\"String\">{EscapeXml(v.Name)}</Data></Cell><Cell><Data ss:Type=\"String\">{EscapeXml(v.Code)}</Data></Cell><Cell><Data ss:Type=\"String\">{EscapeXml(v.GstNumber)}</Data></Cell><Cell><Data ss:Type=\"String\">{EscapeXml(v.Mobile)}</Data></Cell><Cell><Data ss:Type=\"String\">{EscapeXml(v.Email)}</Data></Cell><Cell><Data ss:Type=\"String\">{EscapeXml(v.Description)}</Data></Cell><Cell><Data ss:Type=\"String\">{EscapeXml(v.Address)}</Data></Cell></Row>");
         }
         sb.AppendLine(" </Table></Worksheet>");
 
@@ -812,7 +813,7 @@ public sealed partial class MasterDataImportService(
             var existing = await db.ProductTypes.FirstOrDefaultAsync(t => t.Name.ToLower() == data.Name.ToLower().Trim(), ct);
             if (existing != null)
             {
-                var updated = ProductType.Update(existing.Id, data.Name, data.Description, existing.IsActive);
+                var updated = ProductType.Update(existing.Id, data.Name, data.Description, existing.IsActive, existing.HsnSac, existing.DefaultTaxId);
                 db.ProductTypes.Entry(existing).CurrentValues.SetValues(updated);
             }
             else
@@ -927,7 +928,8 @@ public sealed partial class MasterDataImportService(
                     data.Email?.Trim() ?? existing.Email,
                     existing.IsActive,
                     data.Description ?? existing.Description,
-                    data.Address ?? existing.Address);
+                    data.Address ?? existing.Address,
+                    data.GstNumber ?? existing.GstNumber);
                 db.Vendors.Entry(existing).CurrentValues.SetValues(updated);
             }
             else
@@ -938,7 +940,8 @@ public sealed partial class MasterDataImportService(
                     data.Mobile?.Trim() ?? "9999999999",
                     data.Email?.Trim() ?? "vendor@store.local",
                     data.Description,
-                    data.Address);
+                    data.Address,
+                    data.GstNumber);
                 db.Vendors.Add(created);
             }
             r.MarkImported("Vendor imported successfully.");
@@ -1271,6 +1274,7 @@ public sealed partial class MasterDataImportService(
             if (header is "entitytype" or "entity" or "type" or "mastertype") dto.EntityType = val;
             else if (header is "name" or "entityname" or "itemname") dto.Name = val;
             else if (header is "code" or "itemcode" or "vendorcode" or "modelcode") dto.Code = val;
+            else if (header is "gstnumber" or "gstin" or "gst_number" or "gst") dto.GstNumber = val;
             else if (header is "mobile" or "phone" or "mobilenumber" or "phonenumber") dto.Mobile = val;
             else if (header is "email" or "emailaddress") dto.Email = val;
             else if (header is "brand" or "brandname" or "make") dto.Brand = val;

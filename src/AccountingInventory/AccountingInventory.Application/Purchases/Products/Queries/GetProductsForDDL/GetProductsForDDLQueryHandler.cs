@@ -54,7 +54,7 @@ public sealed class GetProductsForDDLQueryHandler(IAccountingInventoryDbContext 
                 product.TotalAmount,
                 product.Discount,
                 product.Cgst,
-                product.Sgst))
+                product.Sgst, product.HsnSac, product.TaxId ?? dbContext.ProductTypes.Where(t => t.Id == product.ProductTypeId).Select(t => t.DefaultTaxId).FirstOrDefault(), product.TaxTreatment))
             .ToListAsync(cancellationToken);
 
         return products;

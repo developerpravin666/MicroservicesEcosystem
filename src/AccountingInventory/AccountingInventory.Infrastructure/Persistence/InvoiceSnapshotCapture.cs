@@ -31,7 +31,7 @@ internal static class InvoiceSnapshotCapture
             if (vendor is null) continue;
             db.InvoiceSnapshots.Add(InvoiceSnapshot.Capture("Purchase", p.Id, vendor.Name, vendor.Mobile,
                 vendor.Address ?? "", vendor.Email, await ProductName(p), p.SerialNumber, JsonSerializer.Serialize(new {
-                    p.BillNumber, p.PurchaseDate, p.DueDate, p.PurchasePrice, p.Discount, p.Cgst, p.Sgst, p.TotalAmount })));
+                    p.HsnSac, p.TaxId, p.TaxTreatment, p.BillNumber, p.PurchaseDate, p.DueDate, p.PurchasePrice, p.Discount, p.Cgst, p.Sgst, p.TotalAmount })));
         }
         foreach (var s in sales)
         {
@@ -44,7 +44,7 @@ internal static class InvoiceSnapshotCapture
             var seller = await db.CustomerBillSettings.AsNoTracking().FirstOrDefaultAsync(ct);
             db.InvoiceSnapshots.Add(InvoiceSnapshot.Capture("Sale", s.Id, customer.Name, customer.Mobile, customer.Address,
                 customer.Email, await ProductName(product), product.SerialNumber, JsonSerializer.Serialize(new {
-                    s.BillNumber, s.SaleDate, s.DueDate, s.SellingPrice, s.Discount, s.CgstRate, s.SgstRate,
+                    s.TaxId, s.TaxTreatment, s.BillNumber, s.SaleDate, s.DueDate, s.SellingPrice, s.Discount, s.CgstRate, s.SgstRate,
                     s.CgstAmount, s.SgstAmount, s.TotalAmount, Seller = seller }, new JsonSerializerOptions(JsonSerializerDefaults.Web))));
         }
     }

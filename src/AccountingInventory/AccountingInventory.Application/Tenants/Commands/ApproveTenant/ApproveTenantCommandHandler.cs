@@ -38,13 +38,14 @@ public sealed class ApproveTenantCommandHandler(
             .SingleOrDefaultAsync(t => t.Id == request.TenantId, cancellationToken)
             ?? throw new NotFoundException($"Tenant with ID '{request.TenantId}' was not found.");
 
-        if (tenant.Status != TenantStatus.PendingApproval && tenant.Status != TenantStatus.PendingProvisioning)
+        var isAlreadyActive = tenant.Status == TenantStatus.Active;
+        if (!isAlreadyActive && tenant.Status != TenantStatus.PendingApproval && tenant.Status != TenantStatus.PendingProvisioning)
         {
             throw new ConflictException($"Tenant '{tenant.Name}' is in status '{tenant.Status}' and cannot be approved.");
         }
 
         logger.LogInformation(
-            "Approving tenant {TenantId} ('{Name}'). Provisioning database schema '{SchemaName}'...",
+            "Approving/Provisioning tenant {TenantId} ('{Name}'). Provisioning database schema '{SchemaName}'...",
             tenant.Id, tenant.Name, tenant.SchemaName);
 
         // 1. Physically provision the PostgreSQL schema and apply all EF Core migrations
@@ -130,16 +131,19 @@ public sealed class ApproveTenantCommandHandler(
 
         await accInvDbContext.SaveChangesAsync(cancellationToken);
 
-        // 7. Mark tenant Active in shared registry
-        tenant.Approve();
-        await tenantDirectory.SaveChangesAsync(cancellationToken);
+        // 7. Mark tenant Active in shared registry if not already active
+        if (!isAlreadyActive)
+        {
+            tenant.Approve();
+            await tenantDirectory.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation(
-            "Tenant {TenantId} ('{Name}') fully approved, migrated and seeded with owner user '{OwnerUsername}'.",
-            tenant.Id, tenant.Name, ownerUsername);
+            logger.LogInformation(
+                "Tenant {TenantId} ('{Name}') fully approved, migrated and seeded with owner user '{OwnerUsername}'.",
+                tenant.Id, tenant.Name, ownerUsername);
+        }
 
         // 8. Send Approval confirmation email to store owner
-        if (!string.IsNullOrWhiteSpace(tenant.OwnerEmail))
+        if (!isAlreadyActive && !string.IsNullOrWhiteSpace(tenant.OwnerEmail))
         {
             var baseUrl = (configuration["Frontend:BaseUrl"] ?? "http://localhost:5173").TrimEnd('/');
             var loginUrl = $"{baseUrl}/login";
@@ -178,7 +182,9 @@ public sealed class ApproveTenantCommandHandler(
             tenant.SchemaName,
             tenant.Status.ToString(),
             ownerUsername,
-            "Tenant approved! Database schema migrated, seed ledgers created, and owner account activated.");
+            isAlreadyActive
+                ? $"Store '{tenant.Name}' database schema and seed ledgers verified successfully."
+                : "Tenant approved! Database schema migrated, seed ledgers created, and owner account activated.");
     }
 }
 

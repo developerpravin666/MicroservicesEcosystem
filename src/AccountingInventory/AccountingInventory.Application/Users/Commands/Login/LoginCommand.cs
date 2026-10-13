@@ -9,4 +9,5 @@ public sealed record LoginResult(
     Guid TenantId,
     string AccessToken,
     string RefreshToken,
-    DateTimeOffset ExpiresAtUtc);
+    DateTimeOffset ExpiresAtUtc,
+    string? TenantName = null);

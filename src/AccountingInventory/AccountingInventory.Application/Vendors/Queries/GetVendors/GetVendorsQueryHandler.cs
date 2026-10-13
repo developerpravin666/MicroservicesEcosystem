@@ -18,6 +18,7 @@ public sealed class GetVendorsQueryHandler(IAccountingInventoryDbContext account
             query = query.Where(v => v.Name.ToLower().Contains(search) ||
                 v.Code.ToLower().Contains(search) || v.Mobile.ToLower().Contains(search) ||
                 v.Email.ToLower().Contains(search) ||
+                (v.GstNumber != null && v.GstNumber.ToLower().Contains(search)) ||
                 (v.Description != null && v.Description.ToLower().Contains(search)) ||
                 (v.Address != null && v.Address.ToLower().Contains(search)));
         }
@@ -28,7 +29,7 @@ public sealed class GetVendorsQueryHandler(IAccountingInventoryDbContext account
         var items = await GridSorting.Apply(query, request.SortBy, request.SortDirection)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(v => new VendorSummary(v.Id, v.Name, v.Code, v.Mobile, v.Email, v.Description!, v.Address!, v.IsActive))
+            .Select(v => new VendorSummary(v.Id, v.Name, v.Code, v.Mobile, v.Email, v.Description!, v.Address!, v.IsActive, v.GstNumber))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<VendorSummary>(items, page, pageSize, totalCount,

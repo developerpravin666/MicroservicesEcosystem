@@ -11,6 +11,7 @@ public sealed class ProductTypeConfiguration : IEntityTypeConfiguration<ProductT
         // The Npgsql connection Search Path selects the product_types schema. Keeping this
         // unqualified is essential: the same migration is reused for every product_types.
         builder.ToTable(Constants.DBConstants.DBTableNames.ProductTypes);
+        builder.Property(x => x.HsnSac).HasColumnName("hsn_sac").HasMaxLength(8);
         builder.HasKey(u => u.Id);
 
         builder.Property(u => u.Name).IsRequired().HasMaxLength(50);

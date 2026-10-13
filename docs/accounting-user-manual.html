@@ -12,7 +12,7 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 @media print{@page{size:A4;margin:18mm}body{background:white;font-size:11pt}main{margin:0;padding:0;max-width:none}.print-tools{display:none}h2,h3{break-after:avoid}tr{break-inside:avoid}a{color:inherit;text-decoration:none}table{font-size:9pt}}
 </style></head><body><main><div class="print-tools"><button onclick="window.print()">Print / Save PDF</button></div>
 <h1 id='accounting-inventory-user-manual'>Accounting &amp; Inventory User Manual</h1>
-<p>Version: 1.7 | Updated: 10 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, and Two-Stage Master Data Import &amp; Verification</p>
+<p>Version: 1.23 | Updated: 13 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import &amp; Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management</p>
 <p>For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.</p>
 <p>To share this guide, send accounting-user-manual.html. Open that file in a browser and choose Print / Save PDF for a paper or PDF copy. Keep the version and date with any distributed copy.</p>
 <h2 id='contents'>Contents</h2>
@@ -36,26 +36,49 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 <li><a href="#17-terms-used-in-this-guide">17. Terms used in this guide</a></li>
 <li><a href="#18-multi-line-invoices-and-customer-advances">18. Multi-line invoices and customer advances</a></li>
 <li><a href="#19-stocked-accessories-and-integrity-controls">19. Stocked accessories and integrity controls</a></li>
-<li><a href="#20-non-accountant-store-operator-guide--smart-suggestions">20. Non-Accountant Store Operator Guide &amp; Smart Suggestions</a></li>
-<li><a href="#21-tenant-onboarding--offline-deployment-setup-guide">21. Tenant Onboarding &amp; Offline Deployment Setup Guide</a></li>
-<li><a href="#22-product-owner-super-administrator-console--platform-management">22. Product Owner (Super Administrator) Console &amp; Platform Management</a></li>
+<li><a href="#20-non-accountant-store-operator-guide-smart-suggestions">20. Non-Accountant Store Operator Guide &amp; Smart Suggestions</a></li>
+<li><a href="#21-tenant-onboarding-offline-deployment-setup-guide">21. Tenant Onboarding &amp; Offline Deployment Setup Guide</a></li>
+<li><a href="#22-product-owner-super-administrator-console-platform-management">22. Product Owner (Super Administrator) Console &amp; Platform Management</a></li>
 <li><a href="#221-dedicated-product-owner-sign-in">22.1 Dedicated Product Owner Sign In</a></li>
 <li><a href="#222-platform-overview-dashboard-admindashboard">22.2 Platform Overview Dashboard</a></li>
-<li><a href="#223-tenant-directory--store-approvals-admintenants">22.3 Tenant Directory &amp; Store Approvals</a></li>
+<li><a href="#223-tenant-directory-lifecycle-management-admintenants">22.3 Tenant Directory &amp; Lifecycle Management</a></li>
 <li><a href="#224-database-schema-migrations-hub-admindatabase-migrations">22.4 Database Schema Migrations Hub</a></li>
-<li><a href="#225-system-settings--offline-configuration-adminsystem-settings">22.5 System Settings &amp; Offline Configuration</a></li>
-<li><a href="#226-dynamic-database-switching-local-postgresql--cloud-postgresql">22.6 Dynamic Database Switching (Local PostgreSQL ↔ Cloud PostgreSQL)</a></li>
-<li><a href="#23-master-data-import--staging-verification-vendors-brands-categories-models-variants-colors">23. Master Data Import &amp; Staging Verification (Vendors, Brands, Categories, Models, Variants, Colors)</a></li>
+<li><a href="#225-system-settings-offline-configuration-adminsystem-settings">22.5 System Settings &amp; Offline Configuration</a></li>
+<li><a href="#226-dynamic-database-switching-local-postgresql-cloud-postgresql">22.6 Dynamic Database Switching (Local PostgreSQL ↔ Cloud PostgreSQL)</a></li>
+<li><a href="#23-master-data-import-staging-verification-vendors-brands-categories-models-variants-colors">23. Master Data Import &amp; Staging Verification (Vendors, Brands, Categories, Models, Variants, Colors)</a></li>
+<li><a href="#24-single-product-sale-cash-collections-and-finance-emi-plans">24. Single-product sale: cash collections and finance EMI plans</a></li>
+<li><a href="#25-review-financial-statements-and-print-a-multi-line-invoice">25. Review financial statements and print a multi-line invoice</a></li>
+<li><a href="#26-product-owner-feature-availability-and-table-overview">26. Product Owner: feature availability and table overview</a></li>
 </ul>
 <h2 id='1-get-started'>1. Get started</h2>
 <ol>
 <li>For a new account, open the invitation email and follow the activation link. Invitations expire after 24 hours and can be used once.</li>
 <li>Set a password containing at least 12 characters, including an uppercase letter, a lowercase letter and a number.</li>
 <li>Open the sign-in page. Enter your Tenant slug, Username and Password, then sign in.</li>
+</ol>
+<p>After signing in, the header shows your tenant name and an icon with its first letter. Existing saved sessions show the Tenant slug until you sign out and sign in again. The footer also shows your tenant name.</p>
+<ol>
 <li>Expand the sidebar sections to find Product, Purchase, Sale, Accounting and Settings.</li>
 <li>Ask the owner for the permissions needed for your work. Activation alone does not give staff permission to enter transactions.</li>
 </ol>
 <p>Expected result: you can sign in to your own business and open the permitted forms. If you see a permission error, follow section 16.</p>
+<h3 id='your-first-day-learn-the-main-tasks'>Your first day: learn the main tasks</h3>
+<p>Follow this order in a training business before entering real transactions. Saving purchases, invoices and payments changes stock and balances.</p>
+<div class="table-wrap"><table><tbody>
+<tr><th>What you want to do</th><th>Where to go</th><th>Instructions</th></tr>
+<tr><td>Prepare products, suppliers and bill details</td><td>Product and Settings</td><td>Section 3; bulk catalog import in section 23</td></tr>
+<tr><td>Bring existing stock and unpaid bills into the system</td><td>Accounting &gt; Opening Balances &amp; Reconciliation</td><td>Section 4; accountant completes this before normal trading</td></tr>
+<tr><td>Receive a phone from a supplier</td><td>Purchase &gt; Products</td><td>Section 5</td></tr>
+<tr><td>Pay the supplier</td><td>Purchase &gt; Bills &amp; Payments</td><td>Section 6</td></tr>
+<tr><td>Sell phones, accessories or services together</td><td>Sale &gt; Invoices</td><td>Section 18</td></tr>
+<tr><td>Record installments against a single-product sale</td><td>Sale &gt; Products &gt; Record Payment / Manage Payments</td><td>Section 24</td></tr>
+<tr><td>Save a bank/NBFC finance plan</td><td>Settings &gt; Finance Vendors, then Sale &gt; Products</td><td>Section 24</td></tr>
+<tr><td>Collect money for several invoices</td><td>Sale &gt; Invoices &gt; Smart Multi-Pay</td><td>Sections 18 and 20.3</td></tr>
+<tr><td>Check one customer&#39;s or supplier&#39;s account</td><td>Accounting &gt; Party Ledger (SOA)</td><td>Section 20.4</td></tr>
+<tr><td>Review profit, cash flow and balances</td><td>Accounting &gt; General Ledger</td><td>Section 25</td></tr>
+</tbody></table></div>
+<p>Before saving, check the party, bill number, serial/IMEI, date, amount and tax. After saving, find the new record and check its stock or balance effect. An invoice records a sale; a receipt records money received. Enter a receipt only when money actually reaches the shop.</p>
+<p>Menu visibility depends on both your staff permissions and the features enabled for your store. If a menu is missing, ask your owner to check access and the Product Owner to check feature availability. Sale &gt; Products and Sale &gt; Invoices have different payment screens; open the payment action on the record you actually created.</p>
 <h2 id='2-owner-invite-staff-and-grant-access'>2. Owner: invite staff and grant access</h2>
 <ol>
 <li>Open Accounting &gt; Staff Access. This page is available to the designated owner.</li>
@@ -118,6 +141,29 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 <li>Select Save settlement and verify the reduced balance.</li>
 </ol>
 <p>Use this workflow for brought-forward invoices. Opening stock does not create a new supplier bill or new input GST claim in the normal purchase workflow.</p>
+<h3 id='default-hsnsac-codes'>Default HSN/SAC codes</h3>
+<p>Prerequisites: access to Product Types and permission to create purchases or sales invoices.</p>
+<ol>
+<li>Open Product &gt; Product Types and add or edit a type. Enter <strong>Default HSN/SAC Code</strong> using 4, 6 or 8 digits, or leave it empty. Save. The default appears in the Product Types list. On the Add Product Types form, enter a separate default code for each row; use Add another for additional types, then Create Product Types.</li>
+<li>Open Purchase &gt; Products and add products. Select the Product Type. <strong>HSN/SAC Code</strong> fills from that type; check it against the vendor invoice and edit it if needed. Changing the type replaces this default. Invoice scanning uses a valid extracted HSN code first, otherwise the type default.</li>
+<li>Save the purchase. Every serial-number unit receives the entered code, visible in the Products list. Existing restrictions on editing posted or sold stock still apply.</li>
+<li>Add a serialized product to a Sales Invoice. Its saved HSN/SAC fills on the line; review it before issuing. The printed invoice shows the saved invoice-line code. Services use their line code and stocked accessories retain their SKU code.</li>
+</ol>
+<p>Changing a Product Type default affects new purchases. It does not backfill existing stock or change issued invoices. For existing stock without a code, enter the appropriate code on the sales invoice. Codes are stored as text to preserve leading zeroes. A code is optional on product types and purchases; GST invoices for a seller with a tax registration number still require HSN/SAC on every line. The software validates digit format, not whether the classification is correct for the item.</p>
+<h3 id='maintain-gst-profiles-and-future-slab-changes'>Maintain GST profiles and future slab changes</h3>
+<p>Prerequisites: access to Settings &gt; Tax, product catalog maintenance and the appropriate purchase/sale permissions. Configure supplier GSTIN and state in Customer Bill settings for GST billing.</p>
+<ol>
+<li>Open Settings &gt; Tax and add a rate. Leave <strong>Existing Tax Profile</strong> empty to create a profile. Enter <strong>Tax Profile Name</strong>, <strong>Effective From</strong>, <strong>Tax Treatment</strong>, CGST and SGST. The total is calculated. Save.</li>
+<li>Select that profile under <strong>Default Tax Profile</strong> when adding or editing a Product Type. Each row on Add Product Types has its own selection. A stock SKU can also have a default profile.</li>
+<li>On a purchase, the <strong>Tax Profile</strong> defaults from the Product Type. You can select a different profile for this purchase. CGST and SGST follow the vendor invoice date and are read-only. Choose a dated zero-tax profile explicitly when appropriate. Verify the profile against the scanned vendor invoice; scanned taxes do not override a chosen profile. SKU receipts use their default or the selected purchase profile.</li>
+<li>To change a GST slab, add another tax record, select the same <strong>Existing Tax Profile</strong>, enter the new <strong>Effective From</strong> date and rates, and save. There can be only one rate version per profile and date. Existing version rates, dates and treatment cannot be overwritten through Edit; use a new dated version. Referenced rate history cannot be deleted.</li>
+<li>Create a sale invoice. Serialized products use their saved purchase profile; stock SKUs use their default. Every line can select a different profile. The applicable rate follows the invoice date, independent of when the stock was bought. Changing the date refreshes the tax preview. Services require an explicit profile selection.</li>
+<li>If the applicable GST time of supply differs from the invoice date, enter <strong>Tax-effective date</strong> and <strong>Tax date reason</strong>. The software resolves the rate on that date, saves the date/reason, and shows them on the printed invoice when the date differs. The operator must determine the correct date for supply/payment timing around a rate change; the software does not calculate all statutory time-of-supply exceptions automatically.</li>
+<li>Save the invoice. The actual rate version, treatment, percentages, amounts and print snapshot are stored. Later slab changes do not alter that sale, its ledger postings or printed invoice. Returns reverse the original tax amounts even if the return happens after a slab change.</li>
+</ol>
+<p>Expected result: a future slab takes effect for transactions with a matching tax-effective date. Backdated transactions use their historical version. A missing or inactive applicable version blocks selection; the software does not fall back to an older active slab. Inactivating an old version also prevents new backdated transactions that require it, so retain active historical versions when those transactions are needed.</p>
+<p>Existing tax records are migrated to separate profiles available from the earliest date, preserving their existing percentages. When adding an individual Product Sale, choosing a product auto-selects its linked tax profile. For older stock without a profile link, the saved purchase CGST/SGST can identify a profile only when exactly one profile matches; otherwise select GST rate explicitly. Multiple historical versions of the same profile count as one match. Changing the product refreshes this selection; a manual override remains until the product changes. The actual sale rate is still resolved on the sale date. No existing invoice or inventory cost is recalculated. Adding a new version does not require changing Product Type or SKU defaults.</p>
+<p>Tax Treatment distinguishes Taxable, Exempt, NilRated, NonGst and ZeroRated in invoice lines and GST report/CSV groups. The latter four require zero percentages; ZeroRated here represents a zero-tax posting, not export tax/refund eligibility. This release supports percentage CGST/SGST and IGST; special cess, reverse-charge and statutory return generation require their own workflows. Rates and effective dates are maintained by authorized staff after checking the applicable notification; government changes are not downloaded automatically.</p>
 <h2 id='5-record-a-new-purchase'>5. Record a new purchase</h2>
 <ol>
 <li>Open Purchase &gt; Products and choose the add action.</li>
@@ -398,33 +444,26 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 <li>If the customer pays more than their total outstanding balance, the excess amount is <strong>safely saved as an Advance Store Credit</strong> on their account for future visits.</li>
 <li>A live green badge shows the exact settlement preview: *&quot;Will clear X bills in full and partially pay 1 bill. + ₹Y saved safely as Customer Advance.&quot;*</li>
 </ul>
-<h3 id='204-understanding-customer-and-vendor-ledgers-accounting-party-statement'>20.4 Understanding customer and vendor ledgers (<code>Accounting &gt; Party Statement</code>)</h3>
-<p>To check a complete history of transactions for any customer or supplier without accounting confusion:</p>
-<ul>
-<li>Open <strong>Accounting &gt; Party Statement</strong> (<code>Alt+P</code>).</li>
-<li>Click <strong>&quot;💡 How to Read Ledgers&quot;</strong> at any time to view the plain-English explanation:</li>
-<li><strong>Customer Statement</strong>:</li>
-<li><strong>Debit (+)</strong>: Phones or accessories you sold to the customer on bill.</li>
-<li><strong>Credit (-)</strong>: Payments received from the customer (Cash, UPI, Card).</li>
-<li><strong>Closing Balance Dr</strong>: Money the customer still owes your shop today.</li>
-<li><strong>Closing Balance Cr</strong>: Advance store credit the customer has with you.</li>
-<li><strong>Vendor Statement</strong>:</li>
-<li><strong>Credit (+)</strong>: Inventory you purchased from the supplier.</li>
-<li><strong>Debit (-)</strong>: Payments you sent to the supplier.</li>
-<li><strong>Closing Balance Cr</strong>: Money you still owe the supplier.</li>
-<li><strong>Closing Balance Dr</strong>: Advance money you gave the supplier.</li>
-<li><strong>Color-Coded Aging &amp; Overdue Insights</strong>:</li>
-<li><strong>0–30 Days (Green)</strong>: Fresh, normal billing cycle.</li>
-<li><strong>31–60 Days (Blue)</strong>: Maturing bills; time to send a friendly reminder.</li>
-<li><strong>61–90 Days (Amber)</strong>: Overdue; phone call follow-up recommended.</li>
-<li><strong>90+ Days (Rose)</strong>: Critical overdue; prioritize recovery before issuing further credit.</li>
-<li><strong>Smart Next Action Suggestions</strong>:</li>
-<li>If a customer has a pending balance, an immediate 1-click <strong>&quot;Collect Payment via Multi-Pay&quot;</strong> button is displayed.</li>
-<li>If all bills are settled, an <strong>&quot;All Settled (Zero Balance)&quot;</strong> badge confirms that the account is fully clear.</li>
-<li><strong>Export &amp; Print</strong>:</li>
-<li>Export the full chronological ledger to Excel/CSV with running balances.</li>
-<li>Print a formal stationery Statement of Account for customer sharing with your shop logo, GSTIN, and contact details.</li>
-</ul>
+<h3 id='204-read-export-and-print-a-party-statement'>20.4 Read, export and print a party statement</h3>
+<p>Prerequisites: the customer or vendor must already exist, and you need access to Accounting &gt; Party Ledger (SOA).</p>
+<ol>
+<li>Open <strong>Accounting &gt; Party Ledger (SOA)</strong>. The page title is <strong>Party Statement of Account (Ledger)</strong>.</li>
+<li>Under <strong>Party Classification</strong>, choose <strong>Customer (Debtor)</strong> or <strong>Vendor (Creditor)</strong>.</li>
+<li>Use <strong>Select Customer</strong> or <strong>Select Vendor</strong> to choose the party. Check the name and mobile number to avoid selecting someone with a similar name.</li>
+<li>Set the two dates under <strong>Statement Period</strong>. Quick presets are <strong>This Month</strong>, <strong>Last Month</strong>, <strong>This Financial Year</strong> and <strong>All Time</strong>. The financial year starts on 1 April. All Time starts on 1 January 2020; enter an earlier start date manually if needed.</li>
+<li>Select <strong>View Statement</strong> and wait for the report. Selecting a party or changing dates can also refresh it automatically.</li>
+<li>Read Opening Balance, period debits/credits and Closing Balance Due. The closing balance relates to the selected end date. Use <strong>How to Read Ledgers</strong> for the on-screen guide.</li>
+<li>Read the transaction rows in order. Use the voucher links, where available, to inspect the source document. Compare invoices, receipts, returns and refunds before following up on a difference.</li>
+<li>For a customer with dues, <strong>Collect Payment via Multi-Pay</strong> opens the collection workflow. Record actual money received there, then reopen the statement to verify the updated balance.</li>
+<li>Select <strong>Export CSV</strong> for a spreadsheet copy, or <strong>Print Statement</strong> and choose your printer or Save as PDF. CSV is a text spreadsheet file, not an Excel workbook; the export requires at least one transaction in the period.</li>
+</ol>
+<div class="table-wrap"><table><tbody>
+<tr><th>Statement</th><th>Debit generally represents</th><th>Credit generally represents</th><th>Closing balance meaning</th></tr>
+<tr><td>Customer</td><td>Sales billed to the customer</td><td>Receipts and sale credits</td><td>Dr: customer owes you; Cr: customer has a credit balance</td></tr>
+<tr><td>Vendor</td><td>Payments and purchase credits</td><td>Stock billed by the supplier</td><td>Cr: you owe the vendor; Dr: vendor account has a debit balance</td></tr>
+</tbody></table></div>
+<p>Example: a customer opening balance of ₹2,000 Dr, new bill of ₹5,000 and receipt of ₹3,000 gives a closing balance of ₹4,000 Dr. Selecting a later period moves earlier activity into Opening Balance.</p>
+<p>Expected result: a dated statement for the selected party with running balances and aging. Check invoice due dates as well as aging buckets before calling a bill overdue. A zero closing balance does not mean there were no transactions.</p>
 <h3 id='205-daily-operations-from-the-business-intelligence-dashboard-dashboard-home'>20.5 Daily operations from the Business Intelligence Dashboard (<code>Dashboard / Home</code>)</h3>
 <p>The real-time BI Dashboard gives shop owners a complete financial and operational overview:</p>
 <ul>
@@ -492,7 +531,7 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 </ol>
 <ul>
 <li><strong>Store / Business Name</strong>: e.g., <code>Siddhi Electronics &amp; Mobiles</code></li>
-<li><strong>Store Slug</strong>: e.g., <code>siddhi-electronics</code> (Auto-generated from store name; this is your unique login identifier)</li>
+<li><strong>Store Slug (Identifier)</strong> is disabled for editing and updates automatically from the lowercase initials of the store name&#39;s words, ignoring symbols and using at most six characters. For example, <code>Siddhi Mobile &amp; electronics</code> generates <code>sme</code>. This is your unique login identifier. If the identifier is already registered, change the store name so its initials generate a different identifier.</li>
 <li><strong>GST State Code</strong>: Select from 37 Indian states (e.g., <code>27 - Maharashtra</code>)</li>
 <li><strong>GSTIN Number</strong> *(Optional)*: 15-character GSTIN. The system automatically detects and selects your state code.</li>
 <li><strong>Store Address</strong> *(Optional)*: Physical shop address printed on sales invoices.</li>
@@ -647,7 +686,7 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 <li><strong>No Workspace Slug Required:</strong> Unlike individual store owners and staff who enter a store slug, the Product Owner signs directly into the control plane.</li>
 <li><strong>Default Master Credentials:</strong></li>
 <li><strong>Username / Email:</strong> <code>admin</code> or <code>developer.pravin666@gmail.com</code></li>
-<li><strong>Master Password:</strong> <code>Admin@123456</code></li>
+<li><strong>Password:</strong> Use the credentials supplied by your platform administrator.</li>
 <li><strong>Security &amp; Authorization:</strong> Produces a JWT bearer token carrying <code>ClaimTypes.Role: &quot;ProductOwner&quot;</code> and <code>PermissionClaimTypes.Permission: &quot;Tenants.Manage&quot;</code>. The frontend attaches this token across all requests, bypassing individual tenant boundaries.</li>
 </ul>
 <p>---</p>
@@ -882,10 +921,98 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 <p>---</p>
 <h3 id='233-product-owner-master-import-console-adminmasters-import'>23.3 Product Owner Master Import Console (<code>/admin/masters-import</code>)</h3>
 <p>The <strong>Product Owner</strong> (Super Administrator) can oversee and manage master imports across all stores:</p>
+<p>A tenant awaiting approval or provisioning has no store database yet. Selecting it shows an empty import batch list. Approve it through <strong>Store Approvals</strong> before exporting or managing imports. If an active store reports <strong>Tenant store is not ready for master imports</strong>, apply its database migrations from <strong>Database Migrations</strong>, then reload the import page.</p>
 <ol>
 <li>Sign in to the Product Owner console at <code>/admin/login</code>.</li>
 <li>In the sidebar, click <strong>Master Data Import</strong> (<code>/admin/masters-import</code>).</li>
 <li>Select any store from the <strong>Select Tenant Store</strong> dropdown.</li>
 <li>Review that store&#39;s staged batches, inspect validation notes, and click <strong>&quot;Approve &amp; Import&quot;</strong> or <strong>&quot;Reject Batch&quot;</strong> on behalf of the store.</li>
 </ol>
+<h2 id='24-single-product-sale-cash-collections-and-finance-emi-plans'>24. Single-product sale: cash collections and finance EMI plans</h2>
+<p>Use this workflow for records created under <strong>Sale &gt; Products</strong>. Multi-line invoices use the receipt and Multi-Pay workflows in section 18. You need sales access; finance setup also needs access to Settings &gt; Finance Vendors.</p>
+<h3 id='241-record-full-or-part-payments'>24.1 Record full or part payments</h3>
+<ol>
+<li>Open <strong>Sale &gt; Products</strong> and locate the customer&#39;s sale. Select <strong>Record Payment</strong>, or <strong>Manage Payments</strong> if a payment plan is already saved.</li>
+<li>Confirm the customer, product, bill total, amount paid and remaining balance at the top of the page.</li>
+<li>Under <strong>Select Payment Plan</strong>, choose <strong>Cash &amp; Part Payments (Multiple Installments)</strong>. This option also supports non-cash receipt methods.</li>
+<li>Review <strong>Payment History &amp; Receipts</strong> before entering a new receipt.</li>
+<li>Under <strong>Add Partial / Full Payment</strong>, enter <strong>Payment Amount (₹)</strong>, <strong>Payment Method</strong> and <strong>Payment Date</strong>. Choose the actual method: Cash, UPI, Online Transfer, Cheque or Other. Enter the transaction reference and optional remarks.</li>
+<li>Select <strong>Record Payment Entry</strong> once and wait for confirmation. Check that a new receipt appears and the remaining balance decreases.</li>
+<li>Repeat only when another payment is actually received. Once fully settled, the page shows <strong>Paid in Full</strong> and no additional payment is needed.</li>
+</ol>
+<p>Example: for a ₹20,000 bill, receive ₹5,000 cash today and ₹15,000 by UPI later. Enter two separate receipts with their actual dates and methods. The balances become ₹15,000 and then ₹0.</p>
+<p>The amount must be positive and cannot exceed the remaining balance. Follow the invoice-date and open-period requirements for receipts. If an error appears after submitting, reload and check receipt history before trying again: the receipt may have saved even if the payment-plan update failed.</p>
+<h3 id='242-add-a-finance-company'>24.2 Add a finance company</h3>
+<ol>
+<li>Open <strong>Settings &gt; Finance Vendors</strong> and use the add action.</li>
+<li>Enter <strong>Finance Vendor Name</strong> (at least two characters). Add Code, Mobile, Email, Contact Name, Contact Mobile and Description where relevant.</li>
+<li>Keep <strong>Active</strong> enabled and save. Confirm the company appears in the list.</li>
+<li>Return to the sale&#39;s payment page. Reload it if the new company is not yet offered.</li>
+</ol>
+<p>Expected result: the active finance company is available in the Finance Company selector.</p>
+<h3 id='243-save-a-finance-emi-plan-and-review-due-dates'>24.3 Save a finance EMI plan and review due dates</h3>
+<ol>
+<li>On the sale payment page, choose <strong>Finance EMI Plan (Bank / NBFC Schedule)</strong>.</li>
+<li>In <strong>Finance EMI Configuration</strong>, choose <strong>Finance Company</strong> and enter <strong>Down Payment (Initial Customer Deposit)</strong>.</li>
+<li>Enter <strong>Number of EMIs (Months)</strong>, <strong>Monthly EMI Amount</strong> and <strong>First EMI Due Date</strong> using the lender&#39;s agreed schedule.</li>
+<li>Set <strong>Insurance Included?</strong> to Yes or No. If Yes, enter a positive <strong>Insurance Amount</strong>.</li>
+<li>Review the values and select <strong>Record Finance Plan</strong>, or <strong>Update Finance Details</strong> for an existing plan.</li>
+<li>Check <strong>Finance List of EMIs Details &amp; Due Dates</strong>. From the Sale &gt; Products list, <strong>EMI List &amp; Reminders</strong> also opens the saved schedule.</li>
+<li>Review the reminder text and upcoming due date. Copy the reminder if you intend to share it yourself; the copy action does not send a message.</li>
+</ol>
+<p>Expected result: the sale stores the finance partner and agreed EMI details. The schedule is a planning/reminder view, not proof that the bank collected an installment. Saving a finance plan is separate from recording shop receipts; verify Payment History and the account balance for money actually received.</p>
+<h2 id='25-review-financial-statements-and-print-a-multi-line-invoice'>25. Review financial statements and print a multi-line invoice</h2>
+<h3 id='251-accountant-review-general-ledger-reports'>25.1 Accountant: review General Ledger reports</h3>
+<ol>
+<li>Open <strong>Accounting &gt; General Ledger</strong>. Select <strong>Add standard accounts</strong> only if the standard chart has not been initialized.</li>
+<li>Scroll to <strong>Financial Statements</strong>, set <strong>From</strong> and <strong>To</strong>, then select <strong>Update</strong>.</li>
+<li>Read <strong>Profit &amp; Loss</strong> for activity within that period. Revenue is billed income and is not the same as cash collected.</li>
+<li>Read <strong>Balance Sheet</strong> for balances through the To date. Check <strong>Assets − liabilities − equity − earnings</strong>; a nonzero difference needs accountant investigation.</li>
+<li>Review <strong>Cash Flow Statement</strong> for the selected period: opening cash, operating/investing/financing movements and closing cash.</li>
+<li>Review <strong>Trial Balance</strong> and its displayed as-of date. The From/To controls filter financial statements and cash flow; the trial balance is loaded separately and does not use those controls.</li>
+<li>Use <strong>Refresh</strong> after new postings. The journal list shows the latest 50 entries, so absence from that list alone does not prove an older transaction is missing.</li>
+</ol>
+<p>Expected result: reports reflect the saved postings and their dates. See section 13 for manual journals and reversals. Use section 4 for detailed opening customer/vendor and stock imports; the General Ledger cutover form only records control totals.</p>
+<h3 id='252-print-or-save-a-multi-line-tax-invoice'>25.2 Print or save a multi-line tax invoice</h3>
+<ol>
+<li>Open the saved invoice from <strong>Sale &gt; Invoices</strong> using its print action. <strong>Post &amp; Print Invoice</strong> also opens the document after creating an invoice.</li>
+<li>Confirm bill number, customer, item lines, quantities, GST, total, paid amount and Balance Due where enabled.</li>
+<li>Select <strong>Print Tax Invoice</strong>. Choose a printer or Save as PDF in the browser dialog. Match the paper to the invoice layout, including 80 mm receipt paper when configured.</li>
+<li>Check the preview before printing, then use <strong>All Invoices</strong> to return to the list.</li>
+</ol>
+<p>The printed seller and customer identity comes from the saved invoice snapshot. Changing current Customer Bill settings does not redesign an existing invoice snapshot. Receipt information reflects saved payments. Printing does not record a new payment. If the invoice or snapshot cannot load, use <strong>Back to Invoices</strong> and ask the administrator to investigate the specific bill.</p>
+<h2 id='26-product-owner-feature-availability-and-table-overview'>26. Product Owner: feature availability and table overview</h2>
+<p>These pages belong to the Product Owner console. Store owners and staff should ask the Product Owner for changes.</p>
+<h3 id='261-enable-a-feature-for-a-store'>26.1 Enable a feature for a store</h3>
+<ol>
+<li>Sign in to the Product Owner console and open <strong>Feature Flags</strong>.</li>
+<li>Select the intended tenant store, or the global view when changing the default. Search by feature name/key and use the category filter to find the feature.</li>
+<li>Check the current Enabled/Disabled state before toggling. Wait for the success notification.</li>
+<li>In tenant management, <strong>Reset to Global</strong> removes a store-specific override so that store inherits the global default.</li>
+<li><strong>Enable for All</strong> and <strong>Disable for All</strong> affect all tenants and require the on-screen confirmation. Check that scope before confirming.</li>
+<li>Ask the store user to refresh and verify that the feature is available. Staff still need the corresponding permissions.</li>
+</ol>
+<p>Expected result: the feature setting is saved for the selected scope. A tenant override can differ from the global default; check both when diagnosing a missing screen.</p>
+<h3 id='262-manage-the-registration-welcome-email'>26.2 Manage the registration welcome email</h3>
+<ol>
+<li>Sign in as the platform admin and open <strong>System Settings</strong> → <strong>Registration Welcome Email</strong>.</li>
+<li>Edit <strong>Email Subject</strong> (maximum 500 characters, one line) and <strong>Email HTML Body</strong> (maximum 50,000 characters). Use <code>{{StoreName}}</code>, <code>{{StoreSlug}}</code>, <code>{{OwnerName}}</code>, <code>{{OwnerEmail}}</code> and <code>{{OwnerMobile}}</code> for registration details. Unknown placeholders are rejected; inserted customer values are escaped in HTML.</li>
+<li>Select <strong>Preview Email</strong> to view sample content without sending an email.</li>
+<li>Select <strong>Save Email Template</strong>. Future store registrations use the saved subject and format. Settings persist in the active database across restarts.</li>
+<li>To return to the original format, select <strong>Load Default Format</strong>, then <strong>Save Email Template</strong>. Loading the default alone does not change the saved template.</li>
+</ol>
+<p>Expected result: the store owner receives the customized registration-received email through the configured email delivery mode. The original format is used until an admin saves a template. Tenant accounts cannot edit this setting.</p>
+<h3 id='263-inspect-database-tables'>26.3 Inspect database tables</h3>
+<p>Prerequisite: sign in through <strong>Admin Login</strong> with the platform admin account, also called Product Owner or super admin. <strong>Table Management</strong> appears in the admin console alongside <strong>Feature Flags</strong>. Tenant accounts cannot access this page or its table management API, including scan, classification and clearing operations. <strong>Database Tables</strong> is absent from tenant Settings. Opening either <code>/settings/database-tables</code> or <code>/admin/database-tables</code> as a tenant displays an access restriction.</p>
+<ol>
+<li>In the administrator console, open <strong>Table Management</strong>. The page title is <strong>Database Tables &amp; Classification</strong>.</li>
+<li>Select the intended <strong>Schema</strong>, when the selector is available. Check whether it is Control Plane or a specific Tenant Store.</li>
+<li>Select <strong>Scan &amp; Sync DB</strong> to refresh the table registry for that schema.</li>
+<li>Search by table name, category or description. Use <strong>All Types</strong>, <strong>Master</strong>, <strong>Data</strong> and the category filter to narrow the list.</li>
+<li>Review the table classifications and row information for administration or support.</li>
+</ol>
+<p>To remove records from an individual Master or Data table, select <strong>Clear Data</strong> and confirm. A Master table requires typing its exact table name. Use row checkboxes (or the header checkbox for visible tables), then <strong>Clear Selected</strong>, review the listed tables and schema, type <strong>CLEAR SELECTED TABLES</strong>, and confirm. <strong>Clear All Tables</strong> requires <strong>CLEAR ALL TABLES</strong>. Related tables may also be cleared by foreign-key relationships. Internal system tables and migration history are excluded. Table structures and classifications remain.</p>
+<p>Each clear saves a database recovery copy before removing records. Select <strong>Revert Last Clear</strong>, type <strong>RESTORE DATA</strong>, and confirm to restore the latest clear for the selected schema, including related records. The revert option persists across page reloads in the same browser. Restore is blocked if any affected table contains new records; it does not overwrite newer work. Recovery survives API restarts but depends on the saved database copy and unchanged table structure. Circular non-deferrable foreign keys can block restore. Keep independent backups for long-term recovery. Successful restoration consumes that recovery operation.</p>
+<p>If loading fails, the page shows <strong>Failed to load tables</strong> and stops loading without continuously retrying. For a 404 error, ask support to verify that the API gateway points to the current Accounting Inventory service with the table management endpoints. Once the service is restored, reload the page.</p>
+<p>Expected result: a table overview for the selected schema. Master tables hold reference catalogs; Data tables hold operational records. Clearing table data is a destructive administrator maintenance operation, not part of ordinary sales, returns or corrections. Arrange backup and recovery through the deployment/recovery guide before using those controls.</p>
 </main></body></html>

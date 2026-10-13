@@ -23,7 +23,7 @@ public sealed record CreateSalesInvoiceCommand(
     string? CustomerGstin = null,
     string? PlaceOfSupplyStateCode = null,
     string? PlaceOfSupplyStateName = null,
-    GstSupplyType? SupplyType = null) : IRequest<SalesInvoiceDetailsDto>;
+    GstSupplyType? SupplyType = null, DateOnly? TaxPointDate = null, string? TaxDateReason = null) : IRequest<SalesInvoiceDetailsDto>;
 
 public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbContext db)
     : IRequestHandler<CreateSalesInvoiceCommand, SalesInvoiceDetailsDto>
@@ -55,7 +55,6 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
         if (!string.IsNullOrWhiteSpace(seller?.TaxRegistrationNumber))
         {
             if (supplierState == null || posCode == null) throw new ConflictException("Configure supplier state and choose a place of supply before issuing a GST invoice.");
-            if (request.Lines.Any(l => string.IsNullOrWhiteSpace(l.HsnSac))) throw new ConflictException("HSN/SAC is required on GST invoice lines.");
         }
         var customer = await CustomerResolver.GetOrCreateAsync(
             db,
@@ -107,12 +106,11 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
 
         if (request.Lines.Count(l => l.ItemType == InvoiceItemType.SerializedProduct) != serializedProductIds.Count)
             throw new ConflictException("Select a different inventory product for every serialized line.");
-        var taxes = await db.Taxes.Where(t => t.IsActive).ToDictionaryAsync(t => t.Id, cancellationToken);
-        foreach (var line in request.Lines)
-        {
-            if (line.TaxId is { } taxId && taxId != Guid.Empty && !taxes.ContainsKey(taxId))
-                throw new ConflictException("The selected tax is inactive or does not exist.");
-        }
+        var resolver = await AccountingInventory.Application.Taxes.TaxRateResolver.LoadAsync(db, cancellationToken);
+        var taxPointDate = request.TaxPointDate ?? request.InvoiceDate;
+        if (taxPointDate == default || (taxPointDate != request.InvoiceDate && string.IsNullOrWhiteSpace(request.TaxDateReason)))
+            throw new ConflictException("Explain a tax-effective date different from the invoice date.");
+        var typeDefaults = await db.ProductTypes.ToDictionaryAsync(t => t.Id, t => t.DefaultTaxId, cancellationToken);
 
         var skuIds = request.Lines.Where(l => l.SkuId.HasValue).Select(l => l.SkuId!.Value).Distinct().ToArray();
         var skus = await db.StockSkus.Where(s => skuIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, cancellationToken);
@@ -128,10 +126,15 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
                 l = l with { ItemDescription = sku.Name, HsnSac = sku.HsnSac, UnitOfMeasure = sku.UnitOfMeasure };
             }
             var product = l.ProductId.HasValue ? productsToRelieve.SingleOrDefault(p => p.Id == l.ProductId.Value) : null;
-            var tax = l.TaxId.HasValue && taxes.TryGetValue(l.TaxId.Value, out var selectedTax) ? selectedTax : null;
+            l = l with { HsnSac = HsnSacCode.Normalize(l.HsnSac ?? product?.HsnSac) };
+            if (!string.IsNullOrWhiteSpace(seller?.TaxRegistrationNumber) && l.HsnSac is null)
+                throw new ConflictException("HSN/SAC is required on GST invoice lines.");
+            var selection = l.TaxId ?? product?.TaxId ?? (product != null ? typeDefaults.GetValueOrDefault(product.ProductTypeId) : null)
+                ?? (l.SkuId.HasValue ? skus[l.SkuId.Value].DefaultTaxId : null);
+            var tax = resolver.Resolve(selection, taxPointDate);
             if (tax is null && (l.CgstRate != 0 || l.SgstRate != 0 || l.IgstRate != 0))
                 throw new ConflictException("Select an active tax rate instead of supplying arbitrary rates.");
-            l = l with { CgstRate = tax?.Cgst ?? 0m, SgstRate = tax?.Sgst ?? 0m, IgstRate = (tax?.Cgst ?? 0m) + (tax?.Sgst ?? 0m),
+            l = l with { TaxId = tax?.Id, CgstRate = tax?.Cgst ?? 0m, SgstRate = tax?.Sgst ?? 0m, IgstRate = (tax?.Cgst ?? 0m) + (tax?.Sgst ?? 0m),
                 SerialNumber = product?.SerialNumber, SerialNumber1 = product?.SerialNumber1 };
             decimal cgstRate = 0m;
             decimal sgstRate = 0m;
@@ -173,7 +176,7 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
                 l.TaxId,
                 cgstRate,
                 sgstRate,
-                igstRate, l.HsnSac, l.UnitOfMeasure, l.SkuId);
+                igstRate, l.HsnSac, l.UnitOfMeasure, l.SkuId, tax?.Treatment ?? "NonGst");
         }).ToList();
 
         var invoice = SalesInvoice.Create(
@@ -188,6 +191,7 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
             posName,
             customerGstin);
 
+        invoice.SetTaxPoint(taxPointDate, request.TaxDateReason);
         db.SalesInvoices.Add(invoice);
 
         // General Ledger posting for the multi-line invoice
@@ -239,6 +243,7 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
             JsonSerializer.Serialize(new
             {
                 BillNumber = invoice.BillNumber,
+                invoice.TaxPointDate, invoice.TaxDateReason,
                 SaleDate = invoice.InvoiceDate,
                 DueDate = invoice.DueDate,
                 SupplyType = invoice.SupplyType,
@@ -255,7 +260,7 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
                 Seller = seller,
                 Lines = invoice.Lines.Select(l => new
                 {
-                    l.LineNumber, l.HsnSac, l.UnitOfMeasure,
+                    l.LineNumber, l.HsnSac, l.UnitOfMeasure, l.TaxId, l.TaxTreatment,
                     l.ItemDescription,
                     l.SerialNumber,
                     l.SerialNumber1,
@@ -329,7 +334,7 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
             l.CgstAmount,
             l.SgstAmount,
             l.IgstAmount,
-            l.TotalAmount, l.HsnSac, l.UnitOfMeasure, l.SkuId)).ToList();
+            l.TotalAmount, l.HsnSac, l.UnitOfMeasure, l.SkuId, l.TaxTreatment)).ToList();
 
         var paymentDtos = receipt is not null
             ? new List<SalesInvoiceReceiptDto>
@@ -338,7 +343,7 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
             }
             : new List<SalesInvoiceReceiptDto>();
 
-        return new SalesInvoiceDetailsDto(summary, lineDtos, paymentDtos);
+        return new SalesInvoiceDetailsDto(summary, lineDtos, paymentDtos, invoice.TaxPointDate, invoice.TaxDateReason);
     }
 }
 

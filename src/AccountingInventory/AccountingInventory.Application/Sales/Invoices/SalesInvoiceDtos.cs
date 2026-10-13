@@ -49,7 +49,7 @@ public sealed record SalesInvoiceLineDto(
     decimal CgstAmount,
     decimal SgstAmount,
     decimal IgstAmount,
-    decimal TotalAmount, string? HsnSac = null, string UnitOfMeasure = "NOS", Guid? SkuId = null);
+    decimal TotalAmount, string? HsnSac = null, string UnitOfMeasure = "NOS", Guid? SkuId = null, string TaxTreatment = "Taxable");
 
 public sealed record SalesInvoiceReceiptDto(
     Guid Id,
@@ -62,7 +62,7 @@ public sealed record SalesInvoiceReceiptDto(
 public sealed record SalesInvoiceDetailsDto(
     SalesInvoiceSummaryDto Invoice,
     IReadOnlyList<SalesInvoiceLineDto> Lines,
-    IReadOnlyList<SalesInvoiceReceiptDto> Payments);
+    IReadOnlyList<SalesInvoiceReceiptDto> Payments, DateOnly? TaxPointDate = null, string? TaxDateReason = null);
 
 public sealed record CreateSalesInvoiceLineCommandDto(
     InvoiceItemType ItemType,

@@ -7,6 +7,8 @@ public sealed class UpdateTaxCommandValidator : AbstractValidator<UpdateTaxComma
     public UpdateTaxCommandValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
+        RuleFor(x => x.Name).MaximumLength(100);
+        RuleFor(x => x.Cgst + x.Sgst).LessThanOrEqualTo(100);
         RuleFor(x => x.Cgst).InclusiveBetween(0, 100);
         RuleFor(x => x.Sgst).InclusiveBetween(0, 100);
     }

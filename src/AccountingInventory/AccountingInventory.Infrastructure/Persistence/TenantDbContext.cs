@@ -22,6 +22,7 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options)
 {
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
+    public DbSet<TableRegistry> TableRegistries => Set<TableRegistry>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -43,6 +44,19 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options)
             b.Property(x => x.Description).HasColumnType("text");
             b.Property(x => x.IsEnabled).HasDefaultValue(true);
             b.HasIndex(x => new { x.Key, x.TenantId }).IsUnique();
+        });
+        modelBuilder.Entity<TableRegistry>(b =>
+        {
+            b.ToTable("table_registry", "tenant");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.SchemaName).HasMaxLength(100).IsRequired();
+            b.Property(x => x.TableName).HasMaxLength(100).IsRequired();
+            b.Property(x => x.DisplayName).HasMaxLength(150).IsRequired();
+            b.Property(x => x.TableType).HasMaxLength(50).IsRequired().HasDefaultValue("Data");
+            b.Property(x => x.Category).HasMaxLength(100).HasDefaultValue("General");
+            b.Property(x => x.Description).HasColumnType("text");
+            b.Property(x => x.IsSystem).HasDefaultValue(false);
+            b.HasIndex(x => new { x.SchemaName, x.TableName }).IsUnique();
         });
         base.OnModelCreating(modelBuilder);
     }

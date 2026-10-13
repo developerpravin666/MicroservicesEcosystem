@@ -168,7 +168,8 @@ public static class MasterImportEndpoints
         // 2. Product Owner Admin endpoints under /api/admin/tenants/{tenantId:guid}/masters/import
         var adminGroup = app.MapGroup("/api/admin/tenants/{tenantId:guid}/masters/import")
             .WithTags("Admin Master Imports")
-            .RequireAuthorization("AuthenticatedUser");
+            .RequireAuthorization("AuthenticatedUser")
+            .AddEndpointFilter<AdminImportStoreEndpointFilter>();
 
         adminGroup.MapGet("/template", (Guid tenantId, IMasterDataImportService importService, HttpContext httpContext) =>
         {
