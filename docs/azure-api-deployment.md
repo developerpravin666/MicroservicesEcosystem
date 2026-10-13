@@ -19,3 +19,15 @@ This file is in the backend Git repository so the instructions and workflow are 
 References:
 - https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions
 - https://github.com/Azure/webapps-deploy
+
+## Swagger returns 404 after deployment
+
+Swagger is enabled automatically in Development. In Production, it is disabled unless explicitly enabled.
+
+1. Push the updated shared WebDefaults code to `main` and wait for the API deployment to finish.
+2. In Azure Portal, open the API App Service > Settings > Environment variables > App settings.
+3. Add `Swagger__Enabled` with value `true`, then Apply/Save and allow the app to restart.
+4. Visit `https://<actual-app-hostname>/swagger/index.html`. The OpenAPI document is at `/swagger/v1/swagger.json`. These paths have no `/api` prefix.
+5. Keep `ASPNETCORE_ENVIRONMENT=Production`. To disable Swagger later, set `Swagger__Enabled=false`.
+
+Enabling this setting exposes the Swagger documentation publicly; protected API endpoints still require their normal authentication and tenant headers. If `/health` also returns 404, verify the hostname, deployment package and startup command rather than treating it as only a Swagger setting issue. `/health/ready` verifies database readiness separately.
