@@ -22,7 +22,7 @@ jobs:
       AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME_PRODUCTION }}
     steps:
       - name: Check out source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
@@ -30,38 +30,58 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
 
       - name: Check deployment configuration
         env:
           AZURE_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PRODUCTION }}
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
         run: |
           if [ -z "$AZURE_WEBAPP_NAME" ]; then
-            echo "::error::Set repository variable AZURE_WEBAPP_NAME_PRODUCTION to the target Azure App Service name."
+            echo "::error::Set repository variable 'AZURE_WEBAPP_NAME_PRODUCTION' in GitHub Settings > Secrets and variables > Actions > Variables to your target Azure App Service name."
             exit 1
           fi
-          if [ -z "$AZURE_PUBLISH_PROFILE" ]; then
-            echo "::error::Set repository secret AZURE_WEBAPP_PUBLISH_PROFILE_PRODUCTION to the App Service publish profile."
+          if [ -z "$AZURE_PUBLISH_PROFILE" ] && [ -z "$AZURE_CREDENTIALS" ]; then
+            echo "::error::Set repository secret 'AZURE_WEBAPP_PUBLISH_PROFILE_PRODUCTION' (from Azure App Service 'Get publish profile') or 'AZURE_CREDENTIALS' in GitHub Settings > Secrets and variables > Actions > Secrets."
             exit 1
           fi
 
       - name: Restore AccountingInventory API dependencies
-        run: dotnet restore "$API_PROJECT"
+        run: dotnet restore "$API_PROJECT" -r linux-x64
 
-      - name: Publish AccountingInventory API only
-        run: dotnet publish "$API_PROJECT" --configuration Release --no-restore --output "${{ runner.temp }}/accounting-api-publish"
+      - name: Publish AccountingInventory API only (Self-Contained Linux x64)
+        run: dotnet publish "$API_PROJECT" --configuration Release --runtime linux-x64 --self-contained true --no-restore --output "${{ runner.temp }}/accounting-api-publish"
 
-      - name: Exclude development configuration
+      - name: Prepare production package
         shell: pwsh
         run: |
           $publishDirectory = Join-Path '${{ runner.temp }}' 'accounting-api-publish'
-          Get-ChildItem -LiteralPath $publishDirectory -Filter 'appsettings.Development.json' -File | Remove-Item
+          Get-ChildItem -LiteralPath $publishDirectory -Filter 'appsettings.Development.json' -File | Remove-Item -ErrorAction SilentlyContinue
           if (-not (Test-Path -LiteralPath (Join-Path $publishDirectory 'AccountingInventory.Api.dll'))) {
             throw 'The AccountingInventory.Api publish output is missing.'
           }
 
-      - name: Deploy AccountingInventory API
+      - name: Set Linux binary permissions
+        run: |
+          chmod +x "${{ runner.temp }}/accounting-api-publish/AccountingInventory.Api" || true
+
+      - name: Log in to Azure (if service principal secret provided)
+        if: ${{ secrets.AZURE_CREDENTIALS != '' && secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PRODUCTION == '' }}
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy AccountingInventory API (via Publish Profile)
+        if: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PRODUCTION != '' }}
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PRODUCTION }}
+          package: ${{ runner.temp }}/accounting-api-publish
+
+      - name: Deploy AccountingInventory API (via Azure Login)
+        if: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PRODUCTION == '' && secrets.AZURE_CREDENTIALS != '' }}
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
           package: ${{ runner.temp }}/accounting-api-publish
