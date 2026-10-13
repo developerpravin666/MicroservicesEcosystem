@@ -1917,6 +1917,9 @@ namespace AccountingInventory.Infrastructure.Migrations.AccountingInventoryDb
 
             modelBuilder.Entity("AccountingInventory.Domain.Entities.Product", b =>
                 {
+                    b.Property<Guid?>("TaxId").HasColumnType("uuid").HasColumnName("tax_id");
+                    b.Property<string>("TaxTreatment").IsRequired().HasColumnType("text").HasColumnName("tax_treatment");
+
                     b.Property<string>("HsnSac").HasMaxLength(8).HasColumnType("character varying(8)").HasColumnName("hsn_sac");
 
                     b.Property<Guid>("Id")
@@ -2117,6 +2120,8 @@ namespace AccountingInventory.Infrastructure.Migrations.AccountingInventoryDb
 
             modelBuilder.Entity("AccountingInventory.Domain.Entities.ProductType", b =>
                 {
+                    b.Property<Guid?>("DefaultTaxId").HasColumnType("uuid").HasColumnName("default_tax_id");
+
                     b.Property<string>("HsnSac").HasMaxLength(8).HasColumnType("character varying(8)").HasColumnName("hsn_sac");
 
                     b.Property<Guid>("Id")
@@ -2246,6 +2251,9 @@ namespace AccountingInventory.Infrastructure.Migrations.AccountingInventoryDb
 
             modelBuilder.Entity("AccountingInventory.Domain.Entities.SalesInvoice", b =>
                 {
+                    b.Property<DateOnly?>("TaxPointDate").HasColumnType("date").HasColumnName("tax_point_date");
+                    b.Property<string>("TaxDateReason").HasColumnType("text").HasColumnName("tax_date_reason");
+
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
@@ -2385,6 +2393,8 @@ namespace AccountingInventory.Infrastructure.Migrations.AccountingInventoryDb
 
             modelBuilder.Entity("AccountingInventory.Domain.Entities.SalesInvoiceLine", b =>
                 {
+                    b.Property<string>("TaxTreatment").IsRequired().HasColumnType("text").HasColumnName("tax_treatment");
+
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
@@ -2687,6 +2697,8 @@ namespace AccountingInventory.Infrastructure.Migrations.AccountingInventoryDb
 
             modelBuilder.Entity("AccountingInventory.Domain.Entities.SalesProduct", b =>
                 {
+                    b.Property<string>("TaxTreatment").IsRequired().HasColumnType("text").HasColumnName("tax_treatment");
+
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
@@ -2902,6 +2914,9 @@ namespace AccountingInventory.Infrastructure.Migrations.AccountingInventoryDb
 
             modelBuilder.Entity("AccountingInventory.Domain.Entities.SkuMovement", b =>
                 {
+                    b.Property<Guid?>("TaxId").HasColumnType("uuid").HasColumnName("tax_id");
+                    b.Property<string>("TaxTreatment").IsRequired().HasColumnType("text").HasColumnName("tax_treatment");
+
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
@@ -3028,6 +3043,8 @@ namespace AccountingInventory.Infrastructure.Migrations.AccountingInventoryDb
 
             modelBuilder.Entity("AccountingInventory.Domain.Entities.StockSku", b =>
                 {
+                    b.Property<Guid?>("DefaultTaxId").HasColumnType("uuid").HasColumnName("default_tax_id");
+
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
@@ -3183,6 +3200,12 @@ namespace AccountingInventory.Infrastructure.Migrations.AccountingInventoryDb
 
             modelBuilder.Entity("AccountingInventory.Domain.Entities.Tax", b =>
                 {
+                    b.Property<Guid>("ProfileId").HasColumnType("uuid").HasColumnName("profile_id");
+                    b.Property<string>("Name").IsRequired().HasMaxLength(100).HasColumnType("character varying(100)").HasColumnName("name");
+                    b.Property<string>("Treatment").IsRequired().HasMaxLength(20).HasColumnType("character varying(20)").HasColumnName("treatment");
+                    b.Property<DateOnly>("EffectiveFrom").HasColumnType("date").HasColumnName("effective_from");
+                    b.HasIndex("ProfileId", "EffectiveFrom").IsUnique().HasDatabaseName("ix_taxes_profile_id_effective_from").HasFilter("NOT is_deleted");
+
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")

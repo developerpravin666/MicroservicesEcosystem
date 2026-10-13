@@ -15,6 +15,13 @@ public sealed class SalesInvoice : AggregateRoot
     public string BillNumber { get; private set; } = null!;
     public Guid CustomerId { get; private set; }
     public DateOnly InvoiceDate { get; private set; }
+    public DateOnly? TaxPointDate { get; private set; }
+    public string? TaxDateReason { get; private set; }
+    public void SetTaxPoint(DateOnly date, string? reason)
+    {
+        if (date == default || (date != InvoiceDate && string.IsNullOrWhiteSpace(reason))) throw new ArgumentException("Explain a tax-effective date different from the invoice date.");
+        TaxPointDate = date; TaxDateReason = reason?.Trim();
+    }
     public int PaymentTermsDays { get; private set; }
     public DateOnly DueDate { get; private set; }
     public string? Notes { get; private set; }
@@ -100,7 +107,7 @@ public sealed class SalesInvoice : AggregateRoot
                 draft.TaxId,
                 draft.CgstRate,
                 draft.SgstRate,
-                draft.IgstRate, draft.HsnSac, draft.UnitOfMeasure, draft.SkuId);
+                draft.IgstRate, draft.HsnSac, draft.UnitOfMeasure, draft.SkuId, draft.TaxTreatment);
 
             invoice.Lines.Add(line);
             subTotal += line.TaxableAmount + line.Discount;
@@ -166,6 +173,7 @@ public sealed class SalesInvoiceLine : AggregateRoot
     public string? HsnSac { get; private set; }
     public string UnitOfMeasure { get; private set; } = "NOS";
     public Guid? TaxId { get; private set; }
+    public string TaxTreatment { get; private set; } = "Taxable";
     public decimal CgstRate { get; private set; }
     public decimal SgstRate { get; private set; }
     public decimal IgstRate { get; private set; }
@@ -191,7 +199,7 @@ public sealed class SalesInvoiceLine : AggregateRoot
         decimal sgstRate,
         decimal igstRate,
         string? hsnSac = null,
-        string unitOfMeasure = "NOS", Guid? skuId = null)
+        string unitOfMeasure = "NOS", Guid? skuId = null, string taxTreatment = "Taxable")
     {
         if (salesInvoiceId == Guid.Empty) throw new ArgumentException("Invoice ID is required.");
         if (string.IsNullOrWhiteSpace(itemDescription)) throw new ArgumentException("Item description is required.");
@@ -237,6 +245,7 @@ public sealed class SalesInvoiceLine : AggregateRoot
             HsnSac = string.IsNullOrWhiteSpace(hsnSac) ? null : hsnSac.Trim(),
             UnitOfMeasure = unitOfMeasure.Trim(),
             TaxId = taxId == Guid.Empty ? null : taxId,
+            TaxTreatment = taxTreatment,
             CgstRate = cgstRate,
             SgstRate = sgstRate,
             IgstRate = igstRate,
@@ -263,4 +272,4 @@ public sealed record SalesInvoiceLineDraft(
     Guid? TaxId,
     decimal CgstRate,
     decimal SgstRate,
-    decimal IgstRate = 0m, string? HsnSac = null, string UnitOfMeasure = "NOS", Guid? SkuId = null);
+    decimal IgstRate = 0m, string? HsnSac = null, string UnitOfMeasure = "NOS", Guid? SkuId = null, string TaxTreatment = "Taxable");

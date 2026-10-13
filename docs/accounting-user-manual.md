@@ -1,6 +1,6 @@
 # Accounting & Inventory User Manual
 
-Version: 1.21 | Updated: 13 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.22 | Updated: 13 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
 For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.
 
@@ -156,6 +156,24 @@ Prerequisites: access to Product Types and permission to create purchases or sal
 4. Add a serialized product to a Sales Invoice. Its saved HSN/SAC fills on the line; review it before issuing. The printed invoice shows the saved invoice-line code. Services use their line code and stocked accessories retain their SKU code.
 
 Changing a Product Type default affects new purchases. It does not backfill existing stock or change issued invoices. For existing stock without a code, enter the appropriate code on the sales invoice. Codes are stored as text to preserve leading zeroes. A code is optional on product types and purchases; GST invoices for a seller with a tax registration number still require HSN/SAC on every line. The software validates digit format, not whether the classification is correct for the item.
+
+### Maintain GST profiles and future slab changes
+
+Prerequisites: access to Settings > Tax, product catalog maintenance and the appropriate purchase/sale permissions. Configure supplier GSTIN and state in Customer Bill settings for GST billing.
+
+1. Open Settings > Tax and add a rate. Leave **Existing Tax Profile** empty to create a profile. Enter **Tax Profile Name**, **Effective From**, **Tax Treatment**, CGST and SGST. The total is calculated. Save.
+2. Select that profile under **Default Tax Profile** when adding or editing a Product Type. Each row on Add Product Types has its own selection. A stock SKU can also have a default profile.
+3. On a purchase, the **Tax Profile** defaults from the Product Type. You can select a different profile for this purchase. CGST and SGST follow the vendor invoice date and are read-only. Choose a dated zero-tax profile explicitly when appropriate. Verify the profile against the scanned vendor invoice; scanned taxes do not override a chosen profile. SKU receipts use their default or the selected purchase profile.
+4. To change a GST slab, add another tax record, select the same **Existing Tax Profile**, enter the new **Effective From** date and rates, and save. There can be only one rate version per profile and date. Existing version rates, dates and treatment cannot be overwritten through Edit; use a new dated version. Referenced rate history cannot be deleted.
+5. Create a sale invoice. Serialized products use their saved purchase profile; stock SKUs use their default. Every line can select a different profile. The applicable rate follows the invoice date, independent of when the stock was bought. Changing the date refreshes the tax preview. Services require an explicit profile selection.
+6. If the applicable GST time of supply differs from the invoice date, enter **Tax-effective date** and **Tax date reason**. The software resolves the rate on that date, saves the date/reason, and shows them on the printed invoice when the date differs. The operator must determine the correct date for supply/payment timing around a rate change; the software does not calculate all statutory time-of-supply exceptions automatically.
+7. Save the invoice. The actual rate version, treatment, percentages, amounts and print snapshot are stored. Later slab changes do not alter that sale, its ledger postings or printed invoice. Returns reverse the original tax amounts even if the return happens after a slab change.
+
+Expected result: a future slab takes effect for transactions with a matching tax-effective date. Backdated transactions use their historical version. A missing or inactive applicable version blocks selection; the software does not fall back to an older active slab. Inactivating an old version also prevents new backdated transactions that require it, so retain active historical versions when those transactions are needed.
+
+Existing tax records are migrated to separate profiles available from the earliest date, preserving their existing percentages. Existing stock without a profile requires a type default or explicit selection when sold. No existing invoice or inventory cost is recalculated. Adding a new version does not require changing Product Type or SKU defaults.
+
+Tax Treatment distinguishes Taxable, Exempt, NilRated, NonGst and ZeroRated in invoice lines and GST report/CSV groups. The latter four require zero percentages; ZeroRated here represents a zero-tax posting, not export tax/refund eligibility. This release supports percentage CGST/SGST and IGST; special cess, reverse-charge and statutory return generation require their own workflows. Rates and effective dates are maintained by authorized staff after checking the applicable notification; government changes are not downloaded automatically.
 
 ## 5. Record a new purchase
 

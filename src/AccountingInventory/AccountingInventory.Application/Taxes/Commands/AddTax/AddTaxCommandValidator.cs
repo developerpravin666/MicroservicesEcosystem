@@ -6,6 +6,8 @@ public sealed class AddTaxCommandValidator : AbstractValidator<AddTaxCommand>
 {
     public AddTaxCommandValidator()
     {
+        RuleFor(x => x.Name).MaximumLength(100);
+        RuleFor(x => x.Cgst + x.Sgst).LessThanOrEqualTo(100);
         RuleFor(x => x.Cgst).InclusiveBetween(0, 100);
         RuleFor(x => x.Sgst).InclusiveBetween(0, 100);
     }

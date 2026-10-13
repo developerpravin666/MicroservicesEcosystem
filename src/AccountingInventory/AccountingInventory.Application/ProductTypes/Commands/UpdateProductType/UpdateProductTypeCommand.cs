@@ -4,7 +4,7 @@ namespace AccountingInventory.Application.ProductTypes.Commands.UpdateProductTyp
 
 /// <summary>Self-service ProductType update — deliberately anonymous at the API layer
 /// this in a production deployment.</summary>
-public sealed record UpdateProductTypeCommand(Guid Id, string Name, string Description, bool IsActive, string? HsnSac = null) : IRequest<UpdateProductTypeResult>;
+public sealed record UpdateProductTypeCommand(Guid Id, string Name, string Description, bool IsActive, string? HsnSac = null, Guid? DefaultTaxId = null) : IRequest<UpdateProductTypeResult>;
 
-public sealed record UpdateProductTypeResult(Guid Id, string Name, string Description, bool IsActive, string? HsnSac = null);
+public sealed record UpdateProductTypeResult(Guid Id, string Name, string Description, bool IsActive, string? HsnSac = null, Guid? DefaultTaxId = null);
 

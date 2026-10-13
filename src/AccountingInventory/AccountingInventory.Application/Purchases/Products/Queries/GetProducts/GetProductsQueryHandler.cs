@@ -38,7 +38,7 @@ public sealed class GetProductsQueryHandler(IAccountingInventoryDbContext dbCont
                 dbContext.ProductTypes.Where(v => v.Id == x.ProductTypeId).Select(v => v.Name).FirstOrDefault() ?? string.Empty,
                 dbContext.ProductModels.Where(v => v.Id == x.ProductModelId).Select(v => v.Name).FirstOrDefault() ?? string.Empty,
                 dbContext.Variants.Where(v => v.Id == x.VariantId).Select(v => v.Name).FirstOrDefault() ?? string.Empty,
-                dbContext.Colors.Where(v => v.Id == x.ColorId).Select(v => v.Name).FirstOrDefault() ?? string.Empty, x.HsnSac)).ToListAsync(cancellationToken);
+                dbContext.Colors.Where(v => v.Id == x.ColorId).Select(v => v.Name).FirstOrDefault() ?? string.Empty, x.HsnSac, x.TaxId, x.TaxTreatment)).ToListAsync(cancellationToken);
         return new PagedResult<ProductSummary>(items, page, pageSize, totalCount,
             totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize));
     }

@@ -6,6 +6,9 @@ namespace AccountingInventory.Domain.Entities;
 public sealed class Product : AggregateRoot
 {
     public string? HsnSac { get; private set; }
+    public Guid? TaxId { get; private set; }
+    public string TaxTreatment { get; private set; } = "Taxable";
+    public void SetTaxDetails(Guid? taxId, string treatment) { if (!AccountingInventory.Domain.Entities.Tax.Treatments.Contains(treatment) || (treatment != "Taxable" && Cgst + Sgst != 0)) throw new ArgumentException("Invalid purchase tax treatment."); TaxId = taxId; TaxTreatment = treatment; }
     public Guid VendorId { get; private set; }
     public Guid BrandId { get; private set; }
     public Guid ProductTypeId { get; private set; }

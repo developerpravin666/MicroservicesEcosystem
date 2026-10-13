@@ -10,6 +10,6 @@ public sealed class GetTaxByIdQueryHandler(IAccountingInventoryDbContext db) : I
 {
     public async Task<TaxSummary> Handle(GetTaxByIdQuery request, CancellationToken cancellationToken)
         => await db.Taxes.AsNoTracking().Where(x => x.Id == request.Id).Select(x => new TaxSummary(
-            x.Id, x.Cgst, x.Sgst, x.TotalTax, x.IsActive, x.CreatedAt, x.CreatedBy, x.ModifiedAt, x.ModifiedBy)).SingleOrDefaultAsync(cancellationToken)
+            x.Id, x.Cgst, x.Sgst, x.TotalTax, x.IsActive, x.CreatedAt, x.CreatedBy, x.ModifiedAt, x.ModifiedBy, x.Name, x.ProfileId, x.EffectiveFrom, x.Treatment)).SingleOrDefaultAsync(cancellationToken)
            ?? throw new NotFoundException($"Tax '{request.Id}' was not found.");
 }

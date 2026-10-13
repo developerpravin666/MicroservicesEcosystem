@@ -10,9 +10,8 @@ public sealed class GetTaxesForDDLQueryHandler(IAccountingInventoryDbContext db)
     public async Task<IEnumerable<TaxRateSummary>> Handle(GetTaxesForDDLQuery request, CancellationToken cancellationToken)
         => await db.Taxes
             .AsNoTracking()
-            .Where(tax => tax.IsActive)
-            .OrderBy(tax => tax.Cgst)
+                        .OrderBy(tax => tax.Cgst)
             .ThenBy(tax => tax.Sgst)
-            .Select(tax => new TaxRateSummary(tax.Id, tax.Cgst, tax.Sgst, tax.TotalTax))
+            .Select(tax => new TaxRateSummary(tax.Id, tax.Cgst, tax.Sgst, tax.TotalTax, tax.Name, tax.ProfileId, tax.EffectiveFrom, tax.Treatment, tax.IsActive))
             .ToListAsync(cancellationToken);
 }

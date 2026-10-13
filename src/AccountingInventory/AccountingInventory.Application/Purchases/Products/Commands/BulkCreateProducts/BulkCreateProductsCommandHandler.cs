@@ -15,6 +15,12 @@ public sealed class BulkCreateProductsCommandHandler(IAccountingInventoryDbConte
     public async Task<IReadOnlyList<CreateProductResult>> Handle(
         BulkCreateProductsCommand request, CancellationToken cancellationToken)
     {
+        var resolver = await AccountingInventory.Application.Taxes.TaxRateResolver.LoadAsync(dbContext, cancellationToken);
+        var defaults = await dbContext.ProductTypes.ToDictionaryAsync(t => t.Id, t => t.DefaultTaxId, cancellationToken);
+        request = request with { Products = request.Products.Select(item => {
+            var rate = resolver.Resolve(item.TaxId ?? defaults.GetValueOrDefault(item.ProductTypeId), item.PurchaseDate ?? DateOnly.FromDateTime(DateTime.UtcNow));
+            return rate == null ? item : item with { TaxId = rate.Id, Cgst = rate.Cgst, Sgst = rate.Sgst, Tax = rate.TotalTax, TaxTreatment = rate.Treatment };
+        }).ToArray() };
         await PurchaseIntegrity.ValidateAsync(dbContext, request.Products.Select(item => new PurchaseReference(item.VendorId, item.BrandId, item.ProductTypeId, item.ProductModelId,
             item.VariantId, item.ColorId, item.BillNumber, item.PurchaseDate, item.PaymentTermsDays)), cancellationToken);
         var products = request.Products;
@@ -36,6 +42,7 @@ public sealed class BulkCreateProductsCommandHandler(IAccountingInventoryDbConte
             item.ProductTypeId, item.ProductModelId, item.VariantId, item.ColorId,
             item.SerialNumber, item.SerialNumber1, item.BillNumber, item.PurchasePrice,
             item.Discount, item.Cgst, item.Sgst, item.Tax, item.PurchaseDate, item.PaymentTermsDays, item.HsnSac ?? typeCodes.GetValueOrDefault(item.ProductTypeId))).ToArray();
+        for (var i = 0; i < entities.Length; i++) entities[i].SetTaxDetails(products[i].TaxId == Guid.Empty ? null : products[i].TaxId, products[i].TaxTreatment);
         dbContext.Products.AddRange(entities);
         var ledgerAccounts = await LedgerPosting.EnsureSystemAccountsAsync(dbContext, cancellationToken);
         foreach (var product in entities)
@@ -49,6 +56,6 @@ public sealed class BulkCreateProductsCommandHandler(IAccountingInventoryDbConte
             product.BrandId, product.ProductTypeId, product.ProductModelId, product.VariantId,
             product.ColorId, product.SerialNumber, product.SerialNumber1,
             product.PurchasePrice, product.TotalAmount, product.Discount, product.Cgst,
-            product.Sgst, product.Tax, product.IsActive, product.IsSold, product.BillNumber, product.HsnSac)).ToArray();
+            product.Sgst, product.Tax, product.IsActive, product.IsSold, product.BillNumber, product.HsnSac, product.TaxId, product.TaxTreatment)).ToArray();
     }
 }

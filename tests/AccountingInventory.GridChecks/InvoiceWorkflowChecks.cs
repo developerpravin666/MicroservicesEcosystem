@@ -124,6 +124,7 @@ internal static class InvoiceWorkflowChecks
         Check(blocked && await db.SalesInvoiceReceipts.AnyAsync(), "Used invoice history must block downgrade.");
         await SkuWorkflowChecks.RunAsync(db,customer,vendor,tax,owner.Id,date.AddDays(10));
         await CheckHsnPurchasesAsync(db, vendor, brand, type, model, variant, color, date);
+        await DatedTaxWorkflowChecks.RunAsync(db);
         Console.WriteLine($"PASS: {count} new invoice, advance, return, historical report and migration checks.");
     }
     private static async Task CheckHsnPurchasesAsync(AccountingInventoryDbContext db, Vendor vendor, Brand brand, ProductType type, ProductModel model, Variant variant, Color color, DateOnly date)
@@ -163,6 +164,18 @@ internal static class InvoiceWorkflowChecks
         var tx = db.Database.CurrentTransaction!;
         await tx.CreateSavepointAsync("invoice_upgrade");
         var generator = db.GetService<IMigrationsSqlGenerator>();
+        foreach (var sql in generator.Generate(new AddDatedTaxProfiles().DownOperations, db.Model))
+            await db.Database.ExecuteSqlRawAsync(sql.CommandText);
+        var legacyTaxId = Guid.NewGuid();
+        await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO taxes (id, cgst, sgst, total_tax, is_active, is_deleted, created_at) VALUES ({legacyTaxId}, 9, 9, 18, true, false, now())");
+        foreach (var sql in generator.Generate(new AddDatedTaxProfiles().UpOperations, db.Model))
+            await db.Database.ExecuteSqlRawAsync(sql.CommandText);
+        foreach (var sql in generator.Generate(new AddDatedTaxProfiles().UpOperations, db.Model))
+            await db.Database.ExecuteSqlRawAsync(sql.CommandText);
+        var migratedTax = await db.Taxes.AsNoTracking().SingleAsync(t => t.Id == legacyTaxId);
+        if (migratedTax.ProfileId != legacyTaxId || migratedTax.EffectiveFrom != DateOnly.MinValue || migratedTax.TotalTax != 18)
+            throw new Exception("Dated tax migration must preserve legacy rates and backfill profile identity.");
+        db.Taxes.Remove(await db.Taxes.SingleAsync(t => t.Id == legacyTaxId)); await db.SaveChangesAsync();
         foreach (var sql in generator.Generate(new AddProductHsnSac().DownOperations, db.Model))
             await db.Database.ExecuteSqlRawAsync(sql.CommandText);
         foreach (var sql in generator.Generate(new AddProductHsnSac().UpOperations, db.Model))

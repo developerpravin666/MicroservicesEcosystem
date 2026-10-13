@@ -63,13 +63,18 @@ public sealed class BulkUpdateProductsCommandHandler(IAccountingInventoryDbConte
             throw new ConflictException("Products on a bill with recorded payments cannot be edited.");
 
         var updatesById = updates.ToDictionary(update => update.Id);
+        var resolver = await AccountingInventory.Application.Taxes.TaxRateResolver.LoadAsync(dbContext, cancellationToken);
+        var defaults = await dbContext.ProductTypes.ToDictionaryAsync(t => t.Id, t => t.DefaultTaxId, cancellationToken);
         var typeCodes = await dbContext.ProductTypes.ToDictionaryAsync(t => t.Id, t => t.HsnSac, cancellationToken);
         foreach (var product in products)
         {
             var update = updatesById[product.Id];
+            var rate = resolver.Resolve(update.TaxId ?? product.TaxId ?? defaults.GetValueOrDefault(update.ProductTypeId), update.PurchaseDate ?? product.PurchaseDate);
+            if (rate != null) update = update with { TaxId = rate.Id, Cgst = rate.Cgst, Sgst = rate.Sgst, Tax = rate.TotalTax, TaxTreatment = rate.Treatment };
             product.Update(update.VendorId, update.BrandId, update.ProductTypeId, update.ProductModelId,
                 update.VariantId, update.ColorId, update.SerialNumber, update.SerialNumber1,
                 update.BillNumber, update.PurchasePrice, update.Discount, update.Cgst, update.Sgst, update.Tax, update.PurchaseDate, update.PaymentTermsDays, update.HsnSac ?? (update.ProductTypeId == product.ProductTypeId ? product.HsnSac : typeCodes.GetValueOrDefault(update.ProductTypeId)));
+            product.SetTaxDetails(update.TaxId == Guid.Empty ? null : update.TaxId, update.TaxTreatment);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -77,6 +82,6 @@ public sealed class BulkUpdateProductsCommandHandler(IAccountingInventoryDbConte
             product.BrandId, product.ProductTypeId, product.ProductModelId, product.VariantId,
             product.ColorId, product.SerialNumber, product.SerialNumber1,
             product.PurchasePrice, product.TotalAmount, product.Discount, product.Cgst,
-            product.Sgst, product.Tax, product.IsActive, product.IsSold, product.BillNumber, product.HsnSac)).ToArray();
+            product.Sgst, product.Tax, product.IsActive, product.IsSold, product.BillNumber, product.HsnSac, product.TaxId, product.TaxTreatment)).ToArray();
     }
 }

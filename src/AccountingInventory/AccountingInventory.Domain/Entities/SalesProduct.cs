@@ -15,6 +15,8 @@ public sealed class SalesProduct : AggregateRoot
     public decimal SellingPrice { get; private set; }
     public decimal Discount { get; private set; }
     public Guid? TaxId { get; private set; }
+    public string TaxTreatment { get; private set; } = "Taxable";
+    public void SetTaxTreatment(string treatment) => TaxTreatment = treatment;
     public decimal CgstRate { get; private set; }
     public decimal SgstRate { get; private set; }
     public decimal TaxableAmount { get; private set; }

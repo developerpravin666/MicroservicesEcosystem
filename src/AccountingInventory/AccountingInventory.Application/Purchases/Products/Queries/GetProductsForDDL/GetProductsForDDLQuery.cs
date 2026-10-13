@@ -6,4 +6,4 @@ public sealed record GetProductsForDDLQuery(Guid? CurrentSaleId = null) : IReque
 
 public sealed record GetProductsForDDLSummary(Guid Id, string Brand, string ProductType, string ProductModel, string Variant,
 string Color, string SerialNumber, string SerialNumber1, decimal PurchasePrice, decimal TotalAmount, decimal Discount,
-decimal Cgst = 0, decimal Sgst = 0, string? HsnSac = null);
+decimal Cgst = 0, decimal Sgst = 0, string? HsnSac = null, Guid? TaxId = null, string TaxTreatment = "Taxable");

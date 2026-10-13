@@ -14,12 +14,13 @@ namespace AccountingInventory.Domain.Entities;
 public sealed class ProductType : AggregateRoot
 {
     public string? HsnSac { get; private set; }
+    public Guid? DefaultTaxId { get; private set; }
     // Properties changed from 'init' to 'private set' to support mutations via domain methods
     //public Guid VendorId { get; private set; }
     public string Name { get; private set; } = null!;
     public string? Description { get; private set; } = null!;
 
-    public static ProductType Create(string name, string? description = null, string? hsnSac = null)
+    public static ProductType Create(string name, string? description = null, string? hsnSac = null, Guid? defaultTaxId = null)
     {
         //ValidateInput(brandId, name, description);
 
@@ -29,13 +30,14 @@ public sealed class ProductType : AggregateRoot
             IsActive = true,
             Name = name.Trim(),
             HsnSac = HsnSacCode.Normalize(hsnSac),
+            DefaultTaxId = defaultTaxId == Guid.Empty ? null : defaultTaxId,
             Description = description?.Trim(),
         };
     }
     /// <summary>
     /// Updates the product type's core details with validation constraints.
     /// </summary>
-    public static ProductType Update(Guid id, string name, string? description, bool isActive, string? hsnSac = null)
+    public static ProductType Update(Guid id, string name, string? description, bool isActive, string? hsnSac = null, Guid? defaultTaxId = null)
     {
         //ValidateInput(brandId, name, description);
 
@@ -45,6 +47,7 @@ public sealed class ProductType : AggregateRoot
             IsActive = isActive,
             Name = name.Trim(),
             HsnSac = HsnSacCode.Normalize(hsnSac),
+            DefaultTaxId = defaultTaxId == Guid.Empty ? null : defaultTaxId,
             Description = description?.Trim()
         };
     }

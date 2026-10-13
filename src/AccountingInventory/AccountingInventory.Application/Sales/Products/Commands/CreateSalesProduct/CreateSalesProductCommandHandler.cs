@@ -28,10 +28,9 @@ public sealed class CreateSalesProductCommandHandler(IAccountingInventoryDbConte
         if (await db.InvoiceCorrections.AnyAsync(x => x.Kind == "Sale" && previousSales.Contains(x.SourceId) && x.NoteDate > request.SaleDate, cancellationToken))
             throw new ConflictException("A resale cannot precede the previous customer return.");
         var ledgerAccounts = await LedgerPosting.EnsureSystemAccountsAsync(db, cancellationToken);
-        var tax = request.TaxId.HasValue && request.TaxId.Value != Guid.Empty
-            ? await db.Taxes.SingleOrDefaultAsync(item => item.Id == request.TaxId.Value && item.IsActive, cancellationToken)
-                ?? throw new NotFoundException($"Tax rate '{request.TaxId}' was not found or is inactive.")
-            : null;
+        var resolver = await AccountingInventory.Application.Taxes.TaxRateResolver.LoadAsync(db, cancellationToken);
+        var defaultTaxId = product.TaxId ?? await db.ProductTypes.Where(t => t.Id == product.ProductTypeId).Select(t => t.DefaultTaxId).FirstOrDefaultAsync(cancellationToken);
+        var tax = resolver.Resolve(request.TaxId ?? defaultTaxId, request.SaleDate);
 
         var customer = await CustomerResolver.GetOrCreateAsync(db, request.CustomerName,
             request.CustomerMobile, request.CustomerAddress, request.CustomerEmail, cancellationToken);
@@ -46,6 +45,7 @@ public sealed class CreateSalesProductCommandHandler(IAccountingInventoryDbConte
         await LedgerPosting.EnsurePeriodOpenAsync(db, sale.SaleDate, cancellationToken);
         try
         {
+            sale.SetTaxTreatment(tax?.Treatment ?? "NonGst");
             await db.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException)
