@@ -6,7 +6,7 @@ This setup automatically deploys **AccountingInventory.Api** to Azure App Servic
 
 ## 1. How the Automated Pipeline Works
 
-The workflow [`.github/workflows/deploy-production.yml`](file:///.github/workflows/deploy-production.yml) is triggered automatically on every:
+The workflow [`.github/workflows/main_sm-accounting-inventory-api.yml`](file:///.github/workflows/main_sm-accounting-inventory-api.yml) is triggered automatically on every:
 - **Code push or merge to the `main` branch**
 - Manual trigger via **Actions > Run workflow** in GitHub
 
