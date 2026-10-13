@@ -1,0 +1,67 @@
+name: Deploy AccountingInventory API to Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accounting-inventory-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-api:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      API_PROJECT: src/AccountingInventory/AccountingInventory.Api/AccountingInventory.Api.csproj
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME_PRODUCTION }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Check deployment configuration
+        env:
+          AZURE_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PRODUCTION }}
+        run: |
+          if [ -z "$AZURE_WEBAPP_NAME" ]; then
+            echo "::error::Set repository variable AZURE_WEBAPP_NAME_PRODUCTION to the target Azure App Service name."
+            exit 1
+          fi
+          if [ -z "$AZURE_PUBLISH_PROFILE" ]; then
+            echo "::error::Set repository secret AZURE_WEBAPP_PUBLISH_PROFILE_PRODUCTION to the App Service publish profile."
+            exit 1
+          fi
+
+      - name: Restore AccountingInventory API dependencies
+        run: dotnet restore "$API_PROJECT"
+
+      - name: Publish AccountingInventory API only
+        run: dotnet publish "$API_PROJECT" --configuration Release --no-restore --output "${{ runner.temp }}/accounting-api-publish"
+
+      - name: Exclude development configuration
+        shell: pwsh
+        run: |
+          $publishDirectory = Join-Path '${{ runner.temp }}' 'accounting-api-publish'
+          Get-ChildItem -LiteralPath $publishDirectory -Filter 'appsettings.Development.json' -File | Remove-Item
+          if (-not (Test-Path -LiteralPath (Join-Path $publishDirectory 'AccountingInventory.Api.dll'))) {
+            throw 'The AccountingInventory.Api publish output is missing.'
+          }
+
+      - name: Deploy AccountingInventory API
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PRODUCTION }}
+          package: ${{ runner.temp }}/accounting-api-publish
