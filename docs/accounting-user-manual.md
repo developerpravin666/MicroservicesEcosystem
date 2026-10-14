@@ -1,8 +1,8 @@
 # Accounting & Inventory User Manual
 
-Version: 1.27 | Updated: 14 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.29 | Updated: 14 October 2026 | Covers tenant profile/password management, email/mobile sign-in, modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
-For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.
+For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and account details. Available actions depend on your permissions.
 
 To share this guide, send accounting-user-manual.html. Open that file in a browser and choose Print / Save PDF for a paper or PDF copy. Keep the version and date with any distributed copy.
 
@@ -44,8 +44,10 @@ To share this guide, send accounting-user-manual.html. Open that file in a brows
 
 1. For a new account, open the invitation email and follow the activation link. Invitations expire after 24 hours and can be used once.
 2. Set a password containing at least 12 characters, including an uppercase letter, a lowercase letter and a number.
-3. Open the sign-in page. Enter your Tenant slug, Username and Password, then sign in.
+3. Open the sign-in page. Enter your registered **Email or mobile** and **Password**, then select **Sign in**. Email matching ignores case and surrounding spaces. Enter your mobile exactly as stored on your account, including any country code. Your account and store must be active; deleted accounts and suspended stores cannot sign in.
 After signing in, the header shows your tenant name and an icon with its first letter. Existing saved sessions show the Tenant slug until you sign out and sign in again. The footer also shows your tenant name.
+
+If your email or mobile belongs to more than one active account, automatic store selection is unavailable. Select **Use tenant slug and username**, enter **Tenant slug**, **Username** and **Password**, then select **Sign in**. This also preserves the previous sign-in method for existing accounts. Select **Use email or mobile instead** to return to automatic store selection. The password-recovery page still requires your tenant slug and email. Product Owners continue to use their separate platform sign-in page.
 
 4. Expand the sidebar sections to find Product, Purchase, Sale, Accounting and Settings.
 5. Ask the owner for the permissions needed for your work. Activation alone does not give staff permission to enter transactions.
@@ -578,7 +580,7 @@ Siddhi Mobile SaaS provides an automated, multi-tenant onboarding process:
        |   (Slug, Username, Login instructions)      |
        |                                             |
        |-- 6. Signs in at /login ------------------->|
-       |   (Enters Tenant Slug, Username & Password) |
+       |   (Enters Email/Mobile & Password)         |
 ```
 
 ---
@@ -627,6 +629,18 @@ Platform administrators / product owners can review and approve registered store
 4. If a registration is invalid or spam, click **"Reject"** and enter an optional reason. The applicant is notified accordingly.
 
 ---
+
+#### Product Owner: edit a tenant profile or reset its owner password
+
+Prerequisites: sign in to the platform at `/admin/login` with Product Owner or SuperAdmin access and `Tenants.Manage`. Open **Tenant Store Directory** at `/admin/tenants`. These actions manage the tenant's owner; staff continue to use the store's Staff Access screen and users can change their own password through the existing password workflow.
+
+1. Find the store, then select the pencil action **Edit tenant profile**.
+2. Edit **Store name**, **Owner name**, **Owner email**, **Owner mobile**, **State code**, **GSTIN** and **Address**, then select **Save profile**. Store and owner names, email and mobile are required. State code, when supplied, has two digits; GSTIN, when supplied, must have the valid 15-character format. The refreshed directory shows the saved details.
+3. For a provisioned store, owner email/mobile changes also update the owner's sign-in details and revoke their refresh token. Their username stays the same. A conflicting tenant email or another account's email/mobile within the store prevents saving the change. Slug, tenant ID, database schema and lifecycle status stay the same. Store billing settings and historical invoice snapshots are managed separately and are not changed by this editor.
+4. To set a new owner password, select the key action **Reset owner password**, enter **New password** and **Confirm password**, then select **Reset password**. Use at least eight characters including uppercase, lowercase and a number. The existing password is never displayed. Communicate the new password to the owner through your established private channel; this action does not email the password.
+5. For active or suspended stores, the owner must have an activated account. Resetting revokes their refresh token; existing access tokens can remain valid until expiry. The owner then signs in with the new password. A suspended store remains suspended. For pending stores, the new password is saved for use when the store is approved; no schema is provisioned or account activated by this action. Rejected stores do not offer password reset.
+
+Expected result: the selected tenant's profile or owner password changes; other stores and staff passwords are unaffected. Use **Cancel** to close without saving. If an error appears, correct the fields or resolve the displayed conflict and retry.
 
 ### 21.4 Offline Standalone Deployment Guide
 
@@ -690,9 +704,9 @@ The shop counter application is now available at `http://localhost:5173`.
 5. Click **"Approve & Provision DB"**.
    - Your local PostgreSQL database schema is immediately provisioned and seeded.
 6. Open `http://localhost:5173/login`, enter:
-   - **Tenant Slug:** `siddhi`
-   - **Username:** `pravin` (or `admin`)
+   - **Email or mobile:** the email or mobile registered for your account
    - **Password:** `Passw0rd!123`
+   - For the previous method, select **Use tenant slug and username**, enter slug `siddhi` and your existing username, and use the same password.
 7. Start billing phones, scanning IMEIs, managing inventory, and tracking GST offline!
 
 ---

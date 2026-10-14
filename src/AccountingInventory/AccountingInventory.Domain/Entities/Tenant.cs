@@ -14,7 +14,7 @@ namespace AccountingInventory.Domain.Entities;
 /// </summary>
 public sealed class Tenant : AggregateRoot
 {
-    public required string Name { get; init; }
+    public required string Name { get; set; }
     public required string Slug { get; init; }
     public required string SchemaName { get; init; }
     public TenantStatus Status { get; private set; }
@@ -95,6 +95,16 @@ public sealed class Tenant : AggregateRoot
         Status = TenantStatus.Active;
         IsActive = true;
     }
+
+    public void UpdateProfile(string name, string ownerName, string ownerEmail, string ownerMobile,
+        string? stateCode, string? gstin, string? address)
+    {
+        Name = name.Trim(); OwnerName = ownerName.Trim();
+        OwnerEmail = ownerEmail.Trim().ToLowerInvariant(); OwnerMobile = ownerMobile.Trim();
+        StateCode = stateCode?.Trim(); Gstin = gstin?.Trim().ToUpperInvariant(); Address = address?.Trim();
+    }
+
+    public void SetInitialPasswordHash(string hash) => InitialPasswordHash = hash;
 
     public void Approve() => Activate();
 
