@@ -17,6 +17,7 @@ public static class AdminEndpoints
 {
     public static RouteGroupBuilder MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
+        app.MapTenantManagementEndpoints();
         var group = app.MapGroup("/api/admin").WithTags("Admin");
 
         // 1. Admin Authentication (POST /api/admin/login)

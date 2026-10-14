@@ -2,7 +2,7 @@ using MediatR;
 
 namespace AccountingInventory.Application.Users.Commands.Login;
 
-public sealed record LoginCommand(string TenantSlug, string UserName, string Password) : IRequest<LoginResult>;
+public sealed record LoginCommand(string? TenantSlug, string UserName, string Password) : IRequest<LoginResult>;
 
 public sealed record LoginResult(
     Guid UserId,
@@ -10,4 +10,6 @@ public sealed record LoginResult(
     string AccessToken,
     string RefreshToken,
     DateTimeOffset ExpiresAtUtc,
-    string? TenantName = null);
+    string? TenantName = null,
+    string? TenantSlug = null,
+    string? UserName = null);

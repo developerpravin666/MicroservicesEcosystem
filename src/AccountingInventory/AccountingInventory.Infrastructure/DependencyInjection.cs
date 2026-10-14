@@ -67,6 +67,7 @@ public static class DependencyInjection
         services.AddSingleton(jwtOptions);
         services.AddSingleton<ITokenService, TokenService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<ITenantAdministration, TenantAdministration>();
         services.AddScoped<IRegistrationEmailTemplateStore, RegistrationEmailTemplateStore>();
 
         return services;

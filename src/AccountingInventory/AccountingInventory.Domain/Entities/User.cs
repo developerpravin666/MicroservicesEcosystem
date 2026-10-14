@@ -18,8 +18,8 @@ public sealed class User : AggregateRoot
 {
     //private readonly List<Guid> _roleIds = [];
     public required string UserName { get; init; }
-    public required string Mobile { get; init; }
-    public required string Email { get; init; }
+    public required string Mobile { get; set; }
+    public required string Email { get; set; }
     public string PasswordHash { get; private set; } = string.Empty;
     public bool IsOwner { get; private set; }
     public bool EmailVerified { get; private set; }
@@ -107,6 +107,13 @@ public sealed class User : AggregateRoot
     {
         RefreshTokenHash = null;
         RefreshTokenExpiresAtUtc = null;
+    }
+
+    public void UpdateContact(string email, string mobile)
+    {
+        Email = email.Trim().ToLowerInvariant();
+        Mobile = mobile.Trim();
+        RevokeRefreshToken();
     }
 
     private User() { }

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../../src/AccountingInventory/AccountingInventory.Infrastructure/AccountingInventory.Infrastructure.csproj" /></ItemGroup>
+  <ItemGroup><Compile Include="../../src/AccountingInventory/AccountingInventory.Api/Endpoints/TenantManagementEndpoints.cs" Link="TenantManagementEndpoints.cs" /></ItemGroup>
+</Project>

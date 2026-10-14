@@ -20,7 +20,8 @@ public sealed class LoginCommandHandler(
 {
     public async Task<LoginResult> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        var normalizedSlug = request.TenantSlug.Trim().ToLowerInvariant();
+        var normalizedSlug = request.TenantSlug?.Trim().ToLowerInvariant();
+        var identifier = request.UserName.Trim().ToLowerInvariant();
 
         if (normalizedSlug is "system" or "admin")
         {
@@ -52,9 +53,38 @@ public sealed class LoginCommandHandler(
             }
         }
 
-        var tenant = await tenantDirectory.Tenants
-            .AsNoTracking()
-            .SingleOrDefaultAsync(t => t.Slug == normalizedSlug, cancellationToken);
+        Tenant? tenant;
+        Guid? resolvedUserId = null;
+        if (string.IsNullOrEmpty(normalizedSlug))
+        {
+            // Discovery is read-only: never track users while switching schemas.
+            // Usernames are tenant-local and are only accepted with an explicit slug.
+            tenant = null;
+            var candidates = await tenantDirectory.Tenants.AsNoTracking()
+                .Where(t => t.Status == TenantStatus.Active && t.IsActive)
+                .ToListAsync(cancellationToken);
+            foreach (var candidate in candidates)
+            {
+                tenantContextAccessor.SetTenant(candidate.Id, candidate.SchemaName);
+                await accInvDbContext.ResetConnectionAsync(cancellationToken);
+                var matches = await accInvDbContext.Users.AsNoTracking()
+                    .Where(u => u.IsActive &&
+                        (u.Email.Trim().ToLower() == identifier || u.Mobile.Trim() == identifier))
+                    .Select(u => u.Id).Take(2).ToListAsync(cancellationToken);
+                if (matches.Count > 1 || (matches.Count == 1 && resolvedUserId is not null))
+                    throw new UnauthorizedException("Unable to sign in automatically. Use your tenant slug, username and password.");
+                if (matches.Count == 1)
+                {
+                    tenant = candidate;
+                    resolvedUserId = matches[0];
+                }
+            }
+        }
+        else
+        {
+            tenant = await tenantDirectory.Tenants.AsNoTracking()
+                .SingleOrDefaultAsync(t => t.Slug == normalizedSlug, cancellationToken);
+        }
 
         if (tenant is null)
         {
@@ -76,7 +106,9 @@ public sealed class LoginCommandHandler(
         tenantContextAccessor.SetTenant(tenant.Id, tenant.SchemaName);
         await accInvDbContext.ResetConnectionAsync(cancellationToken);
        
-        var user = await accInvDbContext.Users.FirstOrDefaultAsync(u => u.UserName.ToLower() == request.UserName.Trim().ToLower() && u.IsActive, cancellationToken);
+        var user = resolvedUserId is { } userId
+            ? await accInvDbContext.Users.SingleOrDefaultAsync(u => u.Id == userId && u.IsActive, cancellationToken)
+            : await accInvDbContext.Users.FirstOrDefaultAsync(u => u.UserName.ToLower() == identifier && u.IsActive, cancellationToken);
 
         if (user is null)
         {
@@ -113,6 +145,6 @@ public sealed class LoginCommandHandler(
             "User {UserId} ({UserName}) logged in to tenant {TenantId} with roles [{Roles}].",
             user.Id, user.UserName, tenant.Id, string.Join(", ", roleNames));
 
-        return new LoginResult(user.Id, tenant.Id, pair.AccessToken, pair.RefreshToken, pair.AccessTokenExpiresAtUtc, tenant.Name);
+        return new LoginResult(user.Id, tenant.Id, pair.AccessToken, pair.RefreshToken, pair.AccessTokenExpiresAtUtc, tenant.Name, tenant.Slug, user.UserName);
     }
 }

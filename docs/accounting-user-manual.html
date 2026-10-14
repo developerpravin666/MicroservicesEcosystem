@@ -12,8 +12,8 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 @media print{@page{size:A4;margin:18mm}body{background:white;font-size:11pt}main{margin:0;padding:0;max-width:none}.print-tools{display:none}h2,h3{break-after:avoid}tr{break-inside:avoid}a{color:inherit;text-decoration:none}table{font-size:9pt}}
 </style></head><body><main><div class="print-tools"><button onclick="window.print()">Print / Save PDF</button></div>
 <h1 id='accounting-inventory-user-manual'>Accounting &amp; Inventory User Manual</h1>
-<p>Version: 1.27 | Updated: 14 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Two-Stage Master Data Import &amp; Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management</p>
-<p>For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.</p>
+<p>Version: 1.29 | Updated: 14 October 2026 | Covers tenant profile/password management, email/mobile sign-in, modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Two-Stage Master Data Import &amp; Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management</p>
+<p>For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and account details. Available actions depend on your permissions.</p>
 <p>To share this guide, send accounting-user-manual.html. Open that file in a browser and choose Print / Save PDF for a paper or PDF copy. Keep the version and date with any distributed copy.</p>
 <h2 id='contents'>Contents</h2>
 <ul>
@@ -53,9 +53,10 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 <ol>
 <li>For a new account, open the invitation email and follow the activation link. Invitations expire after 24 hours and can be used once.</li>
 <li>Set a password containing at least 12 characters, including an uppercase letter, a lowercase letter and a number.</li>
-<li>Open the sign-in page. Enter your Tenant slug, Username and Password, then sign in.</li>
+<li>Open the sign-in page. Enter your registered <strong>Email or mobile</strong> and <strong>Password</strong>, then select <strong>Sign in</strong>. Email matching ignores case and surrounding spaces. Enter your mobile exactly as stored on your account, including any country code. Your account and store must be active; deleted accounts and suspended stores cannot sign in.</li>
 </ol>
 <p>After signing in, the header shows your tenant name and an icon with its first letter. Existing saved sessions show the Tenant slug until you sign out and sign in again. The footer also shows your tenant name.</p>
+<p>If your email or mobile belongs to more than one active account, automatic store selection is unavailable. Select <strong>Use tenant slug and username</strong>, enter <strong>Tenant slug</strong>, <strong>Username</strong> and <strong>Password</strong>, then select <strong>Sign in</strong>. This also preserves the previous sign-in method for existing accounts. Select <strong>Use email or mobile instead</strong> to return to automatic store selection. The password-recovery page still requires your tenant slug and email. Product Owners continue to use their separate platform sign-in page.</p>
 <ol>
 <li>Expand the sidebar sections to find Product, Purchase, Sale, Accounting and Settings.</li>
 <li>Ask the owner for the permissions needed for your work. Activation alone does not give staff permission to enter transactions.</li>
@@ -526,7 +527,7 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 <tr><td>&lt;-- 5. Receives &quot;Store Workspace Ready&quot; email</td></tr>
 <tr><td>(Slug, Username, Login instructions)</td></tr>
 <tr><td>-- 6. Signs in at /login -------------------&gt;</td></tr>
-<tr><td>(Enters Tenant Slug, Username &amp; Password)</td></tr>
+<tr><td>(Enters Email/Mobile &amp; Password)</td></tr>
 </tbody></table></div>
 <p>```</p>
 <p>---</p>
@@ -589,6 +590,16 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 <li>If a registration is invalid or spam, click <strong>&quot;Reject&quot;</strong> and enter an optional reason. The applicant is notified accordingly.</li>
 </ol>
 <p>---</p>
+<h4 id='product-owner-edit-a-tenant-profile-or-reset-its-owner-password'>Product Owner: edit a tenant profile or reset its owner password</h4>
+<p>Prerequisites: sign in to the platform at <code>/admin/login</code> with Product Owner or SuperAdmin access and <code>Tenants.Manage</code>. Open <strong>Tenant Store Directory</strong> at <code>/admin/tenants</code>. These actions manage the tenant&#39;s owner; staff continue to use the store&#39;s Staff Access screen and users can change their own password through the existing password workflow.</p>
+<ol>
+<li>Find the store, then select the pencil action <strong>Edit tenant profile</strong>.</li>
+<li>Edit <strong>Store name</strong>, <strong>Owner name</strong>, <strong>Owner email</strong>, <strong>Owner mobile</strong>, <strong>State code</strong>, <strong>GSTIN</strong> and <strong>Address</strong>, then select <strong>Save profile</strong>. Store and owner names, email and mobile are required. State code, when supplied, has two digits; GSTIN, when supplied, must have the valid 15-character format. The refreshed directory shows the saved details.</li>
+<li>For a provisioned store, owner email/mobile changes also update the owner&#39;s sign-in details and revoke their refresh token. Their username stays the same. A conflicting tenant email or another account&#39;s email/mobile within the store prevents saving the change. Slug, tenant ID, database schema and lifecycle status stay the same. Store billing settings and historical invoice snapshots are managed separately and are not changed by this editor.</li>
+<li>To set a new owner password, select the key action <strong>Reset owner password</strong>, enter <strong>New password</strong> and <strong>Confirm password</strong>, then select <strong>Reset password</strong>. Use at least eight characters including uppercase, lowercase and a number. The existing password is never displayed. Communicate the new password to the owner through your established private channel; this action does not email the password.</li>
+<li>For active or suspended stores, the owner must have an activated account. Resetting revokes their refresh token; existing access tokens can remain valid until expiry. The owner then signs in with the new password. A suspended store remains suspended. For pending stores, the new password is saved for use when the store is approved; no schema is provisioned or account activated by this action. Rejected stores do not offer password reset.</li>
+</ol>
+<p>Expected result: the selected tenant&#39;s profile or owner password changes; other stores and staff passwords are unaffected. Use <strong>Cancel</strong> to close without saving. If an error appears, correct the fields or resolve the displayed conflict and retry.</p>
 <h3 id='214-offline-standalone-deployment-guide'>21.4 Offline Standalone Deployment Guide</h3>
 <p>To deploy this software offline (e.g., on a standalone shop counter PC, laptop, or local LAN server without an internet connection):</p>
 <h4 id='step-1-install-local-postgresql'>Step 1: Install Local PostgreSQL</h4>
@@ -654,9 +665,9 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 <li>Open <code>http://localhost:5173/login</code>, enter:</li>
 </ol>
 <ul>
-<li><strong>Tenant Slug:</strong> <code>siddhi</code></li>
-<li><strong>Username:</strong> <code>pravin</code> (or <code>admin</code>)</li>
+<li><strong>Email or mobile:</strong> the email or mobile registered for your account</li>
 <li><strong>Password:</strong> <code>Passw0rd!123</code></li>
+<li>For the previous method, select <strong>Use tenant slug and username</strong>, enter slug <code>siddhi</code> and your existing username, and use the same password.</li>
 </ul>
 <ol>
 <li>Start billing phones, scanning IMEIs, managing inventory, and tracking GST offline!</li>
