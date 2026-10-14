@@ -170,7 +170,7 @@ public static class AdminEndpoints
         group.MapPost("/migrations/apply", ApplyMigrationsHandler).WithName("AdminApplyMigrationsShort").AllowAnonymous();
 
         // 11. System Settings (GET /api/admin/system-settings and /api/admin/settings)
-        async Task<IResult> GetSystemSettingsHandler(ITenantDirectoryContext directory, IDatabaseConnectionManager dbManager, IConfiguration config, CancellationToken ct)
+        async Task<IResult> GetSystemSettingsHandler(ITenantDirectoryContext directory, IConfiguration config, CancellationToken ct)
         {
             var total = await directory.Tenants.CountAsync(ct);
             var active = await directory.Tenants.CountAsync(t => t.Status == TenantStatus.Active && t.IsActive, ct);
@@ -180,10 +180,9 @@ public static class AdminEndpoints
             var isOffline = bool.TryParse(config["Deployment:OfflineMode"], out var off) && off ||
                             bool.TryParse(config["Email:OfflineMode"], out var eoff) && eoff;
 
-            var connStr = dbManager.GetActiveConnectionString();
+            var connStr = config.GetConnectionString("AccountingInventoryDb")
+                ?? throw new InvalidOperationException("ConnectionStrings:AccountingInventoryDb must be configured.");
             var dbBuilder = new NpgsqlConnectionStringBuilder(connStr);
-            var activeTarget = dbManager.ActiveTarget;
-            var cloudConn = dbManager.GetConnectionString("Cloud");
 
             var settings = new AdminSystemSettingsDto(
                 OfflineMode: isOffline,
@@ -200,9 +199,7 @@ public static class AdminEndpoints
                 PendingApprovals: pending,
                 SuspendedTenants: suspended,
                 SystemVersion: "1.4.0",
-                ServerTimeUtc: DateTimeOffset.UtcNow,
-                ActiveDatabaseTarget: activeTarget,
-                CloudConfigured: !string.IsNullOrWhiteSpace(cloudConn)
+                ServerTimeUtc: DateTimeOffset.UtcNow
             );
 
             return Results.Ok(settings);
@@ -211,73 +208,10 @@ public static class AdminEndpoints
         group.MapGet("/system-settings", GetSystemSettingsHandler).WithName("AdminGetSystemSettingsFull").AllowAnonymous();
         group.MapGet("/settings", GetSystemSettingsHandler).WithName("AdminGetSystemSettingsShort").AllowAnonymous();
 
-        // 12. Database Configuration (GET /api/admin/database/config)
-        group.MapGet("/database/config", (IDatabaseConnectionManager dbManager) =>
-        {
-            var configSummary = dbManager.GetConfiguration();
-            return Results.Ok(configSummary);
-        })
-        .WithName("AdminGetDatabaseConfig").AllowAnonymous()
-        .Produces<DatabaseConfigSummary>();
-
-        // 13. Test Database Connection (POST /api/admin/database/test)
-        group.MapPost("/database/test", async (TestDatabaseConnectionRequest request, IDatabaseConnectionManager dbManager, CancellationToken ct) =>
-        {
-            var result = await dbManager.TestConnectionAsync(request?.ConnectionString, request?.Target, ct);
-            return Results.Ok(result);
-        })
-        .WithName("AdminTestDatabaseConnection").AllowAnonymous()
-        .Produces<DatabaseConnectionTestResult>();
-
-        // 14. Switch Active Database (POST /api/admin/database/switch)
-        group.MapPost("/database/switch", async (SwitchDatabaseRequest request, IDatabaseConnectionManager dbManager, IServiceProvider services, CancellationToken ct) =>
-        {
-            if (request == null || string.IsNullOrWhiteSpace(request.Target))
-            {
-                return Results.BadRequest(new { message = "Database target ('Local' or 'Cloud') must be specified." });
-            }
-
-            try
-            {
-                var result = await dbManager.SwitchTargetAsync(request.Target, request.ConnectionString, services, request.SyncTenants, ct);
-                return Results.Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem(
-                    title: "Database switch failed",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status400BadRequest);
-            }
-        })
-        .WithName("AdminSwitchDatabase").AllowAnonymous()
-        .Produces<DatabaseSwitchResult>()
-        .ProducesProblem(StatusCodes.Status400BadRequest);
-
-        // 15. Save Database Configuration (POST /api/admin/database/save-config)
-        group.MapPost("/database/save-config", (SaveDatabaseConfigRequest request, IDatabaseConnectionManager dbManager) =>
-        {
-            if (request?.LocalConnectionString != null)
-            {
-                dbManager.UpdateLocalConnectionString(request.LocalConnectionString);
-            }
-            if (request?.CloudConnectionString != null)
-            {
-                dbManager.UpdateCloudConnectionString(request.CloudConnectionString);
-            }
-
-            var updated = dbManager.GetConfiguration();
-            return Results.Ok(new { success = true, message = "Database configuration updated successfully.", config = updated });
-        })
-        .WithName("AdminSaveDatabaseConfig").AllowAnonymous();
-
         return group;
     }
 }
 
-public sealed record TestDatabaseConnectionRequest(string? Target = null, string? ConnectionString = null);
-public sealed record SwitchDatabaseRequest(string Target, string? ConnectionString = null, bool SyncTenants = false);
-public sealed record SaveDatabaseConfigRequest(string? LocalConnectionString = null, string? CloudConnectionString = null);
 
 public sealed record AdminSystemSettingsDto(
     bool OfflineMode,
@@ -294,7 +228,5 @@ public sealed record AdminSystemSettingsDto(
     int PendingApprovals,
     int SuspendedTenants,
     string SystemVersion,
-    DateTimeOffset ServerTimeUtc,
-    string ActiveDatabaseTarget = "Local",
-    bool CloudConfigured = false);
+    DateTimeOffset ServerTimeUtc);
 

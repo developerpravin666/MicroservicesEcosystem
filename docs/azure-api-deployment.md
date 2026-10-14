@@ -34,4 +34,4 @@ Enabling this setting exposes the Swagger documentation publicly; protected API 
 
 ## Database configuration source
 
-The API uses ConnectionStrings:AccountingInventoryDb from ASP.NET Core configuration: appsettings.json for local development, overlaid by appsettings.Production.json in Production and then Azure environment settings. Production starts with the Cloud target; other environments start with Local. Set ConnectionStrings__AccountingInventoryDb in Azure to override the production connection. database.config.json is ignored and excluded from publishing. Database connection edits and switches through the UI last only until the API process restarts.
+The API uses only ConnectionStrings:AccountingInventoryDb from ASP.NET Core configuration: appsettings.json for local development, overlaid by appsettings.Production.json in Production and then Azure environment settings. Set ASPNETCORE_ENVIRONMENT=Production in Azure. Set ConnectionStrings__AccountingInventoryDb to override the production connection. Database connections cannot be edited or switched through the UI. Restart the API after changing deployment configuration.

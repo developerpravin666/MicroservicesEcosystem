@@ -130,7 +130,7 @@ public static class TenantEndpoints
                 Results.Ok(await sender.Send(new ReactivateTenantCommand(id), ct)))
             .WithName("ReactivateTenant").AllowAnonymous();
 
-        group.MapGet("/system-settings", async (ITenantDirectoryContext directory, IDatabaseConnectionManager dbManager, IConfiguration config, CancellationToken ct) =>
+        group.MapGet("/system-settings", async (ITenantDirectoryContext directory, IConfiguration config, CancellationToken ct) =>
         {
             var total = await directory.Tenants.CountAsync(ct);
             var active = await directory.Tenants.CountAsync(t => t.Status == TenantStatus.Active && t.IsActive, ct);
@@ -140,10 +140,9 @@ public static class TenantEndpoints
             var isOffline = bool.TryParse(config["Deployment:OfflineMode"], out var off) && off ||
                             bool.TryParse(config["Email:OfflineMode"], out var eoff) && eoff;
 
-            var connStr = dbManager.GetActiveConnectionString();
+            var connStr = config.GetConnectionString("AccountingInventoryDb")
+                ?? throw new InvalidOperationException("ConnectionStrings:AccountingInventoryDb must be configured.");
             var dbBuilder = new NpgsqlConnectionStringBuilder(connStr);
-            var activeTarget = dbManager.ActiveTarget;
-            var cloudConn = dbManager.GetConnectionString("Cloud");
 
             return Results.Ok(new AdminSystemSettingsDto(
                 OfflineMode: isOffline,
@@ -160,37 +159,10 @@ public static class TenantEndpoints
                 PendingApprovals: pending,
                 SuspendedTenants: suspended,
                 SystemVersion: "1.4.0",
-                ServerTimeUtc: DateTimeOffset.UtcNow,
-                ActiveDatabaseTarget: activeTarget,
-                CloudConfigured: !string.IsNullOrWhiteSpace(cloudConn)
+                ServerTimeUtc: DateTimeOffset.UtcNow
             ));
         })
         .WithName("GetTenantSystemSettings").AllowAnonymous();
-
-        group.MapGet("/database/config", (IDatabaseConnectionManager dbManager) =>
-            Results.Ok(dbManager.GetConfiguration()))
-            .WithName("TenantGetDatabaseConfig").AllowAnonymous();
-
-        group.MapPost("/database/test", async (TestDatabaseConnectionRequest request, IDatabaseConnectionManager dbManager, CancellationToken ct) =>
-            Results.Ok(await dbManager.TestConnectionAsync(request?.ConnectionString, request?.Target, ct)))
-            .WithName("TenantTestDatabaseConnection").AllowAnonymous();
-
-        group.MapPost("/database/switch", async (SwitchDatabaseRequest request, IDatabaseConnectionManager dbManager, IServiceProvider services, CancellationToken ct) =>
-        {
-            if (request == null || string.IsNullOrWhiteSpace(request.Target))
-                return Results.BadRequest(new { message = "Database target ('Local' or 'Cloud') must be specified." });
-
-            try
-            {
-                var result = await dbManager.SwitchTargetAsync(request.Target, request.ConnectionString, services, request.SyncTenants, ct);
-                return Results.Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem(title: "Database switch failed", detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
-            }
-        })
-        .WithName("TenantSwitchDatabase").AllowAnonymous();
 
         return group;
     }

@@ -1,6 +1,6 @@
 # Accounting & Inventory User Manual
 
-Version: 1.25 | Updated: 14 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.26 | Updated: 14 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
 For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.
 
@@ -35,7 +35,6 @@ To share this guide, send accounting-user-manual.html. Open that file in a brows
   - [22.3 Tenant Directory & Lifecycle Management](#223-tenant-directory-lifecycle-management-admintenants)
   - [22.4 Database Schema Migrations Hub](#224-database-schema-migrations-hub-admindatabase-migrations)
   - [22.5 System Settings & Offline Configuration](#225-system-settings-offline-configuration-adminsystem-settings)
-  - [22.6 Dynamic Database Switching (Local PostgreSQL ↔ Cloud PostgreSQL)](#226-dynamic-database-switching-local-postgresql-cloud-postgresql)
 - [23. Master Data Import & Staging Verification (Vendors, Brands, Categories, Models, Variants, Colors)](#23-master-data-import-staging-verification-vendors-brands-categories-models-variants-colors)
 - [24. Single-product sale: cash collections and finance EMI plans](#24-single-product-sale-cash-collections-and-finance-emi-plans)
 - [25. Review financial statements and print a multi-line invoice](#25-review-financial-statements-and-print-a-multi-line-invoice)
@@ -787,59 +786,15 @@ When new application features or schema changes are deployed:
 
 ---
 
-### 22.6 Dynamic Database Switching (Local PostgreSQL ↔ Cloud PostgreSQL)
+### 22.6 Review database information
 
-Siddhi features dual-database runtime agility, allowing the Product Owner to switch the entire application between a **Local PostgreSQL database** (for offline desktop or on-premise operation) and a **Cloud PostgreSQL database** (AWS RDS, Supabase, Neon, Azure PostgreSQL, or remote VPS) with zero backend downtime and zero manual database scripts.
+Prerequisite: sign in to the Product Owner console.
 
-```mermaid
-flowchart LR
-    PO([Product Owner Console /admin/system-settings]) -->|1. Test Connection| Probe{Connectivity Probe}
-    Probe -->|Success| SwitchAct[2. Switch Target Request]
-    SwitchAct --> ConnMgr[IDatabaseConnectionManager]
-    ConnMgr -->|Target: Local| LocalDB[(Local PostgreSQL localhost:5432)]
-    ConnMgr -->|Target: Cloud| CloudDB[(Cloud PostgreSQL Hosted/RDS)]
-    ConnMgr -->|3. Auto-Migrate| Migrator[TenantSchemaMigrator Auto-Sync]
-    ConnMgr -->|4. Apply Target| Runtime[Running API process]
-    Migrator -->|All Store Schemas Verified| Ready[Live Serving Requests]
-```
+1. Open **System Settings** and review the database host, port, name and master schema in the deployment information.
+2. Select **Refresh All** to reload the server details.
+3. Use **Database Migrations** to review or run schema migrations against the configured database.
 
-#### Step-by-Step Instructions: Configure & Switch Databases
-
-1. **Open System Settings:**
-   - Log in as Product Owner at `/admin/login`.
-   - In the sidebar or top navigation, click **System Settings** (`/admin/system-settings`).
-
-2. **Inspect Current Target:**
-   - The **Database Target & Multi-Cloud Switcher** banner displays the current active target (e.g. `Active: Local PostgreSQL` or `Active: Cloud PostgreSQL`) with a live status indicator.
-
-3. **Configure Cloud Connection String:**
-   - In the **Cloud PostgreSQL** card, enter your cloud connection string:
-     ```text
-     Host=<cloud-host>;Port=5432;Database=accounting_inventory;Username=postgres;Password=<your_password>;SSL Mode=Require;Trust Server Certificate=true;
-     ```
-   - Use the **Presets** buttons (`AWS RDS`, `Supabase`, `Neon`) for instant boilerplate strings.
-   - Click **Show password / Mask password** to verify credentials.
-   - Click **Save String** to store the connection parameters without activating immediately.
-
-4. **Test Reachability (Probe):**
-   - Click **Test Connection** on either the Local or Cloud card.
-   - The backend opens a connection, executes `SELECT version();`, and returns the round-trip latency (e.g., `24ms • PostgreSQL 16.2`) or a detailed diagnostics error message if the host is unreachable.
-
-5. **Execute Live Switch:**
-   - Click **Switch to Cloud** (or **Switch to Local**).
-   - A confirmation dialog appears. Ensure the **"Auto-migrate database schema & synchronize tenant registry"** checkbox is checked (recommended).
-   - Click **Confirm & Switch Target**:
-     1. The backend verifies connectivity to the target database.
-     2. Automatically initializes the `tenant` schema and migrations if connecting to a new cloud database.
-     3. Provisions all active store schemas on the new target database.
-     4. Updates `IDatabaseConnectionManager` for the running API process. Connection edits and target switches reset when the API restarts; ask the deployment administrator to configure permanent settings. After a restart, verify the active target before continuing work.
-     5. Subsequent API requests across the entire application immediately point to the new target database!
-
-6. **Verify Active Target:**
-   - The badge updates to `Active: Cloud PostgreSQL`.
-   - The Platform Dashboard (`/admin/dashboard`) and Migrations Hub (`/admin/database-migrations`) immediately reflect the new active database target.
-
----
+Expected result: the console displays information about the configured PostgreSQL database. Connection strings and database targets cannot be edited or switched in the console. Ask the deployment administrator to change the database configuration and restart the API when a permanent connection change is needed.
 
 ## 23. Master Data Import & Staging Verification (Vendors, Brands, Categories, Models, Variants, Colors)
 

@@ -55,7 +55,6 @@ Ensure your Azure App Service (Linux) has the following configured under **Setti
 | **Startup Command** | `./AccountingInventory.Api` | Executes the self-contained Linux binary |
 | `ASPNETCORE_ENVIRONMENT` | `Production` | Activates production configuration |
 | `ConnectionStrings__AccountingInventoryDb` | `Host=...;Port=5432;Database=accounting_inventory;Username=...;Password=...;SslMode=Require;Trust Server Certificate=true;` | PostgreSQL database connection string |
-| `DatabaseSettings__ActiveTarget` | `Cloud` | Targets cloud database |
 | `Jwt__SigningKey` | *(At least 32 characters secret key)* | Secret for signing tokens |
 | `Frontend__BaseUrl` | `https://ambitious-stone-07cd17110.6.azurestaticapps.net` | Frontend URL for CORS |
 | `Swagger__Enabled` | `true` | Enables Swagger UI at `/swagger` |

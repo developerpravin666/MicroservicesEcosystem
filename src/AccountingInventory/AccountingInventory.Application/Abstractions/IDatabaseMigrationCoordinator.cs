@@ -27,10 +27,6 @@ public interface IDatabaseMigrationCoordinator
     /// </summary>
     Task<MigrationExecutionResult> MigrateAllTenantSchemasAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Migrates a target database connection (used during database target switching between Local and Cloud).
-    /// </summary>
-    Task<MigrationExecutionResult> MigrateTargetDatabaseAsync(string connectionString, bool syncTenants = false, CancellationToken cancellationToken = default);
 }
 
 public sealed record MigrationExecutionResult(
