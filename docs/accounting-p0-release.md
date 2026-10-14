@@ -73,3 +73,14 @@ Source validation does not certify the deployment environment. Production sign-o
 
 Deploy migration `20261028120000_MasterDataImportStaging` for `AccountingInventoryDbContext` (tenant schemas). It provisions `master_import_batches` and `master_import_staging_rows` with foreign keys, indexes, and status tracking to support safe two-phase excel master data import (staging -> validation/review -> final database commit). This migration is automatically applied across all active tenant schemas at boot via `TenantSchemaMigrator.MigrateAsync` and `ApplyTenantSchemaMigrationsAsync()`.
 
+
+## Tenant registration uniqueness
+
+The UniqueTenantRegistration control-plane migration normalizes stored slugs and owner emails and adds a unique owner email index. Before deployment, review duplicate values using lower(btrim(slug)) and lower(btrim(owner_email)) across all tenants, including deleted records. Existing duplicates must be resolved deliberately; the migration stops without deleting tenant records. Confirm the migration succeeded before accepting registrations. Local regression check: dotnet run --project tests/AccountingInventory.TenantRegistrationChecks -- --local. Checks run inside a rolled-back transaction.
+
+
+## Accessory inventory migration ordering
+
+The dated GST migration runs before accessory SKU tables are created. It now conditionally alters those tables; EnsureAccessoryDatedTaxColumns adds their GST fields after creation for both new and existing stores. Deploy the corrected API and allow startup migrations to finish. Startup stops if any schema migration fails, preventing the API from serving requests against incomplete schemas. Check the failing schema and SQL in logs before retrying; retain backups and do not delete migration history.
+
+Run `dotnet run --project tests/AccountingInventory.SchemaChecks -- --local --migration-chain` to exercise the tenant migration chain on a disposable schema, then `--local` for accounting repair checks. The chain check removes its test schema afterward. Production credentials, permissions, connectivity and pre-existing duplicate tenant data still need deployment verification.

@@ -1,6 +1,6 @@
 # Accounting & Inventory User Manual
 
-Version: 1.26 | Updated: 14 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.27 | Updated: 14 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
 For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.
 
@@ -584,6 +584,8 @@ Siddhi Mobile SaaS provides an automated, multi-tenant onboarding process:
 ---
 
 ### 21.2 Self-Service Registration (`/register-tenant`)
+
+Store slug and owner email must each be unique across all tenants, including pending, rejected, suspended and deleted stores. Matching ignores letter case and surrounding spaces. Use a valid email address; if registration reports an existing slug or email, change the store name to generate another slug or supply a different email, then submit again. A rejected duplicate does not create a store or send registration emails.
 
 1. Open the public registration link: `http://localhost:5173/register-tenant` (or click **"Create store workspace"** on the Sign In page).
 2. Enter the store information:

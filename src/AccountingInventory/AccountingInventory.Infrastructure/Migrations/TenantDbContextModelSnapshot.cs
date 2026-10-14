@@ -177,6 +177,10 @@ namespace AccountingInventory.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_tenants");
 
+                    b.HasIndex("OwnerEmail")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenants_owner_email");
+
                     b.HasIndex("SchemaName")
                         .IsUnique()
                         .HasDatabaseName("ix_tenants_schema_name");

@@ -6,6 +6,8 @@ public sealed class RegisterTenantCommandValidator : AbstractValidator<RegisterT
 {
     public RegisterTenantCommandValidator()
     {
+        RuleFor(x => x.OwnerEmail).NotEmpty().EmailAddress().MaximumLength(150);
+
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
 
         RuleFor(x => x.Slug)
