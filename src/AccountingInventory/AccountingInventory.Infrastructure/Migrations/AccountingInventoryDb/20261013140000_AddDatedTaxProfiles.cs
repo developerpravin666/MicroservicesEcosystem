@@ -21,9 +21,9 @@ public sealed class AddDatedTaxProfiles : Migration
             ALTER TABLE product_types ADD COLUMN IF NOT EXISTS default_tax_id uuid;
             ALTER TABLE products ADD COLUMN IF NOT EXISTS tax_id uuid;
             ALTER TABLE products ADD COLUMN IF NOT EXISTS tax_treatment text NOT NULL DEFAULT 'Taxable';
-            ALTER TABLE stock_skus ADD COLUMN IF NOT EXISTS default_tax_id uuid;
-            ALTER TABLE sku_movements ADD COLUMN IF NOT EXISTS tax_id uuid;
-            ALTER TABLE sku_movements ADD COLUMN IF NOT EXISTS tax_treatment text NOT NULL DEFAULT 'Taxable';
+            ALTER TABLE IF EXISTS stock_skus ADD COLUMN IF NOT EXISTS default_tax_id uuid;
+            ALTER TABLE IF EXISTS sku_movements ADD COLUMN IF NOT EXISTS tax_id uuid;
+            ALTER TABLE IF EXISTS sku_movements ADD COLUMN IF NOT EXISTS tax_treatment text NOT NULL DEFAULT 'Taxable';
             ALTER TABLE sales_products ADD COLUMN IF NOT EXISTS tax_treatment text NOT NULL DEFAULT 'Taxable';
             ALTER TABLE sales_invoice_lines ADD COLUMN IF NOT EXISTS tax_treatment text NOT NULL DEFAULT 'Taxable';
             ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS tax_point_date date;
@@ -33,21 +33,29 @@ public sealed class AddDatedTaxProfiles : Migration
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.Sql("""
+            DO $$ DECLARE history_used boolean; BEGIN
+              IF to_regclass('stock_skus') IS NOT NULL THEN
+                EXECUTE 'SELECT EXISTS (SELECT 1 FROM stock_skus WHERE default_tax_id IS NOT NULL)' INTO history_used;
+                IF history_used THEN RAISE EXCEPTION 'Dated GST history is in use; downgrade would lose financial information'; END IF;
+              END IF;
+              IF to_regclass('sku_movements') IS NOT NULL THEN
+                EXECUTE 'SELECT EXISTS (SELECT 1 FROM sku_movements WHERE tax_id IS NOT NULL)' INTO history_used;
+                IF history_used THEN RAISE EXCEPTION 'Dated GST history is in use; downgrade would lose financial information'; END IF;
+              END IF;
+            END $$;
             DO $$ BEGIN
               IF EXISTS (SELECT 1 FROM products WHERE tax_id IS NOT NULL)
                 OR EXISTS (SELECT 1 FROM taxes GROUP BY profile_id HAVING count(*) > 1)
                 OR EXISTS (SELECT 1 FROM sales_invoices WHERE tax_point_date IS NOT NULL)
                 OR EXISTS (SELECT 1 FROM product_types WHERE default_tax_id IS NOT NULL)
-                OR EXISTS (SELECT 1 FROM stock_skus WHERE default_tax_id IS NOT NULL)
-                OR EXISTS (SELECT 1 FROM sku_movements WHERE tax_id IS NOT NULL)
                 OR EXISTS (SELECT 1 FROM sales_products WHERE tax_treatment <> 'Taxable')
               THEN RAISE EXCEPTION 'Dated GST history is in use; downgrade would lose financial information'; END IF;
             END $$;
             ALTER TABLE sales_invoices DROP COLUMN tax_point_date, DROP COLUMN tax_date_reason;
             ALTER TABLE sales_invoice_lines DROP COLUMN tax_treatment;
             ALTER TABLE sales_products DROP COLUMN tax_treatment;
-            ALTER TABLE sku_movements DROP COLUMN tax_id, DROP COLUMN tax_treatment;
-            ALTER TABLE stock_skus DROP COLUMN default_tax_id;
+            ALTER TABLE IF EXISTS sku_movements DROP COLUMN IF EXISTS tax_id, DROP COLUMN IF EXISTS tax_treatment;
+            ALTER TABLE IF EXISTS stock_skus DROP COLUMN IF EXISTS default_tax_id;
             ALTER TABLE products DROP COLUMN tax_id, DROP COLUMN tax_treatment;
             ALTER TABLE product_types DROP COLUMN default_tax_id;
             DROP INDEX ix_taxes_profile_id_effective_from;

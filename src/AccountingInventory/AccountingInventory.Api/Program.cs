@@ -114,8 +114,9 @@ await using (var scope = app.Services.CreateAsyncScope())
     var result = await coordinator.MigrateAllAsync();
     if (!result.Success)
     {
-        Log.Warning("Platform database migrations completed with warnings: {Message}. Schemas with issues: {Count}",
+        Log.Error("Platform database migrations failed: {Message}. Schemas with issues: {Count}",
             result.Message, result.FailedSchemas.Count);
+        throw new InvalidOperationException("Database migrations failed. Review migration logs before starting the API.");
     }
     else
     {

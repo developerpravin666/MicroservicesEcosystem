@@ -29,6 +29,12 @@ product.Update(reference, reference, reference, reference, reference, reference,
     "schema-check", null, "test", 100, 10, 9, 9, 18, invoiceDate, 45);
 Check(product.DueDate == invoiceDate.AddDays(45), "Domain updates purchase due date from invoice terms");
 
+if (args.Contains("--migration-chain"))
+{
+    await MigrationChainChecks.RunAsync(connectionString!);
+    return;
+}
+
 await using var connection = new NpgsqlConnection(connectionString);
 await connection.OpenAsync();
 await using var transaction = await connection.BeginTransactionAsync();
