@@ -2,13 +2,14 @@ using AccountingInventory.Application.Abstractions;
 using BuildingBlocks.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using System.Data;
 
 namespace AccountingInventory.Infrastructure.Persistence;
 
 public sealed class DatabaseMigrationCoordinator(
     TenantDbContext tenantDbContext,
-    IDatabaseConnectionManager dbConnectionManager,
+    IConfiguration configuration,
     ILogger<DatabaseMigrationCoordinator> logger)
     : IDatabaseMigrationCoordinator
 {
@@ -218,7 +219,8 @@ public sealed class DatabaseMigrationCoordinator(
     public async Task<MigrationExecutionResult> MigrateTenantSchemaAsync(string schemaName, CancellationToken cancellationToken = default)
     {
         TenantSchemaNameValidator.EnsureValid(schemaName);
-        var connectionString = dbConnectionManager.GetActiveConnectionString();
+        var connectionString = configuration.GetConnectionString("AccountingInventoryDb")
+            ?? throw new InvalidOperationException("ConnectionStrings:AccountingInventoryDb must be configured.");
 
         try
         {
@@ -259,7 +261,8 @@ public sealed class DatabaseMigrationCoordinator(
 
         var migrated = new List<string>();
         var failed = new Dictionary<string, string>();
-        var connectionString = dbConnectionManager.GetActiveConnectionString();
+        var connectionString = configuration.GetConnectionString("AccountingInventoryDb")
+            ?? throw new InvalidOperationException("ConnectionStrings:AccountingInventoryDb must be configured.");
 
         logger.LogInformation("Discovered {Count} active tenant schemas to migrate.", schemas.Count);
 
@@ -294,87 +297,4 @@ public sealed class DatabaseMigrationCoordinator(
             Timestamp: DateTimeOffset.UtcNow);
     }
 
-    public async Task<MigrationExecutionResult> MigrateTargetDatabaseAsync(
-        string connectionString,
-        bool syncTenants = false,
-        CancellationToken cancellationToken = default)
-    {
-        logger.LogInformation("Migrating target database connection string...");
-
-        var targetOptions = new DbContextOptionsBuilder<TenantDbContext>()
-            .UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__ControlPlaneHistory", "tenant"))
-            .UseSnakeCaseNamingConvention()
-            .Options;
-
-        int migratedTenantCount = 0;
-        var migratedSchemas = new List<string>();
-        var failedSchemas = new Dictionary<string, string>();
-
-        await using (var targetTenantDb = new TenantDbContext(targetOptions))
-        {
-            // 1. Transactional migration of control plane on target database
-            try
-            {
-                await targetTenantDb.Database.ExecuteSqlRawAsync("CREATE SCHEMA IF NOT EXISTS \"tenant\";", cancellationToken);
-                await targetTenantDb.Database.MigrateAsync(cancellationToken);
-
-                await using var tx = await targetTenantDb.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-                try
-                {
-                    await targetTenantDb.Database.ExecuteSqlRawAsync(ControlPlaneSupplementalSql, cancellationToken);
-                    await tx.CommitAsync(cancellationToken);
-                }
-                catch
-                {
-                    await tx.RollbackAsync(cancellationToken);
-                    throw;
-                }
-
-                migratedSchemas.Add("tenant");
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to migrate control plane on target database.");
-                return new MigrationExecutionResult(
-                    Success: false,
-                    Message: $"Target database control plane migration failed: {ex.Message}",
-                    TotalSchemas: 1,
-                    SuccessfulSchemas: 0,
-                    MigratedSchemas: Array.Empty<string>(),
-                    FailedSchemas: new Dictionary<string, string> { ["tenant"] = ex.Message },
-                    Timestamp: DateTimeOffset.UtcNow);
-            }
-
-            // 2. Fetch active tenants on target database
-            var schemas = await targetTenantDb.Tenants
-                .AsNoTracking()
-                .Where(t => !t.IsDeleted && t.IsActive)
-                .Select(t => t.SchemaName)
-                .Distinct()
-                .ToListAsync(cancellationToken);
-
-            foreach (var schema in schemas)
-            {
-                try
-                {
-                    await TenantSchemaMigrator.MigrateAsync(connectionString, schema, cancellationToken);
-                    migratedSchemas.Add(schema);
-                    migratedTenantCount++;
-                }
-                catch (Exception ex)
-                {
-                    failedSchemas[schema] = ex.Message;
-                }
-            }
-        }
-
-        return new MigrationExecutionResult(
-            Success: failedSchemas.Count == 0,
-            Message: $"Target database migrated. Control plane and {migratedTenantCount} tenant schemas verified.",
-            TotalSchemas: migratedSchemas.Count + failedSchemas.Count,
-            SuccessfulSchemas: migratedSchemas.Count,
-            MigratedSchemas: migratedSchemas,
-            FailedSchemas: failedSchemas,
-            Timestamp: DateTimeOffset.UtcNow);
-    }
 }
