@@ -31,3 +31,7 @@ Swagger is enabled automatically in Development. In Production, it is disabled u
 5. Keep `ASPNETCORE_ENVIRONMENT=Production`. To disable Swagger later, set `Swagger__Enabled=false`.
 
 Enabling this setting exposes the Swagger documentation publicly; protected API endpoints still require their normal authentication and tenant headers. If `/health` also returns 404, verify the hostname, deployment package and startup command rather than treating it as only a Swagger setting issue. `/health/ready` verifies database readiness separately.
+
+## Database configuration source
+
+The API uses ConnectionStrings:AccountingInventoryDb from ASP.NET Core configuration: appsettings.json for local development, overlaid by appsettings.Production.json in Production and then Azure environment settings. Production starts with the Cloud target; other environments start with Local. Set ConnectionStrings__AccountingInventoryDb in Azure to override the production connection. database.config.json is ignored and excluded from publishing. Database connection edits and switches through the UI last only until the API process restarts.

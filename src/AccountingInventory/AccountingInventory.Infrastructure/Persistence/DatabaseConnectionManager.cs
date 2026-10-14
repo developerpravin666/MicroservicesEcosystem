@@ -1,4 +1,3 @@
-using System.Text.Json;
 using AccountingInventory.Application.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -11,7 +10,6 @@ namespace AccountingInventory.Infrastructure.Persistence;
 public sealed class DatabaseConnectionManager : IDatabaseConnectionManager
 {
     private readonly object _lock = new();
-    private readonly string _configFilePath;
     private readonly ILogger<DatabaseConnectionManager> _logger;
 
     private string _activeTarget = "Local";
@@ -35,55 +33,34 @@ public sealed class DatabaseConnectionManager : IDatabaseConnectionManager
         ILogger<DatabaseConnectionManager> logger)
     {
         _logger = logger;
-        _configFilePath = Path.Combine(hostEnvironment.ContentRootPath, "database.config.json");
-
-        LoadInitialConfiguration(configuration);
-    }
-
-    private void LoadInitialConfiguration(IConfiguration configuration)
-    {
-        lock (_lock)
+        // ASP.NET Core loads appsettings.json, then appsettings.{Environment}.json,
+        // followed by environment overrides. Never load persisted local database state.
+        _activeTarget = hostEnvironment.IsProduction() ? "Cloud" : "Local";
+        var connectionString = configuration.GetConnectionString("AccountingInventoryDb");
+        if (string.IsNullOrWhiteSpace(connectionString))
         {
-            var loadedFromFile = false;
-            if (File.Exists(_configFilePath))
-            {
-                try
-                {
-                    var content = File.ReadAllText(_configFilePath);
-                    var stored = JsonSerializer.Deserialize<StoredDatabaseConfig>(content);
-                    if (stored != null)
-                    {
-                        _activeTarget = string.Equals(stored.ActiveTarget, "Cloud", StringComparison.OrdinalIgnoreCase) ? "Cloud" : "Local";
-                        _localConnectionString = stored.LocalConnectionString ?? "";
-                        _cloudConnectionString = stored.CloudConnectionString ?? "";
-                        loadedFromFile = true;
-                        _logger.LogInformation("Loaded database configuration from {Path}. Active target: {Target}", _configFilePath, _activeTarget);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to read database configuration from {Path}. Falling back to appsettings.", _configFilePath);
-                }
-            }
-
-            if (!loadedFromFile)
-            {
-                var defaultConn = configuration.GetConnectionString("AccountingInventoryDb") ?? "Host=localhost;Port=5432;Database=accounting_inventory;Username=postgres;Password=siddhi123456";
-                _localConnectionString = configuration["DatabaseSettings:LocalConnectionString"] ?? defaultConn;
-                _cloudConnectionString = configuration["DatabaseSettings:CloudConnectionString"] ?? "";
-                _activeTarget = string.Equals(configuration["DatabaseSettings:ActiveTarget"], "Cloud", StringComparison.OrdinalIgnoreCase) ? "Cloud" : "Local";
-
-                SaveConfigurationToFileInternal();
-                _logger.LogInformation("Initialized database configuration from appsettings. Active target: {Target}", _activeTarget);
-            }
+            throw new InvalidOperationException("ConnectionStrings:AccountingInventoryDb must be configured.");
         }
-    }
 
+        _localConnectionString = configuration["DatabaseSettings:LocalConnectionString"] ?? "";
+        _cloudConnectionString = configuration["DatabaseSettings:CloudConnectionString"] ?? "";
+        if (_activeTarget == "Cloud")
+        {
+            _cloudConnectionString = connectionString;
+        }
+        else
+        {
+            _localConnectionString = connectionString;
+        }
+
+        _logger.LogInformation("Initialized database configuration from application settings. Environment: {Environment}. Active target: {Target}",
+            hostEnvironment.EnvironmentName, _activeTarget);
+    }
     public string GetActiveConnectionString()
     {
         lock (_lock)
         {
-            if (string.Equals(_activeTarget, "Cloud", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(_cloudConnectionString))
+            if (string.Equals(_activeTarget, "Cloud", StringComparison.OrdinalIgnoreCase))
             {
                 return _cloudConnectionString;
             }
@@ -124,7 +101,6 @@ public sealed class DatabaseConnectionManager : IDatabaseConnectionManager
         lock (_lock)
         {
             _cloudConnectionString = connectionString?.Trim() ?? "";
-            SaveConfigurationToFileInternal();
         }
     }
 
@@ -133,7 +109,6 @@ public sealed class DatabaseConnectionManager : IDatabaseConnectionManager
         lock (_lock)
         {
             _localConnectionString = connectionString?.Trim() ?? "";
-            SaveConfigurationToFileInternal();
         }
     }
 
@@ -329,11 +304,10 @@ public sealed class DatabaseConnectionManager : IDatabaseConnectionManager
             }
         }
 
-        // 6. Persist target switch
+        // 6. Apply the target switch for this running process
         lock (_lock)
         {
             _activeTarget = normalizedTarget;
-            SaveConfigurationToFileInternal();
         }
 
         _logger.LogInformation("Database switch to {Target} successful. {Count} schemas migrated.", normalizedTarget, migratedSchemaCount);
@@ -344,26 +318,6 @@ public sealed class DatabaseConnectionManager : IDatabaseConnectionManager
             Message: $"Successfully pointed application to {normalizedTarget} PostgreSQL database. {migratedSchemaCount} active tenant schemas verified.",
             SchemasMigrated: migratedSchemaCount,
             Timestamp: DateTimeOffset.UtcNow);
-    }
-
-    private void SaveConfigurationToFileInternal()
-    {
-        try
-        {
-            var stored = new StoredDatabaseConfig
-            {
-                ActiveTarget = _activeTarget,
-                LocalConnectionString = _localConnectionString,
-                CloudConnectionString = _cloudConnectionString
-            };
-
-            var json = JsonSerializer.Serialize(stored, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(_configFilePath, json);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to persist database configuration to {Path}", _configFilePath);
-        }
     }
 
     private static DatabaseTargetDetails ParseTargetDetails(string target, string connectionString)
@@ -414,11 +368,4 @@ public sealed class DatabaseConnectionManager : IDatabaseConnectionManager
         }
     }
 
-    private sealed class StoredDatabaseConfig
-    {
-        public string? ActiveTarget { get; set; }
-        public string? LocalConnectionString { get; set; }
-        public string? CloudConnectionString { get; set; }
-    }
 }
-

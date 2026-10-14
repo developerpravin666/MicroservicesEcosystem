@@ -17,6 +17,7 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <Folder Include="logs\" />
+      <Content Update="database.config.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
 	</ItemGroup>
 
 </Project>

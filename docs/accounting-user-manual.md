@@ -1,6 +1,6 @@
 # Accounting & Inventory User Manual
 
-Version: 1.24 | Updated: 13 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.25 | Updated: 14 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Multi-Cloud Database Switching, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
 For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.
 
@@ -799,7 +799,7 @@ flowchart LR
     ConnMgr -->|Target: Local| LocalDB[(Local PostgreSQL localhost:5432)]
     ConnMgr -->|Target: Cloud| CloudDB[(Cloud PostgreSQL Hosted/RDS)]
     ConnMgr -->|3. Auto-Migrate| Migrator[TenantSchemaMigrator Auto-Sync]
-    ConnMgr -->|4. Persist Target| FileStore[(database.config.json)]
+    ConnMgr -->|4. Apply Target| Runtime[Running API process]
     Migrator -->|All Store Schemas Verified| Ready[Live Serving Requests]
 ```
 
@@ -832,7 +832,7 @@ flowchart LR
      1. The backend verifies connectivity to the target database.
      2. Automatically initializes the `tenant` schema and migrations if connecting to a new cloud database.
      3. Provisions all active store schemas on the new target database.
-     4. Updates `IDatabaseConnectionManager` and writes the selection to `database.config.json`.
+     4. Updates `IDatabaseConnectionManager` for the running API process. Connection edits and target switches reset when the API restarts; ask the deployment administrator to configure permanent settings. After a restart, verify the active target before continuing work.
      5. Subsequent API requests across the entire application immediately point to the new target database!
 
 6. **Verify Active Target:**
