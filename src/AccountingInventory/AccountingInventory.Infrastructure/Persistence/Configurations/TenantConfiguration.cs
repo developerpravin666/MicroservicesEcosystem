@@ -31,6 +31,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.Address).HasMaxLength(500);
         builder.Property(t => t.RejectionReason).HasMaxLength(500);
 
+        builder.HasIndex(t => t.OwnerEmail).IsUnique();
         builder.HasIndex(t => t.Slug).IsUnique();
         builder.HasIndex(t => t.SchemaName).IsUnique();
 

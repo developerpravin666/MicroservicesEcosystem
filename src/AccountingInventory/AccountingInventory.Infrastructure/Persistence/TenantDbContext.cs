@@ -3,6 +3,8 @@ using AccountingInventory.Domain.Entities;
 using AccountingInventory.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using BuildingBlocks.Application.Exceptions;
+using Npgsql;
 
 namespace AccountingInventory.Infrastructure.Persistence;
 
@@ -23,6 +25,20 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options)
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
     public DbSet<TableRegistry> TableRegistries => Set<TableRegistry>();
+
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres
+            && postgres.ConstraintName is "ix_tenants_slug" or "ix_tenants_owner_email")
+        {
+            var field = ((PostgresException)ex.InnerException!).ConstraintName == "ix_tenants_slug" ? "store slug" : "email";
+            throw new ConflictException($"A tenant with this {field} already exists. Please use a different {field}.");
+        }
+    }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

@@ -29,11 +29,19 @@ public sealed class RegisterTenantCommandHandler(
     {
         var normalizedSlug = request.Slug.Trim().ToLowerInvariant();
 
-        var slugTaken = await tenantDirectory.Tenants.AnyAsync(t => t.Slug == normalizedSlug, cancellationToken);
+        var normalizedEmail = request.OwnerEmail?.Trim().ToLowerInvariant();
+        var slugTaken = await tenantDirectory.Tenants.IgnoreQueryFilters()
+            .AnyAsync(t => t.Slug.Trim().ToLower() == normalizedSlug, cancellationToken);
         if (slugTaken)
         {
             logger.LogWarning("Tenant registration rejected: slug '{Slug}' is already in use.", normalizedSlug);
             throw new ConflictException($"A tenant with slug '{normalizedSlug}' already exists. Please choose a different slug.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedEmail) && await tenantDirectory.Tenants.IgnoreQueryFilters()
+            .AnyAsync(t => t.OwnerEmail != null && t.OwnerEmail.Trim().ToLower() == normalizedEmail, cancellationToken))
+        {
+            throw new ConflictException("A tenant with this email already exists. Please use a different email.");
         }
 
         string? initialPasswordHash = null;

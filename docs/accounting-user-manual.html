@@ -12,7 +12,7 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 @media print{@page{size:A4;margin:18mm}body{background:white;font-size:11pt}main{margin:0;padding:0;max-width:none}.print-tools{display:none}h2,h3{break-after:avoid}tr{break-inside:avoid}a{color:inherit;text-decoration:none}table{font-size:9pt}}
 </style></head><body><main><div class="print-tools"><button onclick="window.print()">Print / Save PDF</button></div>
 <h1 id='accounting-inventory-user-manual'>Accounting &amp; Inventory User Manual</h1>
-<p>Version: 1.26 | Updated: 14 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Two-Stage Master Data Import &amp; Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management</p>
+<p>Version: 1.27 | Updated: 14 October 2026 | Covers modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Two-Stage Master Data Import &amp; Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management</p>
 <p>For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and Tenant slug. Available actions depend on your permissions.</p>
 <p>To share this guide, send accounting-user-manual.html. Open that file in a browser and choose Print / Save PDF for a paper or PDF copy. Keep the version and date with any distributed copy.</p>
 <h2 id='contents'>Contents</h2>
@@ -531,6 +531,7 @@ th,td{border:1px solid #ccd5df;padding:10px;text-align:left;vertical-align:top}t
 <p>```</p>
 <p>---</p>
 <h3 id='212-self-service-registration-register-tenant'>21.2 Self-Service Registration (<code>/register-tenant</code>)</h3>
+<p>Store slug and owner email must each be unique across all tenants, including pending, rejected, suspended and deleted stores. Matching ignores letter case and surrounding spaces. Use a valid email address; if registration reports an existing slug or email, change the store name to generate another slug or supply a different email, then submit again. A rejected duplicate does not create a store or send registration emails.</p>
 <ol>
 <li>Open the public registration link: <code>http://localhost:5173/register-tenant</code> (or click <strong>&quot;Create store workspace&quot;</strong> on the Sign In page).</li>
 <li>Enter the store information:</li>

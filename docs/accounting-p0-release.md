@@ -73,3 +73,8 @@ Source validation does not certify the deployment environment. Production sign-o
 
 Deploy migration `20261028120000_MasterDataImportStaging` for `AccountingInventoryDbContext` (tenant schemas). It provisions `master_import_batches` and `master_import_staging_rows` with foreign keys, indexes, and status tracking to support safe two-phase excel master data import (staging -> validation/review -> final database commit). This migration is automatically applied across all active tenant schemas at boot via `TenantSchemaMigrator.MigrateAsync` and `ApplyTenantSchemaMigrationsAsync()`.
 
+
+## Tenant registration uniqueness
+
+The UniqueTenantRegistration control-plane migration normalizes stored slugs and owner emails and adds a unique owner email index. Before deployment, review duplicate values using lower(btrim(slug)) and lower(btrim(owner_email)) across all tenants, including deleted records. Existing duplicates must be resolved deliberately; the migration stops without deleting tenant records. Confirm the migration succeeded before accepting registrations. Local regression check: dotnet run --project tests/AccountingInventory.TenantRegistrationChecks -- --local. Checks run inside a rolled-back transaction.
+
