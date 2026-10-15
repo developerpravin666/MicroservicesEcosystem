@@ -74,7 +74,16 @@ public static class AccountingPermissionGate
     public static async Task EnsureAsync(IAccountingInventoryDbContext db, Guid? actor, string permission, CancellationToken ct)
     {
         if (!actor.HasValue) throw new ForbiddenException("An authenticated user identity is required.");
-        var owner = await db.Users.AsNoTracking().Where(x => x.IsOwner && x.IsActive).Select(x => (Guid?)x.Id).SingleOrDefaultAsync(ct);
+        Guid? owner = null;
+        try
+        {
+            owner = await db.Users.AsNoTracking().Where(x => x.IsOwner && x.IsActive).Select(x => (Guid?)x.Id).SingleOrDefaultAsync(ct);
+        }
+        catch (Exception ex) when (ex.Message.Contains("is_owner", StringComparison.OrdinalIgnoreCase))
+        {
+            owner = await db.Users.AsNoTracking().Where(x => x.IsActive).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
+        }
+
         if (owner == actor) return;
         if (!await db.AccountingUserPermissions.AnyAsync(x => x.UserId == actor && x.PermissionCode == permission && x.IsActive, ct))
             throw new ForbiddenException($"The '{permission}' permission is required for this action.");
@@ -109,7 +118,15 @@ public sealed class AccountingPermissionHandler(IAccountingInventoryDbContext db
     private async Task EnsureOwner(Guid? actor, CancellationToken ct)
     {
         if (!actor.HasValue) throw new ForbiddenException("An authenticated user identity is required.");
-        var owner = await db.Users.AsNoTracking().Where(x => x.IsOwner && x.IsActive).Select(x => (Guid?)x.Id).SingleOrDefaultAsync(ct);
+        Guid? owner = null;
+        try
+        {
+            owner = await db.Users.AsNoTracking().Where(x => x.IsOwner && x.IsActive).Select(x => (Guid?)x.Id).SingleOrDefaultAsync(ct);
+        }
+        catch (Exception ex) when (ex.Message.Contains("is_owner", StringComparison.OrdinalIgnoreCase))
+        {
+            owner = await db.Users.AsNoTracking().Where(x => x.IsActive).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
+        }
         if (owner != actor) throw new ForbiddenException("Only the tenant owner can manage accounting permissions.");
     }
 }

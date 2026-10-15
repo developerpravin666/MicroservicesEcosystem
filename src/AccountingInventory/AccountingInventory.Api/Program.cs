@@ -97,6 +97,7 @@ app.MapTaxEndpoints();
 app.MapDashboardEndpoints();
 app.MapFeatureFlagEndpoints();
 app.MapTableRegistryEndpoints();
+app.MapDatabaseBackupEndpoints();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = ServiceName }));
 app.MapGet("/health/ready", async (TenantDbContext db, CancellationToken ct) =>
 {
