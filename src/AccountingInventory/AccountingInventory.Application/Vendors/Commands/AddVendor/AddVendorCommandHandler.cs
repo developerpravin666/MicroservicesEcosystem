@@ -38,6 +38,6 @@ public sealed class AddVendorCommandHandler(
             "Vendor {VendorId} - ({Name}) - {Code} added successfully.",
             vendor.Id, vendor.Name, vendor.Code);
 
-        return new AddVendorResult(vendor.Id, vendor.Name, vendor.Code, vendor.Mobile, vendor.Email, vendor.Description!, vendor.Address!, vendor.GstNumber);
+        return new AddVendorResult(vendor.Id, vendor.Name, vendor.Code, vendor.Mobile!, vendor.Email!, vendor.Description!, vendor.Address!, vendor.GstNumber);
     }
 }

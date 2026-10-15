@@ -59,7 +59,7 @@ public sealed class SkuInventoryHandler(IAccountingInventoryDbContext db) : IReq
         if(gst>0) lines.Add((accounts["2200"],gst,0,"Input GST"));
         if(movement.TotalAmount>0) { lines.Add((accounts["2000"],0,movement.TotalAmount,"Supplier payable"));
             LedgerPosting.Add(db,JournalEntry.Post(q.Date,$"Accessory purchase {bill}","SkuPurchase",movement.Id.ToString(),lines)); }
-        db.InvoiceSnapshots.Add(InvoiceSnapshot.Capture("Purchase",movement.Id,vendor.Name,vendor.Mobile,vendor.Address ?? "",vendor.Email,sku.Name,sku.Code,System.Text.Json.JsonSerializer.Serialize(new {sku.Code,sku.Name,sku.HsnSac,sku.UnitOfMeasure,q.Quantity,q.UnitCost,bill,movement.CgstAmount,movement.SgstAmount,movement.IgstAmount,movement.TotalAmount})));
+        db.InvoiceSnapshots.Add(InvoiceSnapshot.Capture("Purchase",movement.Id,vendor.Name,vendor.Mobile,vendor.Address,vendor.Email,sku.Name,sku.Code,System.Text.Json.JsonSerializer.Serialize(new {sku.Code,sku.Name,sku.HsnSac,sku.UnitOfMeasure,q.Quantity,q.UnitCost,bill,movement.CgstAmount,movement.SgstAmount,movement.IgstAmount,movement.TotalAmount})));
         await db.SaveChangesAsync(ct); return movement.Id;
     }
     public async Task<Guid> Handle(StageOpeningSkuStockCommand q,CancellationToken ct)

@@ -30,7 +30,7 @@ internal static class InvoiceSnapshotCapture
                 ?? await db.Vendors.FindAsync([p.VendorId], ct);
             if (vendor is null) continue;
             db.InvoiceSnapshots.Add(InvoiceSnapshot.Capture("Purchase", p.Id, vendor.Name, vendor.Mobile,
-                vendor.Address ?? "", vendor.Email, await ProductName(p), p.SerialNumber, JsonSerializer.Serialize(new {
+                vendor.Address, vendor.Email, await ProductName(p), p.SerialNumber, JsonSerializer.Serialize(new {
                     p.HsnSac, p.TaxId, p.TaxTreatment, p.BillNumber, p.PurchaseDate, p.DueDate, p.PurchasePrice, p.Discount, p.Cgst, p.Sgst, p.TotalAmount })));
         }
         foreach (var s in sales)

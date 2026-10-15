@@ -60,15 +60,15 @@ public sealed class InvoiceSnapshot : AggregateRoot
     public string Kind { get; private set; } = null!;
     public Guid SourceId { get; private set; }
     public string PartyName { get; private set; } = null!;
-    public string PartyMobile { get; private set; } = null!;
-    public string PartyAddress { get; private set; } = null!;
+    public string? PartyMobile { get; private set; }
+    public string? PartyAddress { get; private set; }
     public string? PartyEmail { get; private set; }
     public string ProductName { get; private set; } = null!;
     public string SerialNumber { get; private set; } = null!;
     public string DetailsJson { get; private set; } = null!;
     public bool Reconstructed { get; private set; }
-    public static InvoiceSnapshot Capture(string kind, Guid sourceId, string name, string mobile,
-        string address, string? email, string product, string serial, string details, bool reconstructed = false)
+    public static InvoiceSnapshot Capture(string kind, Guid sourceId, string name, string? mobile,
+        string? address, string? email, string product, string serial, string details, bool reconstructed = false)
         => new() { Id = Guid.NewGuid(), IsActive = true, Kind = kind, SourceId = sourceId, PartyName = name,
             PartyMobile = mobile, PartyAddress = address, PartyEmail = email, ProductName = product,
             SerialNumber = serial, DetailsJson = details, Reconstructed = reconstructed };
