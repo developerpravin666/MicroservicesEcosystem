@@ -29,6 +29,12 @@ public static class SerilogBootstrap
     {
         builder.Host.UseSerilog((context, services, loggerConfiguration) =>
         {
+            const string FileOutputTemplate =
+                "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{Service}] [Corr:{CorrelationId}] [{SourceContext}] {Message:lj}{NewLine}{Exception}";
+
+            const string ConsoleOutputTemplate =
+                "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}";
+
             loggerConfiguration
                 .ReadFrom.Configuration(context.Configuration)
                 .ReadFrom.Services(services)
@@ -41,10 +47,13 @@ public static class SerilogBootstrap
                 .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
                 .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
                 .MinimumLevel.Override("Yarp", LogEventLevel.Warning)
-                .WriteTo.Console(new CompactJsonFormatter())
+                .MinimumLevel.Override("Yarp.ReverseProxy.Health", LogEventLevel.Error)
+                .MinimumLevel.Override("MassTransit", LogEventLevel.Warning)
+                .MinimumLevel.Override("RabbitMQ", LogEventLevel.Warning)
+                .WriteTo.Console(outputTemplate: ConsoleOutputTemplate)
                 .WriteTo.File(
-                    new CompactJsonFormatter(),
                     path: $"logs/{serviceName}-.log",
+                    outputTemplate: FileOutputTemplate,
                     rollingInterval: RollingInterval.Day,
                     retainedFileCountLimit: 14,
                     shared: true);

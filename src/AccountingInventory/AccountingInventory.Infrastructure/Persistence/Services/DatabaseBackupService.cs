@@ -605,7 +605,7 @@ public sealed class DatabaseBackupService(
                         totalErrors++;
                         if (sampleDiffs.Count < 5)
                         {
-                            sampleDiffs.Add($"Row {r} Error: {ex.Message}");
+                            sampleDiffs.Add(FormatRowError(r, ex));
                         }
                     }
                 }
@@ -1107,6 +1107,35 @@ public sealed class DatabaseBackupService(
         {
             throw new ArgumentException($"Invalid SQL identifier: '{id}'.");
         }
+    }
+
+    private static string FormatRowError(int rowNumber, Exception ex)
+    {
+        var root = ex;
+        while (root.InnerException != null)
+        {
+            root = root.InnerException;
+        }
+
+        if (root is Npgsql.PostgresException pex)
+        {
+            var detail = pex.Detail;
+            var col = pex.ColumnName;
+            var text = pex.MessageText;
+
+            return pex.SqlState switch
+            {
+                "23505" => $"Row {rowNumber}: Duplicate value. {(string.IsNullOrWhiteSpace(detail) ? text : detail)}. Check for duplicates.",
+                "23503" => $"Row {rowNumber}: Missing related record. {(string.IsNullOrWhiteSpace(detail) ? text : detail)}. Please restore master/parent tables first.",
+                "23502" => $"Row {rowNumber}: Required field '{(string.IsNullOrWhiteSpace(col) ? "unknown" : col)}' is blank.",
+                "42703" => $"Row {rowNumber}: Column not found '{text}'. Check if table schema matches current version.",
+                "22P02" => $"Row {rowNumber}: Invalid data format for column. {text}",
+                _ => $"Row {rowNumber}: Database error: {text}"
+            };
+        }
+
+        var msg = root.Message.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)[0].Trim();
+        return $"Row {rowNumber}: {msg}";
     }
 
     private static string FormatDisplayName(string rawName)

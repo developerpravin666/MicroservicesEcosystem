@@ -19,8 +19,11 @@ builder.AddSharedLogging(ServiceName);
 
 builder.Services.AddPlatformSecurity(builder.Configuration);
 builder.Services.AddWebDefaults(ServiceName);
-builder.Services.AddPlatformMessaging(builder.Configuration, AccountingInventory.Application.DependencyInjection.ApplicationAssembly);
-
+bool isMessaging = builder.Configuration.GetSection("RabbitMq:Enable").Get<bool>();
+if (isMessaging)
+{
+    builder.Services.AddPlatformMessaging(builder.Configuration, AccountingInventory.Application.DependencyInjection.ApplicationAssembly);
+}
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
