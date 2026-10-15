@@ -6,7 +6,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 namespace AccountingInventory.Application.Inventory;
 public sealed record SkuSummary(Guid Id, string Code, string Name, string HsnSac, string UnitOfMeasure, decimal Quantity, decimal InventoryValue, bool IsActive, Guid? DefaultTaxId = null);
-public sealed record SkuPurchaseSummary(Guid Id,string BillNumber,string Description,decimal Quantity,DateOnly Date);
+public sealed record SkuPurchaseSummary(Guid Id,string BillNumber,string Description,decimal Quantity,DateOnly Date,decimal TotalAmount = 0m);
 public sealed record GetSkuPurchasesQuery : IRequest<IReadOnlyList<SkuPurchaseSummary>>;
 public sealed record GetStockSkusQuery : IRequest<IReadOnlyList<SkuSummary>>;
 public sealed record CreateStockSkuCommand(string Code, string Name, string HsnSac, string UnitOfMeasure, Guid? DefaultTaxId = null) : IRequest<Guid>, IBusinessPermissionRequest
@@ -22,7 +22,7 @@ public sealed class SkuInventoryHandler(IAccountingInventoryDbContext db) : IReq
 {
     public async Task<IReadOnlyList<SkuPurchaseSummary>> Handle(GetSkuPurchasesQuery q,CancellationToken ct)
         => await db.SkuMovements.Where(m => m.Kind == "Purchase" && !db.InvoiceCorrections.Any(n => n.Kind == "Purchase" && n.SourceId == m.Id))
-            .OrderByDescending(m => m.MovementDate).Select(m => new SkuPurchaseSummary(m.Id,m.BillNumber!,m.Description,m.Quantity,m.MovementDate)).ToListAsync(ct);
+            .OrderByDescending(m => m.MovementDate).Select(m => new SkuPurchaseSummary(m.Id,m.BillNumber!,m.Description,m.Quantity,m.MovementDate,m.TotalAmount)).ToListAsync(ct);
     public async Task<IReadOnlyList<SkuSummary>> Handle(GetStockSkusQuery q, CancellationToken ct)
         => await db.StockSkus.AsNoTracking().OrderBy(s => s.Code).Select(s => new SkuSummary(s.Id,s.Code,s.Name,s.HsnSac,s.UnitOfMeasure,s.Quantity,s.InventoryValue,s.IsActive,s.DefaultTaxId)).ToListAsync(ct);
     public async Task<Guid> Handle(CreateStockSkuCommand q, CancellationToken ct)

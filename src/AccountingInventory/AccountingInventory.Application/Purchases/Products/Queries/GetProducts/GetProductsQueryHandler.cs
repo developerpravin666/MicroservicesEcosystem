@@ -16,7 +16,8 @@ public sealed class GetProductsQueryHandler(IAccountingInventoryDbContext dbCont
         {
             var search = request.Search.Trim().ToLower();
             query = query.Where(x => x.SerialNumber.ToLower().Contains(search) ||
-                (x.SerialNumber1 != null && x.SerialNumber1.ToLower().Contains(search)));
+                (x.SerialNumber1 != null && x.SerialNumber1.ToLower().Contains(search)) ||
+                (x.BillNumber != null && x.BillNumber.ToLower().Contains(search)));
         }
         var totalCount = await query.CountAsync(cancellationToken);
         var page = Math.Max(1, request.Page);

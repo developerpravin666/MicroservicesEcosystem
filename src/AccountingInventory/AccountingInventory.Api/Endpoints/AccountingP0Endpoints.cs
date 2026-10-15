@@ -1,5 +1,6 @@
 using AccountingInventory.Application.Abstractions;
 using AccountingInventory.Application.GeneralLedger;
+using AccountingInventory.Domain.Entities;
 using BuildingBlocks.Domain.MultiTenancy;
 using BuildingBlocks.Security;
 using BuildingBlocks.WebDefaults;
@@ -27,7 +28,44 @@ public static class AccountingP0Endpoints
         group.MapGet("/snapshots/{kind}/{id:guid}", async (string kind, Guid id, IAccountingInventoryDbContext db, CancellationToken ct) =>
         {
             var snapshot = await db.InvoiceSnapshots.AsNoTracking().SingleOrDefaultAsync(x => x.Kind == kind && x.SourceId == id, ct);
-            return snapshot is null ? Results.NotFound() : Results.Ok(snapshot);
+            if (snapshot is not null) return Results.Ok(snapshot);
+            if (kind == "Sale")
+            {
+                var invoice = await db.SalesInvoices.Include(i => i.Lines).AsNoTracking().SingleOrDefaultAsync(i => i.Id == id, ct);
+                if (invoice is not null)
+                {
+                    var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == invoice.CustomerId, ct);
+                    var itemsSummary = string.Join("; ", invoice.Lines.Select(l => $"{l.ItemDescription} x{l.Quantity}"));
+                    var serialsSummary = string.Join(", ", invoice.Lines.Where(l => !string.IsNullOrWhiteSpace(l.SerialNumber)).Select(l => l.SerialNumber!));
+                    return Results.Ok(InvoiceSnapshot.Capture("Sale", invoice.Id, customer?.Name ?? "Customer", customer?.Mobile, customer?.Address, customer?.Email, itemsSummary, serialsSummary, "{}", reconstructed: true));
+                }
+                var sale = await db.SalesProducts.AsNoTracking().SingleOrDefaultAsync(s => s.Id == id, ct);
+                if (sale is not null)
+                {
+                    var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == sale.CustomerId, ct);
+                    return Results.Ok(InvoiceSnapshot.Capture("Sale", sale.Id, customer?.Name ?? "Customer", customer?.Mobile, customer?.Address, customer?.Email, sale.BillNumber, "", "{}", reconstructed: true));
+                }
+            }
+            else if (kind == "Purchase")
+            {
+                var product = await db.Products.AsNoTracking().SingleOrDefaultAsync(p => p.Id == id, ct);
+                if (product is not null)
+                {
+                    var vendor = await db.Vendors.AsNoTracking().SingleOrDefaultAsync(v => v.Id == product.VendorId, ct);
+                    var model = await db.ProductModels.AsNoTracking().SingleOrDefaultAsync(m => m.Id == product.ProductModelId, ct);
+                    var brand = await db.Brands.AsNoTracking().SingleOrDefaultAsync(b => b.Id == product.BrandId, ct);
+                    var desc = $"{brand?.Name} {model?.Name}".Trim();
+                    return Results.Ok(InvoiceSnapshot.Capture("Purchase", product.Id, vendor?.Name ?? "Vendor", vendor?.Mobile, vendor?.Address, vendor?.Email, desc, product.SerialNumber ?? "", "{}", reconstructed: true));
+                }
+                var skuMovement = await db.SkuMovements.AsNoTracking().SingleOrDefaultAsync(m => m.Id == id, ct);
+                if (skuMovement is not null && skuMovement.VendorId.HasValue)
+                {
+                    var vendor = await db.Vendors.AsNoTracking().SingleOrDefaultAsync(v => v.Id == skuMovement.VendorId.Value, ct);
+                    var sku = await db.StockSkus.AsNoTracking().SingleOrDefaultAsync(s => s.Id == skuMovement.SkuId, ct);
+                    return Results.Ok(InvoiceSnapshot.Capture("Purchase", skuMovement.Id, vendor?.Name ?? "Vendor", vendor?.Mobile, vendor?.Address, vendor?.Email, sku?.Name ?? "Accessory / SKU", sku?.Code ?? "", "{}", reconstructed: true));
+                }
+            }
+            return Results.NotFound();
         });
         group.MapGet("/opening-items", async (ISender sender, CancellationToken ct) => Results.Ok(await sender.Send(new GetOpeningItemsQuery(), ct)));
         group.MapGet("/opening-stock", async (DateOnly cutover, IAccountingInventoryDbContext db, CancellationToken ct) =>

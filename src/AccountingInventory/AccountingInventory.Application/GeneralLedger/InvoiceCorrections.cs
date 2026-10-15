@@ -51,8 +51,10 @@ public sealed class InvoiceCorrectionHandler(IAccountingInventoryDbContext db, I
                 if (invoiceProducts.Count != ids.Length || invoiceProducts.Any(p => !p.IsSold || !p.IsActive))
                     throw new ConflictException("Invoice inventory is no longer available for return.");
                 foreach (var item in invoiceProducts) item.MarkAvailable();
+                var cgstRate = invoice.TaxableAmount > 0 && invoice.CgstAmount > 0 ? decimal.Round(invoice.CgstAmount * 100m / invoice.TaxableAmount, 2, MidpointRounding.AwayFromZero) : (invoice.Lines.FirstOrDefault()?.CgstRate ?? 0m);
+                var sgstRate = invoice.TaxableAmount > 0 && invoice.SgstAmount > 0 ? decimal.Round(invoice.SgstAmount * 100m / invoice.TaxableAmount, 2, MidpointRounding.AwayFromZero) : (invoice.Lines.FirstOrDefault()?.SgstRate ?? 0m);
                 note = InvoiceCorrection.Create("Sale", invoice.Id, invoice.CustomerId, invoice.BillNumber, q.NoteDate, q.Reason,
-                    q.Disposition, invoice.TaxableAmount, 0m, 0m, invoice.CgstAmount, invoice.SgstAmount, invoice.TotalAmount, invoice.IgstAmount);
+                    q.Disposition, invoice.TaxableAmount, cgstRate, sgstRate, invoice.CgstAmount, invoice.SgstAmount, invoice.TotalAmount, invoice.IgstAmount);
                 var skuSales = await db.SkuMovements.Where(m => m.Kind == "Sale" && m.SourceId == invoice.Id).ToListAsync(ct);
                 foreach (var movement in skuSales) {
                     var sku = await db.StockSkus.SingleAsync(s => s.Id == movement.SkuId,ct);
@@ -109,8 +111,9 @@ public sealed class InvoiceCorrectionHandler(IAccountingInventoryDbContext db, I
                 throw new ConflictException("The source journal has already been reversed.");
             var reversal = JournalEntry.Post(q.NoteDate, $"{note.NoteNumber}: {note.Reason}", "InvoiceCorrection", note.Id.ToString(),
                 originalLines.Select(x => (x.AccountId, x.Credit, x.Debit, (string?)note.Reason)).ToArray(), original.Id);
-            foreach (var line in reversal.Lines)
-                line.AssignDimension(originalLines.First(x => x.AccountId == line.AccountId && x.Credit == line.Debit && x.Debit == line.Credit).DimensionId);
+            var revLines = reversal.Lines.ToList();
+            for (var i = 0; i < revLines.Count && i < originalLines.Length; i++)
+                revLines[i].AssignDimension(originalLines[i].DimensionId);
             LedgerPosting.Add(db, reversal);
         }
         if (q.Kind == "Sale" && q.Disposition == "WriteOff")
@@ -130,11 +133,14 @@ public sealed class InvoiceCorrectionHandler(IAccountingInventoryDbContext db, I
     private async Task<InvoiceCorrection> ReturnSkuPurchase(ReturnInvoiceCommand q,SkuMovement purchase,IReadOnlyDictionary<string,Guid> accounts,CancellationToken ct)
     {
         if(q.Disposition != "Supplier" || q.NoteDate < purchase.MovementDate) throw new ConflictException("Use Supplier disposition and a date on/after purchase.");
-        if(await db.PurchasePayments.AnyAsync(p => p.VendorId == purchase.VendorId && p.BillNumber.ToLower() == purchase.BillNumber!.ToLower() && p.PaymentDate > q.NoteDate,ct))
+        var bill = purchase.BillNumber ?? string.Empty;
+        if(!string.IsNullOrEmpty(bill) && await db.PurchasePayments.AnyAsync(p => p.VendorId == purchase.VendorId && p.BillNumber != null && p.BillNumber.ToLower() == bill.ToLower() && p.PaymentDate > q.NoteDate,ct))
             throw new ConflictException("Supplier return cannot precede bill payments.");
         var sku=await db.StockSkus.SingleAsync(s => s.Id == purchase.SkuId,ct);
+        if(sku.Quantity < purchase.Quantity)
+            throw new ConflictException($"Insufficient accessory stock to return to supplier. Available quantity is {sku.Quantity:0.##}, but purchase was {purchase.Quantity:0.##}.");
         var cost=sku.Issue(purchase.Quantity,q.NoteDate);
-        var note=InvoiceCorrection.Create("Purchase",purchase.Id,purchase.VendorId!.Value,purchase.BillNumber!,q.NoteDate,q.Reason,"Supplier",
+        var note=InvoiceCorrection.Create("Purchase",purchase.Id,purchase.VendorId!.Value,purchase.BillNumber ?? purchase.Id.ToString(),q.NoteDate,q.Reason,"Supplier",
             purchase.InventoryValue,purchase.CgstRate,purchase.SgstRate,purchase.CgstAmount,purchase.SgstAmount,purchase.TotalAmount,purchase.IgstAmount);
         db.InvoiceCorrections.Add(note);
         db.SkuMovements.Add(SkuMovement.Create(sku.Id,q.NoteDate,"SupplierReturn",note.Id,-purchase.Quantity,-cost,q.Reason));
