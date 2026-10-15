@@ -14,14 +14,12 @@ public sealed class VendorConfiguration : IEntityTypeConfiguration<Vendor>
         builder.HasKey(u => u.Id);
 
         builder.Property(u => u.Name).IsRequired().HasMaxLength(64);
-        builder.Property(u => u.Mobile).IsRequired().HasMaxLength(20);
-        builder.Property(u => u.Email).IsRequired().HasMaxLength(256);
+        builder.Property(u => u.Mobile).HasMaxLength(20);
+        builder.Property(u => u.Email).HasMaxLength(256);
         builder.Property(u => u.Code).IsRequired();
         builder.Property(u => u.GstNumber).HasMaxLength(20);
 
         builder.HasIndex(u => u.Code).IsUnique();
-        builder.HasIndex(u => u.Email).IsUnique();
-        builder.HasIndex(u => u.Mobile).IsUnique();
 
         builder.Ignore(u => u.DomainEvents);
         builder.HasQueryFilter(u => !u.IsDeleted);

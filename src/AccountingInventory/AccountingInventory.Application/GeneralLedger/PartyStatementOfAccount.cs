@@ -28,9 +28,9 @@ public sealed record PartyStatementOfAccountDto(
     Guid PartyId,
     string PartyType, // "Customer" or "Vendor"
     string PartyName,
-    string PartyMobile,
+    string? PartyMobile,
     string? PartyEmail,
-    string PartyAddress,
+    string? PartyAddress,
     string? PartyGstin,
     string? PartyStateCode,
     string? PartyStateName,

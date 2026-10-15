@@ -19,14 +19,37 @@ public static class PurchaseIntegrity
         var modelIds = rows.Select(row => row.ProductModelId).Distinct().ToArray();
         var variantIds = rows.Select(row => row.VariantId).Distinct().ToArray();
         var colorIds = rows.Select(row => row.ColorId).Distinct().ToArray();
-        if (await db.Vendors.CountAsync(row => vendorIds.Contains(row.Id) && row.IsActive, ct) != vendorIds.Length
-            || await db.Brands.CountAsync(row => brandIds.Contains(row.Id) && row.IsActive, ct) != brandIds.Length
-            || await db.ProductTypes.CountAsync(row => typeIds.Contains(row.Id) && row.IsActive, ct) != typeIds.Length
-            || await db.Variants.CountAsync(row => variantIds.Contains(row.Id) && row.IsActive, ct) != variantIds.Length
-            || await db.Colors.CountAsync(row => colorIds.Contains(row.Id) && row.IsActive, ct) != colorIds.Length)
-            throw new ConflictException("Every purchase reference must be an active record in this tenant.");
+        var activeVendorIds = await db.Vendors.Where(row => vendorIds.Contains(row.Id) && row.IsActive).Select(r => r.Id).ToListAsync(ct);
+        var missingVendors = vendorIds.Except(activeVendorIds).ToArray();
+        if (missingVendors.Length > 0)
+            throw new ConflictException($"Vendor reference ({string.Join(", ", missingVendors)}) is not an active record in this tenant.");
+
+        var activeBrandIds = await db.Brands.Where(row => brandIds.Contains(row.Id) && row.IsActive).Select(r => r.Id).ToListAsync(ct);
+        var missingBrands = brandIds.Except(activeBrandIds).ToArray();
+        if (missingBrands.Length > 0)
+            throw new ConflictException($"Brand reference ({string.Join(", ", missingBrands)}) is not an active record in this tenant.");
+
+        var activeTypeIds = await db.ProductTypes.Where(row => typeIds.Contains(row.Id) && row.IsActive).Select(r => r.Id).ToListAsync(ct);
+        var missingTypes = typeIds.Except(activeTypeIds).ToArray();
+        if (missingTypes.Length > 0)
+            throw new ConflictException($"Product type reference ({string.Join(", ", missingTypes)}) is not an active record in this tenant.");
+
+        var activeVariantIds = await db.Variants.Where(row => variantIds.Contains(row.Id) && row.IsActive).Select(r => r.Id).ToListAsync(ct);
+        var missingVariants = variantIds.Except(activeVariantIds).ToArray();
+        if (missingVariants.Length > 0)
+            throw new ConflictException($"Variant reference ({string.Join(", ", missingVariants)}) is not an active record in this tenant.");
+
+        var activeColorIds = await db.Colors.Where(row => colorIds.Contains(row.Id) && row.IsActive).Select(r => r.Id).ToListAsync(ct);
+        var missingColors = colorIds.Except(activeColorIds).ToArray();
+        if (missingColors.Length > 0)
+            throw new ConflictException($"Color reference ({string.Join(", ", missingColors)}) is not an active record in this tenant.");
+
         var models = await db.ProductModels.AsNoTracking().Where(row => modelIds.Contains(row.Id) && row.IsActive)
             .ToDictionaryAsync(row => row.Id, ct);
+        var missingModels = modelIds.Except(models.Keys).ToArray();
+        if (missingModels.Length > 0)
+            throw new ConflictException($"Product model reference ({string.Join(", ", missingModels)}) is not an active record in this tenant.");
+
         if (rows.Any(row => !models.TryGetValue(row.ProductModelId, out var model)
             || model.BrandId != row.BrandId || model.ProductTypeId != row.ProductTypeId))
             throw new ConflictException("The product model must belong to the selected brand and product type.");

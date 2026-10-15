@@ -17,15 +17,15 @@ public sealed class Vendor : AggregateRoot
     public string Name { get; private set; } = null!;
     public string Code { get; private set; } = null!;
     public string? GstNumber { get; private set; }
-    public string Mobile { get; private set; } = null!;
-    public string Email { get; private set; } = null!;
+    public string? Mobile { get; private set; }
+    public string? Email { get; private set; }
     public string? Description { get; private set; }
     public string? Address { get; private set; }
 
-    public static Vendor Create(string name, string code, string mobile, string email,
+    public static Vendor Create(string name, string code, string? mobile, string? email,
         string? description = null, string? address = null, string? gstNumber = null)
     {
-        ValidateInput(name, code, mobile, email);
+        ValidateInput(name, code);
 
         return new Vendor
         {
@@ -33,21 +33,21 @@ public sealed class Vendor : AggregateRoot
             Name = name.Trim(),
             Code = code.Trim(),
             GstNumber = NormalizeGst(gstNumber),
-            Mobile = mobile.Trim(),
-            Email = email.Trim(),
+            Mobile = NormalizeOptional(mobile),
+            Email = NormalizeOptional(email),
             IsActive = true,
-            Description = description?.Trim(),
-            Address = address?.Trim()
+            Description = NormalizeOptional(description),
+            Address = NormalizeOptional(address)
         };
     }
 
     /// <summary>
     /// Updates the vendor's core details with validation constraints.
     /// </summary>
-    public static Vendor Update(Guid id, string name, string code, string mobile, string email, bool isActive,
+    public static Vendor Update(Guid id, string name, string code, string? mobile, string? email, bool isActive,
         string? description = null, string? address = null, string? gstNumber = null)
     {
-        ValidateInput(name, code, mobile, email);
+        ValidateInput(name, code);
 
         return new Vendor
         {
@@ -55,12 +55,19 @@ public sealed class Vendor : AggregateRoot
             Name = name.Trim(),
             Code = code.Trim(),
             GstNumber = NormalizeGst(gstNumber),
-            Mobile = mobile.Trim(),
-            Email = email.Trim(),
+            Mobile = NormalizeOptional(mobile),
+            Email = NormalizeOptional(email),
             IsActive = isActive,
-            Description = description?.Trim(),
-            Address = address?.Trim()
+            Description = NormalizeOptional(description),
+            Address = NormalizeOptional(address)
         };
+    }
+
+    private static string? NormalizeOptional(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var trimmed = raw.Trim();
+        return trimmed.Length == 0 ? null : trimmed;
     }
 
     private static string? NormalizeGst(string? gst)
@@ -96,7 +103,7 @@ public sealed class Vendor : AggregateRoot
     }
 
     // Shared input validation helper used by both Create and Update
-    private static void ValidateInput(string name, string code, string mobile, string email)
+    private static void ValidateInput(string name, string code)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -106,14 +113,14 @@ public sealed class Vendor : AggregateRoot
         {
             throw new AccountingInventoryDomainException("Vendor code cannot be empty.");
         }
-        if (string.IsNullOrWhiteSpace(mobile))
-        {
-            throw new AccountingInventoryDomainException("Vendor mobile cannot be empty.");
-        }
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            throw new AccountingInventoryDomainException("Vendor email cannot be empty.");
-        }
+        //if (string.IsNullOrWhiteSpace(mobile))
+        //{
+        //    throw new AccountingInventoryDomainException("Vendor mobile cannot be empty.");
+        //}
+        //if (string.IsNullOrWhiteSpace(email))
+        //{
+        //    throw new AccountingInventoryDomainException("Vendor email cannot be empty.");
+        //}
     }
 
     private Vendor() { }

@@ -4,6 +4,7 @@ using AccountingInventory.Application.Abstractions;
 using AccountingInventory.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace AccountingInventory.Application.Users.Commands.Refresh;
@@ -19,7 +20,8 @@ public sealed class RefreshTokenCommandHandler(
     ITokenService tokenService,
     ITenantDirectoryContext tenantDirectory,
     ITenantContextAccessor tenantContextAccessor,
-    ILogger<RefreshTokenCommandHandler> logger)
+    ILogger<RefreshTokenCommandHandler> logger,
+    IConfiguration? configuration = null)
     : IRequestHandler<RefreshTokenCommand, RefreshTokenResult>
 {
     public async Task<RefreshTokenResult> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
@@ -30,6 +32,29 @@ public sealed class RefreshTokenCommandHandler(
         {
             logger.LogWarning("Token refresh failed: expired access token was malformed or invalid.");
             throw new UnauthorizedException("The access token is malformed or invalid.");
+        }
+
+        var systemUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var systemTenantId = Guid.Parse("00000000-0000-0000-0000-000000000000");
+
+        // Handle Product Owner / Super Admin platform session refresh (not bound to a store tenant in tenant directory)
+        if (principal.TenantId == systemTenantId || principal.UserId == systemUserId || string.Equals(principal.TenantSchema, "tenant", StringComparison.OrdinalIgnoreCase))
+        {
+            tenantContextAccessor.SetTenant(systemTenantId, "tenant");
+            var adminUsername = configuration?["ProductOwner:Username"] ?? "admin";
+            var defaultRoleNames = new[] { "ProductOwner", "SuperAdmin" };
+            var defaultPermissionCodes = new[] { "Tenants.Manage", "System.Manage", "Database.Manage" };
+
+            var newPair = tokenService.GenerateTokenPair(
+                systemUserId,
+                adminUsername,
+                systemTenantId,
+                "tenant",
+                defaultRoleNames,
+                defaultPermissionCodes);
+
+            logger.LogInformation("Product Owner access token refreshed successfully.");
+            return new RefreshTokenResult(newPair.AccessToken, newPair.RefreshToken, newPair.AccessTokenExpiresAtUtc);
         }
 
         var tenant = await tenantDirectory.Tenants.AsNoTracking()

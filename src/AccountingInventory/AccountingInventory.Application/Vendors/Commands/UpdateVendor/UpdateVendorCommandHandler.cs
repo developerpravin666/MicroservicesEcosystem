@@ -38,6 +38,6 @@ public sealed class UpdateVendorCommandHandler(
             "Vendor {VendorId} - ({Name}) - {Code} update successfully.",
             vendor.Id, vendor.Name, vendor.Code);
 
-        return new UpdateVendorResult(vendor.Id, vendor.Name, vendor.Code, vendor.Mobile, vendor.Email, vendor.IsActive, vendor.Description!, vendor.Address!, vendor.GstNumber);
+        return new UpdateVendorResult(vendor.Id, vendor.Name, vendor.Code, vendor.Mobile!, vendor.Email!, vendor.IsActive, vendor.Description!, vendor.Address!, vendor.GstNumber);
     }
 }

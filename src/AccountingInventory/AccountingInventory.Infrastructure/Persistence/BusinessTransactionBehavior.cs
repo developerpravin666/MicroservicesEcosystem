@@ -22,6 +22,7 @@ public sealed class BusinessTransactionBehavior<TRequest, TResponse>(AccountingI
     {
         if (!typeof(TRequest).Name.EndsWith("Command", StringComparison.Ordinal)
             || typeof(TRequest).Namespace?.Contains(".Tenants.", StringComparison.Ordinal) == true
+            || typeof(TRequest).Namespace?.Contains(".DatabaseBackup", StringComparison.Ordinal) == true
             || (typeof(TRequest).Namespace?.Contains(".Users.", StringComparison.Ordinal) == true
                 && typeof(TRequest).Name != "RegisterCommand")
             || db.Database.CurrentTransaction is not null)
@@ -38,6 +39,7 @@ public sealed class BusinessTransactionBehavior<TRequest, TResponse>(AccountingI
                 : requestNamespace.Contains(".Inventory", StringComparison.Ordinal) ? "inventory.manage"
                 : requestNamespace.Contains(".GeneralLedger", StringComparison.Ordinal) ? "accounting.manage"
                 : requestNamespace.Contains(".Users.", StringComparison.Ordinal) ? null
+                : requestNamespace.Contains(".DatabaseBackup", StringComparison.Ordinal) ? null
                 : "catalog.manage";
             if (!string.IsNullOrEmpty(permission))
                 await AccountingPermissionGate.EnsureAsync(db, identity.UserId, permission, ct);

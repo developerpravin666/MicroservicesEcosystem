@@ -19,8 +19,11 @@ builder.AddSharedLogging(ServiceName);
 
 builder.Services.AddPlatformSecurity(builder.Configuration);
 builder.Services.AddWebDefaults(ServiceName);
-builder.Services.AddPlatformMessaging(builder.Configuration, AccountingInventory.Application.DependencyInjection.ApplicationAssembly);
-
+bool isMessaging = builder.Configuration.GetSection("RabbitMq:Enable").Get<bool>();
+if (isMessaging)
+{
+    builder.Services.AddPlatformMessaging(builder.Configuration, AccountingInventory.Application.DependencyInjection.ApplicationAssembly);
+}
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -97,6 +100,7 @@ app.MapTaxEndpoints();
 app.MapDashboardEndpoints();
 app.MapFeatureFlagEndpoints();
 app.MapTableRegistryEndpoints();
+app.MapDatabaseBackupEndpoints();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = ServiceName }));
 app.MapGet("/health/ready", async (TenantDbContext db, CancellationToken ct) =>
 {

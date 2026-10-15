@@ -30,7 +30,7 @@ internal static class InvoiceSnapshotCapture
                 ?? await db.Vendors.FindAsync([p.VendorId], ct);
             if (vendor is null) continue;
             db.InvoiceSnapshots.Add(InvoiceSnapshot.Capture("Purchase", p.Id, vendor.Name, vendor.Mobile,
-                vendor.Address ?? "", vendor.Email, await ProductName(p), p.SerialNumber, JsonSerializer.Serialize(new {
+                vendor.Address, vendor.Email, await ProductName(p), p.SerialNumber, JsonSerializer.Serialize(new {
                     p.HsnSac, p.TaxId, p.TaxTreatment, p.BillNumber, p.PurchaseDate, p.DueDate, p.PurchasePrice, p.Discount, p.Cgst, p.Sgst, p.TotalAmount })));
         }
         foreach (var s in sales)
@@ -38,7 +38,7 @@ internal static class InvoiceSnapshotCapture
             if (db.InvoiceSnapshots.Local.Any(x => x.Kind == "Sale" && x.SourceId == s.Id)) continue;
             var customer = db.Customers.Local.FirstOrDefault(x => x.Id == s.CustomerId)
                 ?? await db.Customers.FindAsync([s.CustomerId], ct);
-            var productId = Guid.Parse(s.ProductId);
+            if (!Guid.TryParse(s.ProductId, out var productId)) continue;
             var product = db.Products.Local.FirstOrDefault(x => x.Id == productId) ?? await db.Products.FindAsync([productId], ct);
             if (customer is null || product is null) continue;
             var seller = await db.CustomerBillSettings.AsNoTracking().FirstOrDefaultAsync(ct);

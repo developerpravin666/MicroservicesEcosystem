@@ -69,6 +69,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddScoped<ITenantAdministration, TenantAdministration>();
         services.AddScoped<IRegistrationEmailTemplateStore, RegistrationEmailTemplateStore>();
+        services.AddScoped<AccountingInventory.Application.DatabaseBackup.Abstractions.IDatabaseBackupService, AccountingInventory.Infrastructure.Persistence.Services.DatabaseBackupService>();
 
         return services;
     }
