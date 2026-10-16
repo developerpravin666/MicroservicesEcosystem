@@ -218,3 +218,19 @@ Whenever adding, modifying, or refactoring features across this ecosystem, the f
    - Follow the identical layout used in `Purchases/Products`, `Sales`, `Brands`, and `GeneralLedger`.
    - Shared business rules or helpers must be placed in a `Common/` subdirectory within the module (e.g. `GeneralLedger/Common/ContraHelper.cs`).
 
+4. **Mandatory Database Entity Migrations**:
+   - Whenever any database entity is modified — whether **adding a new property/field**, **updating an existing field** (e.g. changing type, length, nullability, defaults), or **adding/altering a table or relationship**:
+     - Always update the entity definition in `AccountingInventory.Domain/Entities/`.
+     - Always update the entity configuration in `AccountingInventory.Infrastructure/Persistence/Configurations/`.
+     - **Always generate the corresponding EF Core migration file immediately** so schema changes are versioned and applied to tenant schemas:
+       ```bash
+       dotnet ef migrations add <DescriptiveMigrationName> \
+         --project src/AccountingInventory/AccountingInventory.Infrastructure \
+         --startup-project src/AccountingInventory/AccountingInventory.Api \
+         --context AccountingInventoryDbContext \
+         --output-dir Migrations/AccountingInventoryDb
+       ```
+     - For tenant management schema (`TenantDbContext`), generate migration into `Migrations/TenantDb`.
+     - Never leave entity property changes without a matching migration file.
+
+
