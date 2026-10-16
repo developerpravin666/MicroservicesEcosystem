@@ -99,6 +99,38 @@ public static class TaxEndpoints
             return Results.Ok(result);
         }).WithName("GetGstr3bSummary").Produces<AccountingInventory.Application.Taxes.Queries.GetGstr3bSummary.Gstr3bSummaryDto>();
 
+        // GSTR-2B Reconciliation & Pre-Filing Triangulation Endpoints
+        var gstr2bGroup = app.MapGroup("/api/tax/gstr2b")
+            .WithTags("GST Returns")
+            .RequireAuthorization("AuthenticatedUser")
+            .AddEndpointFilter<TenantHeaderEndpointFilter>()
+            .WithMetadata(new RequiresTenantIdHeaderAttribute());
+
+        gstr2bGroup.MapPost("/reconcile", async (
+            AccountingInventory.Application.Taxes.Commands.ReconcileGstr2b.ReconcileGstr2bCommand command,
+            ISender sender,
+            CancellationToken ct) =>
+        {
+            var result = await sender.Send(command, ct);
+            return Results.Ok(result);
+        }).WithName("ReconcileGstr2b").Produces<AccountingInventory.Application.Taxes.Commands.ReconcileGstr2b.Gstr2bReconciliationResultDto>();
+
+        var triangulationGroup = app.MapGroup("/api/tax/triangulation")
+            .WithTags("GST Returns")
+            .RequireAuthorization("AuthenticatedUser")
+            .AddEndpointFilter<TenantHeaderEndpointFilter>()
+            .WithMetadata(new RequiresTenantIdHeaderAttribute());
+
+        triangulationGroup.MapGet("", async (
+            [FromQuery] DateOnly? from,
+            [FromQuery] DateOnly? to,
+            ISender sender,
+            CancellationToken ct) =>
+        {
+            var result = await sender.Send(new AccountingInventory.Application.Taxes.Queries.GetPreFilingTriangulation.GetPreFilingTriangulationQuery(from, to), ct);
+            return Results.Ok(result);
+        }).WithName("GetPreFilingTriangulation").Produces<AccountingInventory.Application.Taxes.Queries.GetPreFilingTriangulation.PreFilingTriangulationResultDto>();
+
         return group;
     }
 }
