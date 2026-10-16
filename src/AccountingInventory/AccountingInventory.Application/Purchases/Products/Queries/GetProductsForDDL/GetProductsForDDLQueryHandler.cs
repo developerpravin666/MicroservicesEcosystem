@@ -49,7 +49,7 @@ public sealed class GetProductsForDDLQueryHandler(IAccountingInventoryDbContext 
                     .Select(color => color.Name)
                     .FirstOrDefault() ?? string.Empty,
                 product.SerialNumber,
-                product.SerialNumber1!,
+                product.SerialNumber1,
                 product.PurchasePrice,
                 product.TotalAmount,
                 product.Discount,

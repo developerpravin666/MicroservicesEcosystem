@@ -27,7 +27,7 @@ public static class ProductEndpoints
             .WithName("CreateProduct");
 
         group.MapPost("/bulk", async (BulkCreateProductsCommand command, ISender sender, CancellationToken ct) =>
-            Results.Created("/api/products", await sender.Send(command, ct)))
+            Results.Ok(await sender.Send(command, ct)))
             .WithName("BulkCreateProducts");
 
         group.MapPut("/bulk", async (BulkUpdateProductsCommand command, ISender sender, CancellationToken ct) =>

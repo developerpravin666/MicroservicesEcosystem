@@ -15,7 +15,7 @@ public sealed class UpdateProductCommandValidator : AbstractValidator<UpdateProd
         RuleFor(x => x.VariantId).NotEmpty();
         RuleFor(x => x.ColorId).NotEmpty();
         RuleFor(x => x.SerialNumber).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.SerialNumber1).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.SerialNumber1).MaximumLength(100);
         RuleFor(x => x.BillNumber).NotEmpty().MaximumLength(100);
         RuleFor(x => x.PurchasePrice).GreaterThanOrEqualTo(0).PrecisionScale(18, 2, ignoreTrailingZeros: true);
         RuleFor(x => x.Discount).GreaterThanOrEqualTo(0).PrecisionScale(18, 2, ignoreTrailingZeros: true).LessThanOrEqualTo(x => x.PurchasePrice);
