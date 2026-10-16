@@ -53,6 +53,11 @@ public interface IAccountingInventoryDbContext
     DbSet<OpeningSettlement> OpeningSettlements { get; }
     DbSet<MasterImportBatch> MasterImportBatches { get; }
     DbSet<MasterImportStagingRow> MasterImportStagingRows { get; }
+    DbSet<Godown> Godowns { get; }
+    DbSet<StockBalance> StockBalances { get; }
+    DbSet<StockTransferJournal> StockTransferJournals { get; }
+    DbSet<StockTransferLine> StockTransferLines { get; }
+    DbSet<StockAdjustment> StockAdjustments { get; }
     Task<string> GenerateSalesBillNumberAsync(int year, CancellationToken cancellationToken);
 
     //DbSet<Role> Roles { get; }

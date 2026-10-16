@@ -24,6 +24,7 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.Cgst).HasPrecision(5, 2);
         builder.Property(x => x.Sgst).HasPrecision(5, 2);
         builder.Property(x => x.Tax).HasPrecision(5, 2);
+        builder.Property(x => x.GodownId).HasColumnName("godown_id").IsRequired(false);
         builder.HasIndex(x => x.SerialNumber).IsUnique();
         builder.Ignore(x => x.DomainEvents);
         builder.HasQueryFilter(x => !x.IsDeleted);
