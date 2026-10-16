@@ -1,5 +1,9 @@
 using AccountingInventory.Application.Common.Models;
 using AccountingInventory.Application.GeneralLedger;
+using AccountingInventory.Application.GeneralLedger.Commands.CreateContraVoucher;
+using AccountingInventory.Application.GeneralLedger.Commands.CreateJournalVoucher;
+using AccountingInventory.Application.GeneralLedger.Queries.GetContraAccounts;
+using AccountingInventory.Application.GeneralLedger.Queries.GetContraVouchers;
 using BuildingBlocks.WebDefaults;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -31,6 +35,22 @@ public static class GeneralLedgerEndpoints
         group.MapPost("/journals", async (PostJournalCommand command, ISender sender, CancellationToken ct) =>
             Results.Created("/api/general-ledger/journals", await sender.Send(command, ct)))
             .WithName("PostJournal");
+
+        group.MapPost("/journal", async (CreateJournalVoucherCommand command, ISender sender, CancellationToken ct) =>
+            Results.Created("/api/general-ledger/journal", await sender.Send(command, ct)))
+            .WithName("CreateJournalVoucher").Produces<JournalSummary>();
+
+        group.MapGet("/contra/accounts", async (ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new GetContraAccountsQuery(), ct)))
+            .WithName("GetContraAccounts").Produces<IReadOnlyList<ContraAccountSummary>>();
+
+        group.MapGet("/contra", async ([FromQuery] int? page, [FromQuery] int? pageSize, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new GetContraVouchersQuery(page ?? 1, pageSize ?? 20), ct)))
+            .WithName("GetContraVouchers").Produces<PagedResult<ContraVoucherSummary>>();
+
+        group.MapPost("/contra", async (CreateContraVoucherCommand command, ISender sender, CancellationToken ct) =>
+            Results.Created("/api/general-ledger/contra", await sender.Send(command, ct)))
+            .WithName("CreateContraVoucher").Produces<ContraVoucherSummary>();
 
         group.MapPost("/journals/{id:guid}/reverse", async (Guid id, ReverseJournalRequest request,
                 ISender sender, CancellationToken ct) =>

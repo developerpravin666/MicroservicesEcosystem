@@ -184,3 +184,37 @@ Logs land in the console (structured JSON) and under
   `RegisterCommandHandler`/`LoginCommandHandler` (`ResetConnectionAsync` +
   `ITenantContextAccessor.SetTenant`) and the synchronous provisioning step inside
   `RegisterTenantCommandHandler`.
+
+---
+
+## Strict Architecture & CQRS Development Guidelines (Mandatory)
+
+Whenever adding, modifying, or refactoring features across this ecosystem, the following rules are **strictly mandatory**:
+
+1. **Strict CQRS Pattern & File Separation**:
+   - Every operation must be strictly classified as either a **Command** (state modification) or a **Query** (read-only).
+   - **Never combine Command, Handler, and Validator into a single file.**
+   - Every Command or Query must live in its own dedicated directory named after the action:
+     ```
+     <Module>/
+     ├── Commands/
+     │   └── <ActionName>/
+     │       ├── <ActionName>Command.cs          # Command record + associated DTOs / Result records
+     │       ├── <ActionName>CommandHandler.cs   # MediatR IRequestHandler<TCommand, TResult>
+     │       └── <ActionName>CommandValidator.cs # FluentValidation AbstractValidator<TCommand>
+     └── Queries/
+         └── <QueryName>/
+             ├── <QueryName>Query.cs             # Query record + associated DTOs / Result records
+             ├── <QueryName>QueryHandler.cs      # MediatR IRequestHandler<TQuery, TResult>
+             └── <QueryName>QueryValidator.cs   # FluentValidation AbstractValidator<TQuery> (if validated)
+     ```
+
+2. **Single Responsibility & Cohesion**:
+   - Each file must contain only one primary class/record and its direct validator or command result.
+   - Handlers must be placed in their own separate `.cs` file (`*CommandHandler.cs` or `*QueryHandler.cs`).
+   - Validators must be placed in their own separate `.cs` file (`*CommandValidator.cs` or `*QueryValidator.cs`).
+
+3. **Consistency Across Modules**:
+   - Follow the identical layout used in `Purchases/Products`, `Sales`, `Brands`, and `GeneralLedger`.
+   - Shared business rules or helpers must be placed in a `Common/` subdirectory within the module (e.g. `GeneralLedger/Common/ContraHelper.cs`).
+
