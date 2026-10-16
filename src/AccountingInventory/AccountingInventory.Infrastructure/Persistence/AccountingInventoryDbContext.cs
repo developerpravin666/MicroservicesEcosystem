@@ -80,6 +80,7 @@ public sealed class AccountingInventoryDbContext(
     public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
     public DbSet<EWayBill> EWayBills => Set<EWayBill>();
     public DbSet<EInvoice> EInvoices => Set<EInvoice>();
+    public DbSet<RcmSelfInvoice> RcmSelfInvoices => Set<RcmSelfInvoice>();
 
     public async Task<string> GenerateSalesBillNumberAsync(int year, CancellationToken cancellationToken)
         => await Database.SqlQueryRaw<string>(

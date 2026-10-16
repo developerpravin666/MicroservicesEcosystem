@@ -64,7 +64,7 @@ public sealed class BankReconciliationManagementHandler(IAccountingInventoryDbCo
         db.BankReconciliations.Add(reconciliation);
         db.BankStatementLines.AddRange(reconciliation.Lines);
         await db.SaveChangesAsync(ct);
-        return await MapAsync(reconciliation.Id, ct);
+        return await Common.BankReconciliationMapper.MapAsync(db, reconciliation.Id, ct);
     }
 
     public async Task<BankReconciliationSummary> Handle(MatchBankStatementLineCommand request, CancellationToken ct)
@@ -87,7 +87,7 @@ public sealed class BankReconciliationManagementHandler(IAccountingInventoryDbCo
             throw new ConflictException("Statement and ledger amounts must match exactly; record any bank fee as a separate journal first.");
         statementLine.Match(journalLine.Id);
         await db.SaveChangesAsync(ct);
-        return await MapAsync(reconciliation.Id, ct);
+        return await Common.BankReconciliationMapper.MapAsync(db, reconciliation.Id, ct);
     }
 
     public async Task<BankReconciliationSummary> Handle(FinalizeBankReconciliationCommand request, CancellationToken ct)
@@ -128,7 +128,7 @@ public sealed class BankReconciliationManagementHandler(IAccountingInventoryDbCo
         try { reconciliation.Finalize(DateTimeOffset.UtcNow, allMatched); }
         catch (InvalidOperationException exception) { throw new ConflictException(exception.Message); }
         await db.SaveChangesAsync(ct);
-        return await MapAsync(reconciliation.Id, ct);
+        return await Common.BankReconciliationMapper.MapAsync(db, reconciliation.Id, ct);
     }
 
     public async Task<IReadOnlyList<BankReconciliationSummary>> Handle(GetBankReconciliationsQuery request, CancellationToken ct)
@@ -136,7 +136,7 @@ public sealed class BankReconciliationManagementHandler(IAccountingInventoryDbCo
         var ids = await db.BankReconciliations.AsNoTracking().OrderByDescending(item => item.EndDate)
             .Select(item => item.Id).ToListAsync(ct);
         var rows = new List<BankReconciliationSummary>(ids.Count);
-        foreach (var id in ids) rows.Add(await MapAsync(id, ct));
+        foreach (var id in ids) rows.Add(await Common.BankReconciliationMapper.MapAsync(db, id, ct));
         return rows;
     }
 
@@ -153,16 +153,5 @@ public sealed class BankReconciliationManagementHandler(IAccountingInventoryDbCo
             select new UnmatchedBankJournalLine(line.Id, entry.JournalDate, entry.JournalNumber,
                 entry.Description, line.Debit - line.Credit, line.Memo)).ToListAsync(ct);
     }
-
-    private async Task<BankReconciliationSummary> MapAsync(Guid id, CancellationToken ct)
-    {
-        var item = await db.BankReconciliations.AsNoTracking().SingleAsync(row => row.Id == id, ct);
-        var account = await db.ChartAccounts.AsNoTracking().SingleAsync(row => row.Id == item.AccountId, ct);
-        var lines = await db.BankStatementLines.AsNoTracking().Where(line => line.BankReconciliationId == item.Id)
-            .OrderBy(line => line.TransactionDate)
-            .Select(line => new BankReconciliationLineSummary(line.Id, line.TransactionDate, line.Description,
-                line.Reference, line.Amount, line.JournalLineId)).ToListAsync(ct);
-        return new(item.Id, item.AccountId, account.Code, account.Name, item.StatementReference,
-            item.StartDate, item.EndDate, item.OpeningBalance, item.ClosingBalance, item.IsFinalized, lines);
-    }
 }
+

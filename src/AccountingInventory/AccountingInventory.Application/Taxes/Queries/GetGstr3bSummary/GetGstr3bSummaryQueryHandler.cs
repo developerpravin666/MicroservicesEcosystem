@@ -102,6 +102,20 @@ public sealed class GetGstr3bSummaryQueryHandler(IAccountingInventoryDbContext d
             outIgst -= note.IgstAmount;
         }
 
+        // RCM (Reverse Charge Mechanism) Invoices (Section 9(3) and 9(4))
+        var rcmInvoices = await db.RcmSelfInvoices.AsNoTracking()
+            .Where(r => r.Status == "Active" && r.VoucherDate >= from && r.VoucherDate <= to)
+            .ToListAsync(ct);
+
+        decimal rcmTaxable = rcmInvoices.Sum(r => r.TaxableAmount);
+        decimal rcmCgst = rcmInvoices.Sum(r => r.CgstAmount);
+        decimal rcmSgst = rcmInvoices.Sum(r => r.SgstAmount);
+        decimal rcmIgst = rcmInvoices.Sum(r => r.IgstAmount);
+
+        decimal rcmItcCgst = rcmInvoices.Where(r => r.IsItcEligible).Sum(r => r.CgstAmount);
+        decimal rcmItcSgst = rcmInvoices.Where(r => r.IsItcEligible).Sum(r => r.SgstAmount);
+        decimal rcmItcIgst = rcmInvoices.Where(r => r.IsItcEligible).Sum(r => r.IgstAmount);
+
         var outwardSuppliesTable = new Gstr3bTable31OutwardSuppliesDto(
             OutwardTaxableSupplies: new Gstr3bSupplyRowDto(
                 "(a) Outward taxable supplies (other than zero rated, nil rated and exempted)",
@@ -120,7 +134,7 @@ public sealed class GetGstr3bSummaryQueryHandler(IAccountingInventoryDbContext d
             ),
             InwardLiableToReverseCharge: new Gstr3bSupplyRowDto(
                 "(d) Inward supplies (liable to reverse charge)",
-                0m, 0m, 0m, 0m
+                rcmTaxable, rcmIgst, rcmCgst, rcmSgst
             ),
             NonGstOutwardSupplies: new Gstr3bSupplyRowDto(
                 "(e) Non-GST outward supplies",
@@ -178,11 +192,15 @@ public sealed class GetGstr3bSummaryQueryHandler(IAccountingInventoryDbContext d
         itcSgst = Math.Max(0m, itcSgst);
         itcIgst = Math.Max(0m, itcIgst);
 
+        var totalItcIgst = itcIgst + rcmItcIgst;
+        var totalItcCgst = itcCgst + rcmItcCgst;
+        var totalItcSgst = itcSgst + rcmItcSgst;
+
         var itcAvailable = new List<Gstr3bItcRowDto>
         {
             new("(1) Import of goods", 0m, 0m, 0m),
             new("(2) Import of services", 0m, 0m, 0m),
-            new("(3) Inward supplies liable to reverse charge", 0m, 0m, 0m),
+            new("(3) Inward supplies liable to reverse charge", rcmItcIgst, rcmItcCgst, rcmItcSgst),
             new("(4) Inward supplies from ISD", 0m, 0m, 0m),
             new("(5) All other ITC", itcIgst, itcCgst, itcSgst)
         };
@@ -193,7 +211,7 @@ public sealed class GetGstr3bSummaryQueryHandler(IAccountingInventoryDbContext d
             new("(2) Others", 0m, 0m, 0m)
         };
 
-        var netItc = new Gstr3bItcRowDto("Net ITC Available (A) - (B)", itcIgst, itcCgst, itcSgst);
+        var netItc = new Gstr3bItcRowDto("Net ITC Available (A) - (B)", totalItcIgst, totalItcCgst, totalItcSgst);
 
         var table4 = new Gstr3bTable4EligibleItcDto(itcAvailable, itcReversed, netItc);
 
@@ -203,36 +221,45 @@ public sealed class GetGstr3bSummaryQueryHandler(IAccountingInventoryDbContext d
         var table5 = new Gstr3bTable5InwardSuppliesDto(0m, exemptInwardInter);
 
         // 4. TAX PAYMENT & ITC SET-OFF (Table 6)
-        // Rule: IGST credit can offset IGST, then CGST, then SGST. CGST credit offsets CGST, then IGST. SGST credit offsets SGST, then IGST.
-        // For standard retail computation:
-        var igstPayable = outwardSuppliesTable.OutwardTaxableSupplies.IntegratedTax;
-        var cgstPayable = outwardSuppliesTable.OutwardTaxableSupplies.CentralTax;
-        var sgstPayable = outwardSuppliesTable.OutwardTaxableSupplies.StateTax;
+        // Rule: Output tax can be paid via ITC. Statutory mandate: RCM liability must be paid in CASH (Sec 49(4)).
+        var outwardIgst = outwardSuppliesTable.OutwardTaxableSupplies.IntegratedTax;
+        var outwardCgst = outwardSuppliesTable.OutwardTaxableSupplies.CentralTax;
+        var outwardSgst = outwardSuppliesTable.OutwardTaxableSupplies.StateTax;
 
-        // IGST utilization
-        var igstPaidItc = Math.Min(igstPayable, itcIgst);
-        var remIgstItc = itcIgst - igstPaidItc;
-        var igstCash = igstPayable - igstPaidItc;
+        // IGST utilization against outward
+        var igstPaidItc = Math.Min(outwardIgst, totalItcIgst);
+        var remIgstItc = totalItcIgst - igstPaidItc;
+        var outwardIgstCash = outwardIgst - igstPaidItc;
 
-        // CGST utilization
-        var cgstPaidItc = Math.Min(cgstPayable, itcCgst + remIgstItc);
-        var cgstCash = cgstPayable - cgstPaidItc;
+        // CGST utilization against outward
+        var cgstPaidItc = Math.Min(outwardCgst, totalItcCgst + remIgstItc);
+        var remIgstAfterCgst = Math.Max(0m, remIgstItc - (cgstPaidItc - Math.Min(outwardCgst, totalItcCgst)));
+        var outwardCgstCash = outwardCgst - cgstPaidItc;
 
-        // SGST utilization
-        var sgstPaidItc = Math.Min(sgstPayable, itcSgst);
-        var sgstCash = sgstPayable - sgstPaidItc;
+        // SGST utilization against outward
+        var sgstPaidItc = Math.Min(outwardSgst, totalItcSgst + remIgstAfterCgst);
+        var outwardSgstCash = outwardSgst - sgstPaidItc;
+
+        // RCM liabilities must be discharged in cash as per Section 49(4) of CGST Act
+        var totalIgstPayable = outwardIgst + rcmIgst;
+        var totalCgstPayable = outwardCgst + rcmCgst;
+        var totalSgstPayable = outwardSgst + rcmSgst;
+
+        var igstCashTotal = outwardIgstCash + rcmIgst;
+        var cgstCashTotal = outwardCgstCash + rcmCgst;
+        var sgstCashTotal = outwardSgstCash + rcmSgst;
 
         var paymentRows = new List<Gstr3bTaxPaymentRowDto>
         {
-            new("Integrated Tax", igstPayable, igstPaidItc, igstCash),
-            new("Central Tax", cgstPayable, cgstPaidItc, cgstCash),
-            new("State/UT Tax", sgstPayable, sgstPaidItc, sgstCash),
+            new("Integrated Tax", totalIgstPayable, igstPaidItc, igstCashTotal),
+            new("Central Tax", totalCgstPayable, cgstPaidItc, cgstCashTotal),
+            new("State/UT Tax", totalSgstPayable, sgstPaidItc, sgstCashTotal),
             new("Cess", 0m, 0m, 0m)
         };
 
-        var totalLiability = igstPayable + cgstPayable + sgstPayable;
+        var totalLiability = totalIgstPayable + totalCgstPayable + totalSgstPayable;
         var totalItcUsed = igstPaidItc + cgstPaidItc + sgstPaidItc;
-        var netCash = igstCash + cgstCash + sgstCash;
+        var netCash = igstCashTotal + cgstCashTotal + sgstCashTotal;
 
         var taxPayment = new Gstr3bTaxPaymentSummaryDto(paymentRows, totalLiability, totalItcUsed, netCash);
 

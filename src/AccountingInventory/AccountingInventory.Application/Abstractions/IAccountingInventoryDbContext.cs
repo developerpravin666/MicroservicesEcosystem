@@ -61,6 +61,7 @@ public interface IAccountingInventoryDbContext
     DbSet<UnitOfMeasure> UnitOfMeasures { get; }
     DbSet<EWayBill> EWayBills { get; }
     DbSet<EInvoice> EInvoices { get; }
+    DbSet<RcmSelfInvoice> RcmSelfInvoices { get; }
     Task<string> GenerateSalesBillNumberAsync(int year, CancellationToken cancellationToken);
 
     //DbSet<Role> Roles { get; }
