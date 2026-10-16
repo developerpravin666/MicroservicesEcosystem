@@ -97,6 +97,7 @@ app.MapGeneralLedgerEndpoints();
 app.MapAccountingExtensionEndpoints();
 app.MapAccountingP0Endpoints();
 app.MapTaxEndpoints();
+app.MapComplianceEndpoints();
 app.MapDashboardEndpoints();
 app.MapFeatureFlagEndpoints();
 app.MapTableRegistryEndpoints();

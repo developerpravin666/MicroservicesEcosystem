@@ -78,6 +78,8 @@ public sealed class AccountingInventoryDbContext(
     public DbSet<StockTransferLine> StockTransferLines => Set<StockTransferLine>();
     public DbSet<StockAdjustment> StockAdjustments => Set<StockAdjustment>();
     public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
+    public DbSet<EWayBill> EWayBills => Set<EWayBill>();
+    public DbSet<EInvoice> EInvoices => Set<EInvoice>();
 
     public async Task<string> GenerateSalesBillNumberAsync(int year, CancellationToken cancellationToken)
         => await Database.SqlQueryRaw<string>(
@@ -222,6 +224,8 @@ public sealed class AccountingInventoryDbContext(
         modelBuilder.ApplyConfiguration(new StockTransferLineConfiguration());
         modelBuilder.ApplyConfiguration(new StockAdjustmentConfiguration());
         modelBuilder.ApplyConfiguration(new UnitOfMeasureConfiguration());
+        modelBuilder.ApplyConfiguration(new EWayBillConfiguration());
+        modelBuilder.ApplyConfiguration(new EInvoiceConfiguration());
         P0Configurations.Configure(modelBuilder);
         modelBuilder.Entity<JournalLine>().HasOne<AccountingDimension>().WithMany()
             .HasForeignKey(line => line.DimensionId).OnDelete(DeleteBehavior.Restrict);

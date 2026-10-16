@@ -59,6 +59,8 @@ public interface IAccountingInventoryDbContext
     DbSet<StockTransferLine> StockTransferLines { get; }
     DbSet<StockAdjustment> StockAdjustments { get; }
     DbSet<UnitOfMeasure> UnitOfMeasures { get; }
+    DbSet<EWayBill> EWayBills { get; }
+    DbSet<EInvoice> EInvoices { get; }
     Task<string> GenerateSalesBillNumberAsync(int year, CancellationToken cancellationToken);
 
     //DbSet<Role> Roles { get; }
