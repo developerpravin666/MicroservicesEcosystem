@@ -99,6 +99,40 @@ public static class InventoryEndpoints
             Results.Ok(new { id = await sender.Send(command, ct) }))
             .WithName("CreateStockAdjustment");
 
+        // Phase 5: Compound / Alternate Units of Measurement (UOM)
+        group.MapGet("/uom", async ([FromQuery] bool? activeOnly, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new Application.Inventory.Uom.Queries.GetUnitOfMeasures.GetUnitOfMeasuresQuery(activeOnly ?? false), ct)))
+            .WithName("GetUnitOfMeasures");
+
+        group.MapPost("/uom", async (Application.Inventory.Uom.Commands.CreateUnitOfMeasure.CreateUnitOfMeasureCommand command, ISender sender, CancellationToken ct) =>
+            Results.Ok(new { id = await sender.Send(command, ct) }))
+            .WithName("CreateUnitOfMeasure");
+
+        // Phase 5: Stock Valuation (FIFO, Weighted Average, Last Purchase Cost) & Trading COGS
+        group.MapGet("/valuation/summary", async (
+            [FromQuery] string? method,
+            [FromQuery] DateOnly? asOfDate,
+            [FromQuery] Guid? godownId,
+            [FromQuery] string? search,
+            ISender sender,
+            CancellationToken ct) =>
+            Results.Ok(await sender.Send(new Application.Inventory.Valuation.Queries.GetStockValuationSummary.GetStockValuationSummaryQuery(
+                method ?? "FIFO",
+                asOfDate,
+                godownId,
+                search), ct)))
+            .WithName("GetStockValuationSummary");
+
+        group.MapGet("/valuation/trading-cogs", async (
+            [FromQuery] DateOnly? fromDate,
+            [FromQuery] DateOnly? toDate,
+            ISender sender,
+            CancellationToken ct) =>
+            Results.Ok(await sender.Send(new Application.Inventory.Valuation.Queries.GetTradingProfitLossValuation.GetTradingProfitLossValuationQuery(
+                fromDate,
+                toDate), ct)))
+            .WithName("GetTradingProfitLossValuation");
+
         return group;
     }
 }

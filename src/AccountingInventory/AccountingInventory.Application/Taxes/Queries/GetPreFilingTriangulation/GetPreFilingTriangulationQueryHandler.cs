@@ -218,16 +218,24 @@ public sealed class GetPreFilingTriangulationQueryHandler(IAccountingInventoryDb
 
         // 3. Scan Journal Entries for Debit/Credit balancing errors
         var journals = await db.JournalEntries.AsNoTracking()
-            .Include(j => j.Lines)
             .Where(j => j.JournalDate >= from && j.JournalDate <= to)
             .ToListAsync(ct);
 
         totalVouchersScanned += journals.Count;
+        var journalIds = journals.Select(j => j.Id).ToList();
+
+        var journalLines = await db.JournalLines.AsNoTracking()
+            .Where(l => journalIds.Contains(l.JournalEntryId))
+            .ToListAsync(ct);
+
+        var linesByJournal = journalLines.GroupBy(l => l.JournalEntryId).ToDictionary(g => g.Key, g => g.ToList());
 
         foreach (var j in journals)
         {
-            var totalDr = j.Lines.Sum(l => l.Debit);
-            var totalCr = j.Lines.Sum(l => l.Credit);
+            linesByJournal.TryGetValue(j.Id, out var lines);
+            lines ??= [];
+            var totalDr = lines.Sum(l => l.Debit);
+            var totalCr = lines.Sum(l => l.Credit);
             var diff = Math.Abs(totalDr - totalCr);
 
             if (diff > 0.01m)

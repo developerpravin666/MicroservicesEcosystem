@@ -123,7 +123,21 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
         {
             if (l.SkuId.HasValue) {
                 var sku = skus[l.SkuId.Value];
-                l = l with { ItemDescription = sku.Name, HsnSac = sku.HsnSac, UnitOfMeasure = sku.UnitOfMeasure };
+                var altUnit = l.AlternateUnit ?? sku.AlternateUnit;
+                var convFactor = l.ConversionFactor ?? sku.ConversionFactor;
+                var qty = l.Quantity;
+                if (!string.IsNullOrWhiteSpace(altUnit) && l.AlternateQuantity.HasValue && l.AlternateQuantity.Value > 0 && convFactor.HasValue && convFactor.Value > 0)
+                {
+                    qty = decimal.Round(l.AlternateQuantity.Value * convFactor.Value, 4, MidpointRounding.AwayFromZero);
+                }
+                l = l with { 
+                    ItemDescription = sku.Name, 
+                    HsnSac = sku.HsnSac, 
+                    UnitOfMeasure = sku.UnitOfMeasure,
+                    AlternateUnit = altUnit,
+                    ConversionFactor = convFactor,
+                    Quantity = qty
+                };
             }
             var product = l.ProductId.HasValue ? productsToRelieve.SingleOrDefault(p => p.Id == l.ProductId.Value) : null;
             l = l with { HsnSac = HsnSacCode.Normalize(l.HsnSac ?? product?.HsnSac) };
@@ -176,7 +190,14 @@ public sealed class CreateSalesInvoiceCommandHandler(IAccountingInventoryDbConte
                 l.TaxId,
                 cgstRate,
                 sgstRate,
-                igstRate, l.HsnSac, l.UnitOfMeasure, l.SkuId, tax?.Treatment ?? "NonGst");
+                igstRate,
+                l.HsnSac,
+                l.UnitOfMeasure,
+                l.SkuId,
+                tax?.Treatment ?? "NonGst",
+                l.AlternateUnit,
+                l.AlternateQuantity,
+                l.ConversionFactor);
         }).ToList();
 
         var invoice = SalesInvoice.Create(

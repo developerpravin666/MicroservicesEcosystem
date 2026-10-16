@@ -40,6 +40,8 @@ internal static class P0Configurations
         Configure<SkuMovement>(model, "sku_movements");
         model.Entity<StockSku>().Property(s => s.Quantity).HasPrecision(18,4);
         model.Entity<StockSku>().Property(s => s.Code).HasMaxLength(40);
+        model.Entity<StockSku>().Property(s => s.AlternateUnit).HasMaxLength(20);
+        model.Entity<StockSku>().Property(s => s.ConversionFactor).HasPrecision(18, 4);
         model.Entity<StockSku>().HasIndex(s => s.Code).IsUnique();
         model.Entity<SkuMovement>().Property(s => s.Quantity).HasPrecision(18,4);
         model.Entity<SkuMovement>().HasOne<StockSku>().WithMany().HasForeignKey(s => s.SkuId).OnDelete(DeleteBehavior.Restrict);
@@ -52,6 +54,9 @@ internal static class P0Configurations
         model.Entity<SalesInvoice>().HasIndex(x => x.CustomerId);
         model.Entity<SalesInvoice>().HasOne<Customer>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
         model.Entity<SalesInvoiceLine>().Property(x => x.Quantity).HasPrecision(18, 4);
+        model.Entity<SalesInvoiceLine>().Property(x => x.AlternateUnit).HasMaxLength(20);
+        model.Entity<SalesInvoiceLine>().Property(x => x.AlternateQuantity).HasPrecision(18, 4);
+        model.Entity<SalesInvoiceLine>().Property(x => x.ConversionFactor).HasPrecision(18, 4);
         model.Entity<SalesInvoiceLine>().HasOne<SalesInvoice>().WithMany(x => x.Lines).HasForeignKey(x => x.SalesInvoiceId).OnDelete(DeleteBehavior.Cascade);
         Configure<MasterImportBatch>(model, "master_import_batches");
         Configure<MasterImportStagingRow>(model, "master_import_staging_rows");
