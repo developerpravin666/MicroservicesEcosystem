@@ -107,7 +107,8 @@ public sealed class SalesInvoice : AggregateRoot
                 draft.TaxId,
                 draft.CgstRate,
                 draft.SgstRate,
-                draft.IgstRate, draft.HsnSac, draft.UnitOfMeasure, draft.SkuId, draft.TaxTreatment);
+                draft.IgstRate, draft.HsnSac, draft.UnitOfMeasure, draft.SkuId, draft.TaxTreatment,
+                draft.AlternateUnit, draft.AlternateQuantity, draft.ConversionFactor);
 
             invoice.Lines.Add(line);
             subTotal += line.TaxableAmount + line.Discount;
@@ -172,6 +173,9 @@ public sealed class SalesInvoiceLine : AggregateRoot
     public decimal Discount { get; private set; }
     public string? HsnSac { get; private set; }
     public string UnitOfMeasure { get; private set; } = "NOS";
+    public string? AlternateUnit { get; private set; }
+    public decimal? AlternateQuantity { get; private set; }
+    public decimal? ConversionFactor { get; private set; }
     public Guid? TaxId { get; private set; }
     public string TaxTreatment { get; private set; } = "Taxable";
     public decimal CgstRate { get; private set; }
@@ -199,7 +203,12 @@ public sealed class SalesInvoiceLine : AggregateRoot
         decimal sgstRate,
         decimal igstRate,
         string? hsnSac = null,
-        string unitOfMeasure = "NOS", Guid? skuId = null, string taxTreatment = "Taxable")
+        string unitOfMeasure = "NOS",
+        Guid? skuId = null,
+        string taxTreatment = "Taxable",
+        string? alternateUnit = null,
+        decimal? alternateQuantity = null,
+        decimal? conversionFactor = null)
     {
         if (salesInvoiceId == Guid.Empty) throw new ArgumentException("Invoice ID is required.");
         if (string.IsNullOrWhiteSpace(itemDescription)) throw new ArgumentException("Item description is required.");
@@ -244,6 +253,9 @@ public sealed class SalesInvoiceLine : AggregateRoot
             Discount = roundedDiscount,
             HsnSac = string.IsNullOrWhiteSpace(hsnSac) ? null : hsnSac.Trim(),
             UnitOfMeasure = unitOfMeasure.Trim(),
+            AlternateUnit = string.IsNullOrWhiteSpace(alternateUnit) ? null : alternateUnit.Trim().ToUpperInvariant(),
+            AlternateQuantity = alternateQuantity.HasValue ? decimal.Round(alternateQuantity.Value, 4, MidpointRounding.AwayFromZero) : null,
+            ConversionFactor = conversionFactor,
             TaxId = taxId == Guid.Empty ? null : taxId,
             TaxTreatment = taxTreatment,
             CgstRate = cgstRate,
@@ -272,4 +284,11 @@ public sealed record SalesInvoiceLineDraft(
     Guid? TaxId,
     decimal CgstRate,
     decimal SgstRate,
-    decimal IgstRate = 0m, string? HsnSac = null, string UnitOfMeasure = "NOS", Guid? SkuId = null, string TaxTreatment = "Taxable");
+    decimal IgstRate = 0m,
+    string? HsnSac = null,
+    string UnitOfMeasure = "NOS",
+    Guid? SkuId = null,
+    string TaxTreatment = "Taxable",
+    string? AlternateUnit = null,
+    decimal? AlternateQuantity = null,
+    decimal? ConversionFactor = null);

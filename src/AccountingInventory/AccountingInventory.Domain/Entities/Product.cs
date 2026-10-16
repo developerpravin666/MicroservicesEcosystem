@@ -25,6 +25,8 @@ public sealed class Product : AggregateRoot
     public bool IsOpeningStock { get; private set; }
     public void StageOpeningStock() { IsOpeningStock = true; IsActive = false; }
     public void ActivateOpeningStock() { IsOpeningStock = true; IsActive = true; }
+    public Guid? GodownId { get; private set; }
+    public void AssignGodown(Guid? godownId) => GodownId = godownId;
     public decimal PurchasePrice { get; private set; }
     public decimal TotalAmount { get; private set; }
     public decimal Discount { get; private set; }

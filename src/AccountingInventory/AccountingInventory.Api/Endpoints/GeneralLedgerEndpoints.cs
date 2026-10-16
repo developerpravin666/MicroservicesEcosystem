@@ -1,5 +1,13 @@
 using AccountingInventory.Application.Common.Models;
 using AccountingInventory.Application.GeneralLedger;
+using AccountingInventory.Application.GeneralLedger.Commands.CreateContraVoucher;
+using AccountingInventory.Application.GeneralLedger.Commands.CreateJournalVoucher;
+using AccountingInventory.Application.GeneralLedger.Commands.AutoMatchBankReconciliation;
+using AccountingInventory.Application.GeneralLedger.Commands.AcceptBankStatementSuggestion;
+using AccountingInventory.Application.GeneralLedger.Queries.GetContraAccounts;
+using AccountingInventory.Application.GeneralLedger.Queries.GetContraVouchers;
+using AccountingInventory.Application.GeneralLedger.Queries.GetBankStatementSuggestions;
+using AccountingInventory.Application.GeneralLedger.Common;
 using BuildingBlocks.WebDefaults;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -31,6 +39,22 @@ public static class GeneralLedgerEndpoints
         group.MapPost("/journals", async (PostJournalCommand command, ISender sender, CancellationToken ct) =>
             Results.Created("/api/general-ledger/journals", await sender.Send(command, ct)))
             .WithName("PostJournal");
+
+        group.MapPost("/journal", async (CreateJournalVoucherCommand command, ISender sender, CancellationToken ct) =>
+            Results.Created("/api/general-ledger/journal", await sender.Send(command, ct)))
+            .WithName("CreateJournalVoucher").Produces<JournalSummary>();
+
+        group.MapGet("/contra/accounts", async (ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new GetContraAccountsQuery(), ct)))
+            .WithName("GetContraAccounts").Produces<IReadOnlyList<ContraAccountSummary>>();
+
+        group.MapGet("/contra", async ([FromQuery] int? page, [FromQuery] int? pageSize, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new GetContraVouchersQuery(page ?? 1, pageSize ?? 20), ct)))
+            .WithName("GetContraVouchers").Produces<PagedResult<ContraVoucherSummary>>();
+
+        group.MapPost("/contra", async (CreateContraVoucherCommand command, ISender sender, CancellationToken ct) =>
+            Results.Created("/api/general-ledger/contra", await sender.Send(command, ct)))
+            .WithName("CreateContraVoucher").Produces<ContraVoucherSummary>();
 
         group.MapPost("/journals/{id:guid}/reverse", async (Guid id, ReverseJournalRequest request,
                 ISender sender, CancellationToken ct) =>
@@ -116,6 +140,15 @@ public static class GeneralLedgerEndpoints
         reconciliation.MapPost("/{id:guid}/finalize", async (Guid id, ISender sender, CancellationToken ct) =>
             Results.Ok(await sender.Send(new FinalizeBankReconciliationCommand(id), ct)))
             .WithName("FinalizeBankReconciliation");
+        reconciliation.MapPost("/{id:guid}/auto-match", async (Guid id, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new AutoMatchBankReconciliationCommand(id), ct)))
+            .WithName("AutoMatchBankReconciliation");
+        reconciliation.MapGet("/{id:guid}/suggestions", async (Guid id, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new GetBankStatementSuggestionsQuery(id), ct)))
+            .WithName("GetBankStatementSuggestions");
+        reconciliation.MapPost("/{id:guid}/accept-suggestion", async (Guid id, AcceptBankStatementSuggestionRequest request, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new AcceptBankStatementSuggestionCommand(id, request.StatementLineId, request.SuggestionType, request.EntityId, request.BillOrReferenceNumber), ct)))
+            .WithName("AcceptBankStatementSuggestion");
 
         return group;
     }
@@ -123,3 +156,5 @@ public static class GeneralLedgerEndpoints
 
 public sealed record ReverseJournalRequest(DateOnly ReversalDate, string? Reason = null);
 public sealed record MatchBankReconciliationRequest(Guid StatementLineId, Guid JournalLineId);
+public sealed record AcceptBankStatementSuggestionRequest(Guid StatementLineId, string SuggestionType, Guid EntityId, string? BillOrReferenceNumber = null);
+

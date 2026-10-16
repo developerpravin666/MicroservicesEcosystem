@@ -138,8 +138,10 @@ public sealed class PostJournalHandler(IAccountingInventoryDbContext db) : IRequ
         await LedgerPosting.EnsurePeriodOpenAsync(db, request.JournalDate, ct);
         if (!string.IsNullOrWhiteSpace(request.SourceType)
             && !string.Equals(request.SourceType, "Manual", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(request.SourceType, "Contra", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(request.SourceType, "Journal", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(request.SourceType, "FinancialCorrection", StringComparison.OrdinalIgnoreCase))
-            throw new ConflictException("Manual journals may only use Manual or FinancialCorrection as their source type.");
+            throw new ConflictException("Manual journals may only use Manual, Contra, Journal, or FinancialCorrection as their source type.");
         var isCorrection = string.Equals(request.SourceType, "FinancialCorrection", StringComparison.OrdinalIgnoreCase);
         if (isCorrection && request.ApprovalId is null)
             throw new ConflictException("Financial corrections require an approved request.");
@@ -238,6 +240,8 @@ public sealed class ReverseJournalHandler(IAccountingInventoryDbContext db)
             ?? throw new BuildingBlocks.Application.Exceptions.NotFoundException("Journal entry was not found.");
         if (!string.IsNullOrWhiteSpace(original.SourceType)
             && !string.Equals(original.SourceType, "Manual", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(original.SourceType, "Contra", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(original.SourceType, "Journal", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(original.SourceType, "FinancialCorrection", StringComparison.OrdinalIgnoreCase))
             throw new ConflictException("System journals must be corrected through their source workflow so stock and balances remain consistent.");
         if (request.ReversalDate < original.JournalDate)

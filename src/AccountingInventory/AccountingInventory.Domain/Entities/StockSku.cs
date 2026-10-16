@@ -7,15 +7,46 @@ public sealed class StockSku : AggregateRoot
     public string Name { get; private set; } = null!;
     public string HsnSac { get; private set; } = null!;
     public string UnitOfMeasure { get; private set; } = null!;
+    public string? AlternateUnit { get; private set; }
+    public decimal? ConversionFactor { get; private set; }
     public decimal Quantity { get; private set; }
     public decimal InventoryValue { get; private set; }
     public DateOnly? LastMovementDate { get; private set; }
-    public static StockSku Create(string code, string name, string hsn, string unit, Guid? defaultTaxId = null)
+    public static StockSku Create(
+        string code,
+        string name,
+        string hsn,
+        string unit,
+        Guid? defaultTaxId = null,
+        string? alternateUnit = null,
+        decimal? conversionFactor = null)
     {
         if (string.IsNullOrWhiteSpace(code) || code.Length > 40 || string.IsNullOrWhiteSpace(name) || name.Length > 200
             || !System.Text.RegularExpressions.Regex.IsMatch(hsn ?? "", @"^(\d{4}|\d{6}|\d{8})$")
             || string.IsNullOrWhiteSpace(unit) || unit.Length > 10) throw new ArgumentException("Provide SKU code, name, HSN and unit.");
-        return new() { Id = Guid.NewGuid(), IsActive = true, DefaultTaxId = defaultTaxId, Code = code.Trim().ToUpperInvariant(), Name = name.Trim(), HsnSac = hsn!, UnitOfMeasure = unit.Trim().ToUpperInvariant() };
+        if (!string.IsNullOrWhiteSpace(alternateUnit) && (!conversionFactor.HasValue || conversionFactor.Value <= 0))
+            throw new ArgumentException("Conversion factor must be positive when alternate unit is specified.");
+
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            IsActive = true,
+            DefaultTaxId = defaultTaxId,
+            Code = code.Trim().ToUpperInvariant(),
+            Name = name.Trim(),
+            HsnSac = hsn!,
+            UnitOfMeasure = unit.Trim().ToUpperInvariant(),
+            AlternateUnit = string.IsNullOrWhiteSpace(alternateUnit) ? null : alternateUnit.Trim().ToUpperInvariant(),
+            ConversionFactor = string.IsNullOrWhiteSpace(alternateUnit) ? null : conversionFactor
+        };
+    }
+    public void SetAlternateUnit(string? alternateUnit, decimal? conversionFactor)
+    {
+        if (!string.IsNullOrWhiteSpace(alternateUnit) && (!conversionFactor.HasValue || conversionFactor.Value <= 0))
+            throw new ArgumentException("Conversion factor must be positive when alternate unit is specified.");
+
+        AlternateUnit = string.IsNullOrWhiteSpace(alternateUnit) ? null : alternateUnit.Trim().ToUpperInvariant();
+        ConversionFactor = string.IsNullOrWhiteSpace(alternateUnit) ? null : conversionFactor;
     }
     public void StageOpening() { IsActive=false; }
     public void ActivateOpening() { IsActive=true; }

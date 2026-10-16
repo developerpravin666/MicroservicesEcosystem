@@ -72,6 +72,15 @@ public sealed class AccountingInventoryDbContext(
     public DbSet<OpeningSettlement> OpeningSettlements => Set<OpeningSettlement>();
     public DbSet<MasterImportBatch> MasterImportBatches => Set<MasterImportBatch>();
     public DbSet<MasterImportStagingRow> MasterImportStagingRows => Set<MasterImportStagingRow>();
+    public DbSet<Godown> Godowns => Set<Godown>();
+    public DbSet<StockBalance> StockBalances => Set<StockBalance>();
+    public DbSet<StockTransferJournal> StockTransferJournals => Set<StockTransferJournal>();
+    public DbSet<StockTransferLine> StockTransferLines => Set<StockTransferLine>();
+    public DbSet<StockAdjustment> StockAdjustments => Set<StockAdjustment>();
+    public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
+    public DbSet<EWayBill> EWayBills => Set<EWayBill>();
+    public DbSet<EInvoice> EInvoices => Set<EInvoice>();
+    public DbSet<RcmSelfInvoice> RcmSelfInvoices => Set<RcmSelfInvoice>();
 
     public async Task<string> GenerateSalesBillNumberAsync(int year, CancellationToken cancellationToken)
         => await Database.SqlQueryRaw<string>(
@@ -210,6 +219,14 @@ public sealed class AccountingInventoryDbContext(
         modelBuilder.ApplyConfiguration(new FixedAssetConfiguration());
         modelBuilder.ApplyConfiguration(new AccountBudgetConfiguration());
         modelBuilder.ApplyConfiguration(new AccountingUserPermissionConfiguration());
+        modelBuilder.ApplyConfiguration(new GodownConfiguration());
+        modelBuilder.ApplyConfiguration(new StockBalanceConfiguration());
+        modelBuilder.ApplyConfiguration(new StockTransferJournalConfiguration());
+        modelBuilder.ApplyConfiguration(new StockTransferLineConfiguration());
+        modelBuilder.ApplyConfiguration(new StockAdjustmentConfiguration());
+        modelBuilder.ApplyConfiguration(new UnitOfMeasureConfiguration());
+        modelBuilder.ApplyConfiguration(new EWayBillConfiguration());
+        modelBuilder.ApplyConfiguration(new EInvoiceConfiguration());
         P0Configurations.Configure(modelBuilder);
         modelBuilder.Entity<JournalLine>().HasOne<AccountingDimension>().WithMany()
             .HasForeignKey(line => line.DimensionId).OnDelete(DeleteBehavior.Restrict);

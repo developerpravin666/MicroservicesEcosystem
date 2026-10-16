@@ -52,6 +52,87 @@ public static class InventoryEndpoints
         group.MapPost("/skus", async (CreateStockSkuCommand q,ISender sender,CancellationToken ct) => Results.Ok(new {id=await sender.Send(q,ct)}));
         group.MapPost("/skus/receipts", async (ReceiveSkuStockCommand q,ISender sender,CancellationToken ct) => Results.Ok(new {id=await sender.Send(q,ct)}));
         group.MapPost("/skus/write-off", async (WriteOffSkuStockCommand q,ISender sender,CancellationToken ct) => Results.Ok(new {id=await sender.Send(q,ct)}));
+
+        // Phase 4: Multi-Godown Architecture
+        group.MapGet("/godowns", async (ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new Application.Inventory.Godowns.Queries.GetGodowns.GetGodownsQuery(), ct)))
+            .WithName("GetGodowns");
+
+        group.MapPost("/godowns", async (Application.Inventory.Godowns.Commands.CreateGodown.CreateGodownCommand command, ISender sender, CancellationToken ct) =>
+            Results.Ok(new { id = await sender.Send(command, ct) }))
+            .WithName("CreateGodown");
+
+        group.MapPut("/godowns/{id:guid}", async (Guid id, Application.Inventory.Godowns.Commands.UpdateGodown.UpdateGodownCommand command, ISender sender, CancellationToken ct) =>
+        {
+            if (id != command.Id) return Results.BadRequest("ID in route does not match command payload.");
+            await sender.Send(command, ct);
+            return Results.NoContent();
+        }).WithName("UpdateGodown");
+
+        group.MapGet("/godowns/{id:guid}/stock", async (Guid id, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new Application.Inventory.Godowns.Queries.GetGodownStock.GetGodownStockQuery(id), ct)))
+            .WithName("GetGodownStock");
+
+        // Phase 4: Stock Transfer Journal
+        group.MapGet("/transfers", async ([FromQuery] Guid? godownId, [FromQuery] DateOnly? fromDate, [FromQuery] DateOnly? toDate, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new Application.Inventory.Transfers.Queries.GetStockTransfers.GetStockTransfersQuery(godownId, fromDate, toDate), ct)))
+            .WithName("GetStockTransfers");
+
+        group.MapGet("/transfers/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new Application.Inventory.Transfers.Queries.GetStockTransferById.GetStockTransferByIdQuery(id), ct)))
+            .WithName("GetStockTransferById");
+
+        group.MapPost("/transfers", async (Application.Inventory.Transfers.Commands.CreateStockTransfer.CreateStockTransferCommand command, ISender sender, CancellationToken ct) =>
+            Results.Ok(new { id = await sender.Send(command, ct) }))
+            .WithName("CreateStockTransfer");
+
+        // Phase 4: Physical Stock Verification & Discrepancy Adjustment
+        group.MapGet("/audit", async ([FromQuery] Guid godownId, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new Application.Inventory.Adjustments.Queries.GetPhysicalStockAudit.GetPhysicalStockAuditQuery(godownId), ct)))
+            .WithName("GetPhysicalStockAudit");
+
+        group.MapGet("/adjustments", async ([FromQuery] Guid? godownId, [FromQuery] DateOnly? fromDate, [FromQuery] DateOnly? toDate, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new Application.Inventory.Adjustments.Queries.GetStockAdjustments.GetStockAdjustmentsQuery(godownId, fromDate, toDate), ct)))
+            .WithName("GetStockAdjustments");
+
+        group.MapPost("/adjustments", async (Application.Inventory.Adjustments.Commands.CreateStockAdjustment.CreateStockAdjustmentCommand command, ISender sender, CancellationToken ct) =>
+            Results.Ok(new { id = await sender.Send(command, ct) }))
+            .WithName("CreateStockAdjustment");
+
+        // Phase 5: Compound / Alternate Units of Measurement (UOM)
+        group.MapGet("/uom", async ([FromQuery] bool? activeOnly, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new Application.Inventory.Uom.Queries.GetUnitOfMeasures.GetUnitOfMeasuresQuery(activeOnly ?? false), ct)))
+            .WithName("GetUnitOfMeasures");
+
+        group.MapPost("/uom", async (Application.Inventory.Uom.Commands.CreateUnitOfMeasure.CreateUnitOfMeasureCommand command, ISender sender, CancellationToken ct) =>
+            Results.Ok(new { id = await sender.Send(command, ct) }))
+            .WithName("CreateUnitOfMeasure");
+
+        // Phase 5: Stock Valuation (FIFO, Weighted Average, Last Purchase Cost) & Trading COGS
+        group.MapGet("/valuation/summary", async (
+            [FromQuery] string? method,
+            [FromQuery] DateOnly? asOfDate,
+            [FromQuery] Guid? godownId,
+            [FromQuery] string? search,
+            ISender sender,
+            CancellationToken ct) =>
+            Results.Ok(await sender.Send(new Application.Inventory.Valuation.Queries.GetStockValuationSummary.GetStockValuationSummaryQuery(
+                method ?? "FIFO",
+                asOfDate,
+                godownId,
+                search), ct)))
+            .WithName("GetStockValuationSummary");
+
+        group.MapGet("/valuation/trading-cogs", async (
+            [FromQuery] DateOnly? fromDate,
+            [FromQuery] DateOnly? toDate,
+            ISender sender,
+            CancellationToken ct) =>
+            Results.Ok(await sender.Send(new Application.Inventory.Valuation.Queries.GetTradingProfitLossValuation.GetTradingProfitLossValuationQuery(
+                fromDate,
+                toDate), ct)))
+            .WithName("GetTradingProfitLossValuation");
+
         return group;
     }
 }
