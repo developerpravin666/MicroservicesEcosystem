@@ -1,6 +1,6 @@
 # Accounting & Inventory User Manual
 
-Version: 1.29 | Updated: 14 October 2026 | Covers tenant profile/password management, email/mobile sign-in, modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
+Version: 1.30 | Updated: 16 October 2026 | Covers tenant profile/password management, email/mobile sign-in, modern multi-line billing, automated Indian GST, FIFO payments, Party Statements, Business Intelligence, Smart Suggestions, Two-Stage Master Data Import & Verification, Cash/Part Payments, Finance EMI Plans, Feature Flags and Table Management
 
 For business owners, purchase staff, sales staff and accountants. Menu names below match the application. Your owner provides your website address and account details. Available actions depend on your permissions.
 
@@ -41,6 +41,8 @@ To share this guide, send accounting-user-manual.html. Open that file in a brows
 - [26. Product Owner: feature availability and table overview](#26-product-owner-feature-availability-and-table-overview)
 
 ## 1. Get started
+
+Browser tabs show the current page name followed by Siddhi (for example, `Add Customer | Siddhi`). Open a page from the menu, then open an add, edit, payment or print screen; the tab title updates to identify that screen. Browser Back and Forward restore the corresponding page title.
 
 1. For a new account, open the invitation email and follow the activation link. Invitations expire after 24 hours and can be used once.
 2. Set a password containing at least 12 characters, including an uppercase letter, a lowercase letter and a number.
