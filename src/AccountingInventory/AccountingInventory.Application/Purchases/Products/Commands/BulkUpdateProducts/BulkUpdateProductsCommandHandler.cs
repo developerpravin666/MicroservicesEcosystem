@@ -18,7 +18,9 @@ public sealed class BulkUpdateProductsCommandHandler(IAccountingInventoryDbConte
             throw new ConflictException("The bulk update contains the same product more than once.");
 
         var serials = updates
-            .SelectMany(update => new[] { update.SerialNumber.Trim().ToLowerInvariant(), update.SerialNumber1!.Trim().ToLowerInvariant() })
+            .SelectMany(u => new[] { u.SerialNumber, u.SerialNumber1 })
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s!.Trim().ToLowerInvariant())
             .ToArray();
         var duplicateSerial = serials.GroupBy(serial => serial, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault(group => group.Count() > 1)?.Key;
@@ -44,7 +46,7 @@ public sealed class BulkUpdateProductsCommandHandler(IAccountingInventoryDbConte
             .Where(product => !ids.Contains(product.Id)
                 && (serials.Contains(product.SerialNumber.ToLower())
                     || (product.SerialNumber1 != null && serials.Contains(product.SerialNumber1.ToLower()))))
-            .Select(product => serials.Contains(product.SerialNumber.ToLower()) ? product.SerialNumber : product.SerialNumber1!)
+            .Select(product => serials.Contains(product.SerialNumber.ToLower()) ? product.SerialNumber : (product.SerialNumber1 ?? product.SerialNumber))
             .FirstOrDefaultAsync(cancellationToken);
         if (existingSerial is not null)
             throw new ConflictException($"Serial number '{existingSerial}' is already assigned to another product.");

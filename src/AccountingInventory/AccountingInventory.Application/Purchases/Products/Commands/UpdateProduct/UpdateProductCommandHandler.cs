@@ -32,12 +32,14 @@ public sealed class UpdateProductCommandHandler(
             throw new ConflictException("Products on a bill with recorded payments cannot be edited.");
 
         var serialNumber = request.SerialNumber.Trim().ToLowerInvariant();
-        var serialNumber1 = request.SerialNumber1!.Trim().ToLowerInvariant();
-        if (string.Equals(serialNumber, serialNumber1, StringComparison.OrdinalIgnoreCase))
+        var serialNumber1 = string.IsNullOrWhiteSpace(request.SerialNumber1) ? null : request.SerialNumber1.Trim().ToLowerInvariant();
+        if (serialNumber1 != null && string.Equals(serialNumber, serialNumber1, StringComparison.OrdinalIgnoreCase))
             throw new ConflictException("Serial Number and Serial Number 1 must be different.");
         if (await dbContext.Products.AnyAsync(x => x.Id != request.Id
-            && (x.SerialNumber.ToLower() == serialNumber || x.SerialNumber.ToLower() == serialNumber1
-                || (x.SerialNumber1 != null && x.SerialNumber1.ToLower() == serialNumber) || (x.SerialNumber1 != null && x.SerialNumber1.ToLower() == serialNumber1)), cancellationToken))
+            && (x.SerialNumber.ToLower() == serialNumber
+                || (serialNumber1 != null && x.SerialNumber.ToLower() == serialNumber1)
+                || (x.SerialNumber1 != null && x.SerialNumber1.ToLower() == serialNumber)
+                || (serialNumber1 != null && x.SerialNumber1 != null && x.SerialNumber1.ToLower() == serialNumber1)), cancellationToken))
             throw new ConflictException("A serial number already exists on another product.");
 
         product.Update(request.VendorId, request.BrandId, request.ProductTypeId, request.ProductModelId,

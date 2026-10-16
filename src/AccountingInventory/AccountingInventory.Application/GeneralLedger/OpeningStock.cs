@@ -21,8 +21,12 @@ public sealed class ImportOpeningStockHandler(IAccountingInventoryDbContext db) 
         var p = q.Product;
         await PurchaseIntegrity.ValidateAsync(db, [new(p.VendorId, p.BrandId, p.ProductTypeId, p.ProductModelId,
             p.VariantId, p.ColorId, p.BillNumber, p.PurchaseDate, p.PaymentTermsDays)], ct);
-        var serials = new[] { p.SerialNumber.Trim().ToLowerInvariant(), p.SerialNumber1?.Trim().ToLowerInvariant() ?? "" };
-        if (serials[0] == serials[1] || await db.Products.AnyAsync(x => serials.Contains(x.SerialNumber.ToLower())
+        var s1 = p.SerialNumber.Trim().ToLowerInvariant();
+        var s2 = string.IsNullOrWhiteSpace(p.SerialNumber1) ? null : p.SerialNumber1.Trim().ToLowerInvariant();
+        if (s2 != null && s1 == s2)
+            throw new ConflictException("Opening stock serial numbers must be unique.");
+        var serials = s2 != null ? new[] { s1, s2 } : new[] { s1 };
+        if (await db.Products.AnyAsync(x => serials.Contains(x.SerialNumber.ToLower())
             || (x.SerialNumber1 != null && serials.Contains(x.SerialNumber1.ToLower())), ct))
             throw new ConflictException("Opening stock serial numbers must be unique.");
         var product = Product.Create(p.VendorId, p.BrandId, p.ProductTypeId, p.ProductModelId, p.VariantId, p.ColorId,
