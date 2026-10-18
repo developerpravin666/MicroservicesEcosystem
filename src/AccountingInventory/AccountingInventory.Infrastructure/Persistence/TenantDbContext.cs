@@ -25,6 +25,8 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options)
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
     public DbSet<TableRegistry> TableRegistries => Set<TableRegistry>();
+    public DbSet<DatabaseBackupRecord> DatabaseBackups => Set<DatabaseBackupRecord>();
+    public DbSet<DatabaseBackupRestoreLog> DatabaseBackupRestoreLogs => Set<DatabaseBackupRestoreLog>();
 
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
@@ -73,6 +75,34 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options)
             b.Property(x => x.Description).HasColumnType("text");
             b.Property(x => x.IsSystem).HasDefaultValue(false);
             b.HasIndex(x => new { x.SchemaName, x.TableName }).IsUnique();
+        });
+        modelBuilder.Entity<DatabaseBackupRecord>(b =>
+        {
+            b.ToTable("database_backups", "tenant");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.BackupName).HasMaxLength(200).IsRequired();
+            b.Property(x => x.BackupSchemaName).HasMaxLength(200).IsRequired();
+            b.Property(x => x.DatabaseName).HasMaxLength(100).IsRequired();
+            b.Property(x => x.SourceSchema).HasMaxLength(100).IsRequired();
+            b.Property(x => x.Status).HasMaxLength(50).IsRequired().HasDefaultValue("Active");
+            b.Property(x => x.CreatedBy).HasMaxLength(200).IsRequired();
+            b.Property(x => x.TablesJson).HasColumnType("text");
+            b.Property(x => x.Notes).HasColumnType("text");
+            b.HasIndex(x => x.BackupSchemaName);
+            b.HasIndex(x => x.CreatedAtUtc);
+        });
+        modelBuilder.Entity<DatabaseBackupRestoreLog>(b =>
+        {
+            b.ToTable("database_backup_restore_logs", "tenant");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.BackupSchemaName).HasMaxLength(200).IsRequired();
+            b.Property(x => x.TargetSchema).HasMaxLength(100).IsRequired();
+            b.Property(x => x.Action).HasMaxLength(50).IsRequired();
+            b.Property(x => x.Status).HasMaxLength(50).IsRequired().HasDefaultValue("Success");
+            b.Property(x => x.ExecutedBy).HasMaxLength(200).IsRequired();
+            b.Property(x => x.DetailsJson).HasColumnType("text");
+            b.Property(x => x.Message).HasColumnType("text");
+            b.HasIndex(x => x.ExecutedAtUtc);
         });
         base.OnModelCreating(modelBuilder);
     }

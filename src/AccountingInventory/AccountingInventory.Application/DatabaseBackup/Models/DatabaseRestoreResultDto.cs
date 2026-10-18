@@ -12,7 +12,7 @@ public sealed record DatabaseRestoreResultDto(
     int TotalInserted,
     int TotalUpdated,
     int TotalUnchanged,
-    int TotalErrors,
+    long TotalErrors,
     IReadOnlyList<TableRestoreAuditDto> TableAudits,
     Guid? AuditLogId = null);
 

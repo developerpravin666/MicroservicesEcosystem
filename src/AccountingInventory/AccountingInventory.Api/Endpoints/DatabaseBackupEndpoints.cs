@@ -1,3 +1,4 @@
+using AccountingInventory.Application.DatabaseBackup.Abstractions;
 using AccountingInventory.Application.DatabaseBackup.Commands.RestoreDatabaseBackup;
 using AccountingInventory.Application.DatabaseBackup.Models;
 using AccountingInventory.Application.DatabaseBackup.Queries.ExportDatabaseBackup;
@@ -196,6 +197,142 @@ public static class DatabaseBackupEndpoints
         .DisableAntiforgery()
         .Produces<DatabaseRestoreResultDto>();
 
+        // 5. POST /api/admin/backup/create-snapshot - Create in-database backup stored in temp tables in same DB
+        group.MapPost("/create-snapshot", async (
+            [FromBody] CreateSnapshotRequest? request,
+            [FromQuery] string? schema,
+            IDatabaseBackupService backupService,
+            TenantDbContext tenantDb,
+            ITenantContext? tenantContext,
+            ClaimsPrincipal user,
+            CancellationToken ct) =>
+        {
+            var targetSchema = ResolveTargetSchema(schema ?? request?.Schema, tenantContext, tenantDb);
+            var requestedBy = user.Identity?.Name ?? user.FindFirst(ClaimTypes.Email)?.Value ?? "SuperAdmin";
+
+            var result = await backupService.CreateDatabaseSnapshotAsync(
+                schema: targetSchema,
+                selectedTables: request?.Tables,
+                backupName: request?.BackupName,
+                notes: request?.Notes,
+                createdBy: requestedBy,
+                ct: ct
+            );
+
+            return Results.Ok(result);
+        })
+        .WithName("CreateDatabaseSnapshotInSameDb")
+        .Produces<DatabaseSnapshotDto>();
+
+        // 6. GET /api/admin/backup/snapshots - List all in-database backup snapshots
+        group.MapGet("/snapshots", async (
+            [FromQuery] string? schema,
+            IDatabaseBackupService backupService,
+            TenantDbContext tenantDb,
+            ITenantContext? tenantContext,
+            CancellationToken ct) =>
+        {
+            var targetSchema = ResolveTargetSchema(schema, tenantContext, tenantDb);
+            var snapshots = await backupService.GetDatabaseSnapshotsAsync(targetSchema, ct);
+            return Results.Ok(snapshots);
+        })
+        .WithName("GetDatabaseSnapshots")
+        .Produces<IReadOnlyList<DatabaseSnapshotDto>>();
+
+        // 7. POST /api/admin/backup/restore-snapshot/{id} - Restore directly from database temp tables
+        group.MapPost("/restore-snapshot/{id:guid}", async (
+            Guid id,
+            [FromBody] RestoreSnapshotRequest? request,
+            [FromQuery] string? schema,
+            IDatabaseBackupService backupService,
+            TenantDbContext tenantDb,
+            ITenantContext? tenantContext,
+            ClaimsPrincipal user,
+            ICurrentUserProvider currentUser,
+            CancellationToken ct) =>
+        {
+            var targetSchema = ResolveTargetSchema(schema ?? request?.Schema, tenantContext, tenantDb);
+            var userEmail = user.FindFirst(ClaimTypes.Email)?.Value ?? user.Identity?.Name ?? "SuperAdmin";
+            var userId = currentUser.UserId;
+
+            var result = await backupService.RestoreFromDatabaseSnapshotAsync(
+                snapshotId: id,
+                targetSchemaOverride: targetSchema,
+                selectedTables: request?.Tables,
+                userId: userId,
+                userEmail: userEmail,
+                ct: ct
+            );
+
+            return Results.Ok(result);
+        })
+        .WithName("RestoreFromDatabaseSnapshot")
+        .Produces<DatabaseRestoreResultDto>();
+
+        // 7b. GET /api/admin/backup/backups - Alias for snapshots
+        group.MapGet("/backups", async (
+            [FromQuery] string? schema,
+            IDatabaseBackupService backupService,
+            TenantDbContext tenantDb,
+            ITenantContext? tenantContext,
+            CancellationToken ct) =>
+        {
+            var targetSchema = ResolveTargetSchema(schema, tenantContext, tenantDb);
+            var snapshots = await backupService.GetDatabaseSnapshotsAsync(targetSchema, ct);
+            return Results.Ok(snapshots);
+        })
+        .WithName("GetDatabaseBackups")
+        .Produces<IReadOnlyList<DatabaseSnapshotDto>>();
+
+        // 7c. GET /api/admin/backup/logs - Get backup & restore audit logs from tenant.database_backup_restore_logs
+        group.MapGet("/logs", async (
+            IDatabaseBackupService backupService,
+            CancellationToken ct) =>
+        {
+            var logs = await backupService.GetRestoreLogsAsync(ct);
+            return Results.Ok(logs);
+        })
+        .WithName("GetDatabaseBackupRestoreLogs")
+        .Produces<IReadOnlyList<DatabaseBackupRestoreLogDto>>();
+
+        // 8. DELETE /api/admin/backup/snapshots/{id} & DELETE /api/admin/backup/backups/{id} - Delete snapshot and drop temporary backup schema
+        group.MapDelete("/snapshots/{id:guid}", async (
+            Guid id,
+            IDatabaseBackupService backupService,
+            ClaimsPrincipal user,
+            CancellationToken ct) =>
+        {
+            var userEmail = user.FindFirst(ClaimTypes.Email)?.Value ?? user.Identity?.Name ?? "SuperAdmin";
+            var success = await backupService.DeleteDatabaseBackupAndDropSchemaAsync(id, userEmail, ct);
+            return success ? Results.Ok(new { message = "Snapshot and temporary schema dropped successfully." }) : Results.NotFound();
+        })
+        .WithName("DeleteDatabaseSnapshot")
+        .Produces(StatusCodes.Status200OK);
+
+        group.MapDelete("/backups/{id:guid}", async (
+            Guid id,
+            IDatabaseBackupService backupService,
+            ClaimsPrincipal user,
+            CancellationToken ct) =>
+        {
+            var userEmail = user.FindFirst(ClaimTypes.Email)?.Value ?? user.Identity?.Name ?? "SuperAdmin";
+            var success = await backupService.DeleteDatabaseBackupAndDropSchemaAsync(id, userEmail, ct);
+            return success ? Results.Ok(new { message = "Backup schema dropped and record updated." }) : Results.NotFound();
+        })
+        .WithName("DeleteDatabaseBackupAndDropSchema")
+        .Produces(StatusCodes.Status200OK);
+
+        // 9. POST /api/admin/backup/drop-backup-schema - Manually drop all temporary backup tables and admin_table_clear schema
+        group.MapPost("/drop-backup-schema", async (
+            IDatabaseBackupService backupService,
+            CancellationToken ct) =>
+        {
+            var result = await backupService.DropBackupTempDataAndSchemaAsync(ct);
+            return Results.Ok(result);
+        })
+        .WithName("DropBackupTempDataAndSchema")
+        .Produces<DropBackupSchemaResultDto>();
+
         return group;
     }
 
@@ -222,4 +359,6 @@ public static class DatabaseBackupEndpoints
 }
 
 public sealed record ExportTablesRequest(string[]? Tables = null, string? Schema = null);
+public sealed record CreateSnapshotRequest(string? Schema = null, string[]? Tables = null, string? BackupName = null, string? Notes = null);
+public sealed record RestoreSnapshotRequest(string? Schema = null, string[]? Tables = null);
 
