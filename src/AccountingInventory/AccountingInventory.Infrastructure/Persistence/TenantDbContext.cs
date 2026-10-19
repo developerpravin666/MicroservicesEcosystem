@@ -27,6 +27,9 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options)
     public DbSet<TableRegistry> TableRegistries => Set<TableRegistry>();
     public DbSet<DatabaseBackupRecord> DatabaseBackups => Set<DatabaseBackupRecord>();
     public DbSet<DatabaseBackupRestoreLog> DatabaseBackupRestoreLogs => Set<DatabaseBackupRestoreLog>();
+    public DbSet<OcrProviderConfig> OcrProviders => Set<OcrProviderConfig>();
+    public DbSet<TenantOcrSetting> TenantOcrSettings => Set<TenantOcrSetting>();
+    public DbSet<TenantOcrScanLog> TenantOcrScanLogs => Set<TenantOcrScanLog>();
 
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
@@ -104,6 +107,53 @@ public sealed class TenantDbContext(DbContextOptions<TenantDbContext> options)
             b.Property(x => x.Message).HasColumnType("text");
             b.HasIndex(x => x.ExecutedAtUtc);
         });
+        modelBuilder.Entity<OcrProviderConfig>(b =>
+        {
+            b.ToTable("ocr_providers", "tenant");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            b.Property(x => x.ProviderType).HasMaxLength(50).IsRequired();
+            b.Property(x => x.EndpointUrl).HasMaxLength(500);
+            b.Property(x => x.ApiKeyOrSecret).HasMaxLength(500);
+            b.Property(x => x.ModelIdOrProcessorId).HasMaxLength(150);
+            b.Property(x => x.Region).HasMaxLength(50);
+            b.Property(x => x.AdditionalConfigJson).HasColumnType("text");
+            b.Property(x => x.Description).HasColumnType("text");
+            b.Property(x => x.IsEnabled).HasDefaultValue(true);
+            b.Property(x => x.IsDefault).HasDefaultValue(false);
+            b.HasIndex(x => x.ProviderType);
+            b.HasIndex(x => x.IsDefault);
+        });
+        modelBuilder.Entity<TenantOcrSetting>(b =>
+        {
+            b.ToTable("tenant_ocr_settings", "tenant");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.TenantId).IsRequired();
+            b.Property(x => x.IsOcrEnabled).HasDefaultValue(true);
+            b.Property(x => x.MaxScansLimit).HasDefaultValue(100);
+            b.Property(x => x.UsedScansCount).HasDefaultValue(0);
+            b.Property(x => x.AllowOcrUploadPurchaseInvoice).HasDefaultValue(true);
+            b.Property(x => x.Notes).HasColumnType("text");
+            b.HasIndex(x => x.TenantId).IsUnique();
+        });
+        modelBuilder.Entity<TenantOcrScanLog>(b =>
+        {
+            b.ToTable("tenant_ocr_scan_logs", "tenant");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.TenantId).IsRequired();
+            b.Property(x => x.ProviderName).HasMaxLength(150).IsRequired();
+            b.Property(x => x.ProviderType).HasMaxLength(50).IsRequired();
+            b.Property(x => x.FileName).HasMaxLength(255).IsRequired();
+            b.Property(x => x.MimeType).HasMaxLength(100).IsRequired();
+            b.Property(x => x.Status).HasMaxLength(50).IsRequired().HasDefaultValue("Success");
+            b.Property(x => x.ErrorMessage).HasColumnType("text");
+            b.Property(x => x.ExtractedVendorName).HasMaxLength(255);
+            b.Property(x => x.ExtractedBillNumber).HasMaxLength(100);
+            b.Property(x => x.ExtractedDataJson).HasColumnType("text");
+            b.Property(x => x.ScannedBy).HasMaxLength(200);
+            b.HasIndex(x => x.TenantId);
+            b.HasIndex(x => x.ScannedAtUtc);
+        });
         base.OnModelCreating(modelBuilder);
     }
-}
+}

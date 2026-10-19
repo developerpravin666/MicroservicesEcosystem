@@ -70,7 +70,13 @@ public static class DependencyInjection
         services.AddScoped<ITenantAdministration, TenantAdministration>();
         services.AddScoped<IRegistrationEmailTemplateStore, RegistrationEmailTemplateStore>();
         services.AddScoped<AccountingInventory.Application.DatabaseBackup.Abstractions.IDatabaseBackupService, AccountingInventory.Infrastructure.Persistence.Services.DatabaseBackupService>();
+        services.AddHttpClient();
+        services.AddScoped<AccountingInventory.Application.OCR.IOcrProviderEngine, AccountingInventory.Infrastructure.OCR.Engines.LocalTesseractOcrEngine>();
+        services.AddScoped<AccountingInventory.Application.OCR.IOcrProviderEngine, AccountingInventory.Infrastructure.OCR.Engines.AzureDocumentIntelligenceOcrEngine>();
+        services.AddScoped<AccountingInventory.Application.OCR.IOcrProviderEngine, AccountingInventory.Infrastructure.OCR.Engines.GoogleDocumentAiOcrEngine>();
+        services.AddScoped<AccountingInventory.Application.OCR.IOcrService, AccountingInventory.Infrastructure.OCR.Services.OcrService>();
 
         return services;
+
     }
 }
