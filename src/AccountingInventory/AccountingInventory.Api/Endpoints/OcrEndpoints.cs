@@ -125,9 +125,19 @@ public static class OcrEndpoints
         .WithName("GetTenantOcrStatus")
         .Produces<TenantOcrStatusDto>();
 
+        tenantGroup.MapGet("/providers", async (ITenantContext tenantContext, IOcrService ocrService, CancellationToken ct) =>
+        {
+            if (tenantContext.TenantId == null) return Results.Unauthorized();
+            var status = await ocrService.GetTenantOcrStatusAsync(tenantContext.TenantId.Value, ct);
+            return Results.Ok(status.AvailableProviders);
+        })
+        .WithName("GetTenantOcrProviders")
+        .Produces<List<TenantAvailableProviderDto>>();
+
         tenantGroup.MapPost("/process-invoice", async (
             IFormFile file,
             [FromForm] string? rawText,
+            [FromForm] Guid? providerId,
             ITenantContext tenantContext,
             IOcrService ocrService,
             ClaimsPrincipal user,
@@ -160,6 +170,7 @@ public static class OcrEndpoints
                     mimeType: file.ContentType,
                     clientRawText: rawText,
                     scannedBy: userName,
+                    preferredProviderId: providerId,
                     cancellationToken: ct
                 );
 

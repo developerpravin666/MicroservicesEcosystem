@@ -143,37 +143,50 @@ public sealed class AzureDocumentIntelligenceOcrEngine(
             throw new TimeoutException("Azure Document Intelligence analysis timed out waiting for completion.");
         }
 
-        return MapAzureInvoiceResult(analyzeResultDoc, config.Name, sw.ElapsedMilliseconds);
+        return MapAzureInvoiceResult(analyzeResultDoc, config.Name, sw.ElapsedMilliseconds, clientRawText);
     }
 
-    private static StructuredInvoiceOcrResult MapAzureInvoiceResult(JsonDocument doc, string providerName, long elapsedMs)
+    private static StructuredInvoiceOcrResult MapAzureInvoiceResult(
+        JsonDocument doc,
+        string providerName,
+        long elapsedMs,
+        string? clientRawText)
     {
-        // Extract fields from analyzeResult.documents[0].fields
-        string vendorName = "Vendor";
-        string vendorGstin = "";
-        string billNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}";
-        string billDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
-        decimal grandTotal = 0m;
-        var items = new List<ExtractedInvoiceItem>();
+        string? vendorName = null;
+        string? vendorGstin = null;
+        string? vendorAddress = null;
+        string? billNumber = null;
+        string? billDate = null;
+        decimal? grandTotal = null;
+        string? contentText = null;
+        var rawLines = new List<(string Description, decimal Quantity, decimal UnitPrice, decimal TotalAmount)>();
 
         if (doc.RootElement.TryGetProperty("analyzeResult", out var analyzeResult))
         {
+            if (analyzeResult.TryGetProperty("content", out var contentElem))
+            {
+                contentText = contentElem.GetString();
+            }
+
             if (analyzeResult.TryGetProperty("documents", out var docs) && docs.GetArrayLength() > 0)
             {
                 var firstDoc = docs[0];
                 if (firstDoc.TryGetProperty("fields", out var fields))
                 {
                     if (fields.TryGetProperty("VendorName", out var vn) && vn.TryGetProperty("content", out var vnc))
-                        vendorName = vnc.GetString() ?? vendorName;
+                        vendorName = vnc.GetString();
 
                     if (fields.TryGetProperty("VendorTaxId", out var vt) && vt.TryGetProperty("content", out var vtc))
-                        vendorGstin = vtc.GetString() ?? "";
+                        vendorGstin = vtc.GetString();
+
+                    if (fields.TryGetProperty("VendorAddress", out var va) && va.TryGetProperty("content", out var vac))
+                        vendorAddress = vac.GetString();
 
                     if (fields.TryGetProperty("InvoiceId", out var ii) && ii.TryGetProperty("content", out var iic))
-                        billNumber = iic.GetString() ?? billNumber;
+                        billNumber = iic.GetString();
 
                     if (fields.TryGetProperty("InvoiceDate", out var id) && id.TryGetProperty("content", out var idc))
-                        billDate = idc.GetString() ?? billDate;
+                        billDate = idc.GetString();
 
                     if (fields.TryGetProperty("InvoiceTotal", out var it) && it.TryGetProperty("valueNumber", out var itn))
                         grandTotal = (decimal)itn.GetDouble();
@@ -181,18 +194,17 @@ public sealed class AzureDocumentIntelligenceOcrEngine(
                     // Line items
                     if (fields.TryGetProperty("Items", out var itemsElem) && itemsElem.TryGetProperty("valueArray", out var arr))
                     {
-                        int lineNo = 1;
                         foreach (var itm in arr.EnumerateArray())
                         {
                             if (itm.TryGetProperty("valueObject", out var vo))
                             {
-                                string desc = "Invoice Line Item";
+                                string desc = "";
                                 decimal qty = 1;
                                 decimal unitPrice = 0;
                                 decimal totalAmt = 0;
 
                                 if (vo.TryGetProperty("Description", out var d) && d.TryGetProperty("content", out var dc))
-                                    desc = dc.GetString() ?? desc;
+                                    desc = dc.GetString() ?? "";
 
                                 if (vo.TryGetProperty("Quantity", out var q) && q.TryGetProperty("valueNumber", out var qn))
                                     qty = (decimal)qn.GetDouble();
@@ -205,33 +217,10 @@ public sealed class AzureDocumentIntelligenceOcrEngine(
                                 else
                                     totalAmt = qty * unitPrice;
 
-                                decimal gstRate = 18.0m;
-                                decimal taxable = totalAmt;
-                                decimal tax = taxable * (gstRate / 100m);
-
-                                items.Add(new ExtractedInvoiceItem(
-                                    Id: Guid.NewGuid().ToString(),
-                                    LineNumber: lineNo++,
-                                    Description: desc,
-                                    Brand: "Generic",
-                                    Model: "Standard",
-                                    Variant: "Default",
-                                    Color: "Black",
-                                    SerialNumber: $"SN{DateTime.UtcNow:yyyyMMdd}{lineNo:D3}",
-                                    SerialNumber1: null,
-                                    HsnCode: "85171300",
-                                    Quantity: (int)Math.Max(1, qty),
-                                    Unit: "NOS",
-                                    TaxableRate: unitPrice > 0 ? unitPrice : taxable,
-                                    TaxableAmount: taxable,
-                                    CgstRate: gstRate / 2,
-                                    SgstRate: gstRate / 2,
-                                    GstRate: gstRate,
-                                    CgstAmount: tax / 2,
-                                    SgstAmount: tax / 2,
-                                    TotalTaxAmount: tax,
-                                    TotalAmount: taxable + tax
-                                ));
+                                if (!string.IsNullOrWhiteSpace(desc))
+                                {
+                                    rawLines.Add((desc, qty, unitPrice, totalAmt));
+                                }
                             }
                         }
                     }
@@ -239,82 +228,18 @@ public sealed class AzureDocumentIntelligenceOcrEngine(
             }
         }
 
-        if (items.Count == 0)
-        {
-            items.Add(new ExtractedInvoiceItem(
-                Id: Guid.NewGuid().ToString(),
-                LineNumber: 1,
-                Description: "Extracted Invoice Line",
-                Brand: "Generic",
-                Model: "Standard",
-                Variant: "Default",
-                Color: "Default",
-                SerialNumber: $"SN{DateTime.UtcNow:yyyyMMdd}001",
-                SerialNumber1: null,
-                HsnCode: "85171300",
-                Quantity: 1,
-                Unit: "NOS",
-                TaxableRate: grandTotal > 0 ? grandTotal / 1.18m : 10000m,
-                TaxableAmount: grandTotal > 0 ? grandTotal / 1.18m : 10000m,
-                CgstRate: 9m,
-                SgstRate: 9m,
-                GstRate: 18m,
-                CgstAmount: (grandTotal > 0 ? grandTotal / 1.18m : 10000m) * 0.09m,
-                SgstAmount: (grandTotal > 0 ? grandTotal / 1.18m : 10000m) * 0.09m,
-                TotalTaxAmount: (grandTotal > 0 ? grandTotal / 1.18m : 10000m) * 0.18m,
-                TotalAmount: grandTotal > 0 ? grandTotal : 11800m
-            ));
-        }
-
-        decimal subtotal = items.Sum(x => x.TaxableAmount);
-        decimal cgst = items.Sum(x => x.CgstAmount);
-        decimal sgst = items.Sum(x => x.SgstAmount);
-        decimal totalTax = cgst + sgst;
-        decimal calculatedGrand = grandTotal > 0 ? grandTotal : (subtotal + totalTax);
-
-        var summary = new ExtractedInvoiceSummary(
-            TotalItems: items.Count,
-            TotalQuantity: items.Sum(x => x.Quantity),
-            SubtotalTaxable: subtotal,
-            CgstAmount: cgst,
-            SgstAmount: sgst,
-            TotalTax: totalTax,
-            RoundOff: 0m,
-            GrandTotal: calculatedGrand,
-            AmountInWords: null
-        );
-
-        var header = new ExtractedInvoiceHeader(
-            VendorName: vendorName,
-            VendorGstin: vendorGstin,
-            VendorAddress: "Extracted Vendor Address",
-            VendorPhone: null,
-            VendorEmail: "vendor@supplier.com",
-            VendorState: "Maharashtra",
-            VendorStateCode: "27",
-            BuyerName: "Self Store",
-            BuyerGstin: "",
-            BuyerState: "Maharashtra",
-            BuyerStateCode: "27",
-            BillNumber: billNumber,
-            BillDate: billDate,
-            DueDate: billDate,
-            PaymentTermsDays: 0,
-            BankName: "State Bank of India",
-            BankAccountNo: "98765432101",
-            BankIfsc: "SBIN0000123",
-            Pan: vendorGstin.Length >= 12 ? vendorGstin.Substring(2, 10) : ""
-        );
-
-        return new StructuredInvoiceOcrResult(
-            Header: header,
-            Items: items,
-            Summary: summary,
-            RawText: doc.RootElement.ToString(),
-            Confidence: 0.96,
-            ProviderUsed: providerName,
-            ProcessingTimeMs: elapsedMs,
-            RemainingScans: 0
+        return Common.InvoiceExtractionParser.ParseStructuredInvoice(
+            rawDocumentText: contentText,
+            clientRawText: clientRawText,
+            extractedVendorName: vendorName,
+            extractedVendorGstin: vendorGstin,
+            extractedVendorAddress: vendorAddress,
+            extractedBillNumber: billNumber,
+            extractedBillDate: billDate,
+            extractedGrandTotal: grandTotal,
+            rawLineItems: rawLines,
+            providerName: providerName,
+            elapsedMs: elapsedMs
         );
     }
 }

@@ -1,11 +1,16 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using AccountingInventory.Application.OCR;
 using AccountingInventory.Application.OCR.Models;
 using AccountingInventory.Domain.Entities;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 
 namespace AccountingInventory.Infrastructure.OCR.Engines;
 
@@ -15,52 +20,87 @@ public sealed class GoogleDocumentAiOcrEngine(
 {
     public string ProviderType => "GoogleDocumentAi";
 
+    private static readonly ConcurrentDictionary<string, (string Token, DateTime ExpiresAtUtc)> TokenCache = new();
+
     public async Task<OcrConnectionTestResult> TestConnectionAsync(
         OcrProviderConfig config,
         CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();
-        if (string.IsNullOrWhiteSpace(config.EndpointUrl) || string.IsNullOrWhiteSpace(config.ApiKeyOrSecret))
-        {
-            return new OcrConnectionTestResult(
-                Success: false,
-                Message: "Google Document AI requires Processor Endpoint URL and API Key / OAuth Token.",
-                ResponseTimeMs: 0
-            );
-        }
 
         try
         {
+            var (getUrl, _, projectId, location, processorId) = ResolveProcessorUrls(config);
             var client = httpClientFactory.CreateClient();
-            var baseUrl = config.EndpointUrl.TrimEnd('/');
-            using var req = new HttpRequestMessage(HttpMethod.Get, baseUrl);
-            if (!string.IsNullOrWhiteSpace(config.ApiKeyOrSecret))
+
+            var accessToken = await GetGoogleAccessTokenAsync(client, config, cancellationToken);
+
+            using var req = new HttpRequestMessage(HttpMethod.Get, getUrl);
+            if (!string.IsNullOrWhiteSpace(accessToken))
             {
-                if (config.ApiKeyOrSecret.StartsWith("ya29.") || config.ApiKeyOrSecret.Contains("Bearer", StringComparison.OrdinalIgnoreCase))
-                {
-                    req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", config.ApiKeyOrSecret.Replace("Bearer ", ""));
-                }
-                else
-                {
-                    req.Headers.Add("X-Goog-Api-Key", config.ApiKeyOrSecret);
-                }
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            }
+            else if (!string.IsNullOrWhiteSpace(config.ApiKeyOrSecret))
+            {
+                req.Headers.Add("X-Goog-Api-Key", config.ApiKeyOrSecret);
+            }
+            else
+            {
+                return new OcrConnectionTestResult(
+                    Success: false,
+                    Message: "Google Document AI requires a Service Account JSON (in Additional Config) or an API Key / Bearer Token.",
+                    ResponseTimeMs: 0
+                );
             }
 
             var resp = await client.SendAsync(req, cancellationToken);
             sw.Stop();
+            var respBody = await resp.Content.ReadAsStringAsync(cancellationToken);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                string displayName = processorId;
+                string type = "PROCESSOR";
+                string state = "ENABLED";
+
+                try
+                {
+                    using var procDoc = JsonDocument.Parse(respBody);
+                    if (procDoc.RootElement.TryGetProperty("displayName", out var dn)) displayName = dn.GetString() ?? displayName;
+                    if (procDoc.RootElement.TryGetProperty("type", out var tp)) type = tp.GetString() ?? type;
+                    if (procDoc.RootElement.TryGetProperty("state", out var st)) state = st.GetString() ?? state;
+                }
+                catch { }
+
+                return new OcrConnectionTestResult(
+                    Success: true,
+                    Message: $"Connected to Google Document AI processor '{displayName}' (Type: {type}, State: {state}) in project '{projectId}' [{location}].",
+                    ResponseTimeMs: sw.ElapsedMilliseconds
+                );
+            }
+
+            string detail = respBody;
+            try
+            {
+                using var errDoc = JsonDocument.Parse(respBody);
+                if (errDoc.RootElement.TryGetProperty("error", out var errObj) &&
+                    errObj.TryGetProperty("message", out var msgElem))
+                {
+                    detail = msgElem.GetString() ?? respBody;
+                }
+            }
+            catch { }
 
             return new OcrConnectionTestResult(
-                Success: resp.IsSuccessStatusCode,
-                Message: resp.IsSuccessStatusCode
-                    ? "Google Document AI processor endpoint reachable and authenticated."
-                    : $"Google Document AI returned status {resp.StatusCode}.",
+                Success: false,
+                Message: $"Google Document AI returned HTTP {resp.StatusCode}: {detail}",
                 ResponseTimeMs: sw.ElapsedMilliseconds
             );
         }
         catch (Exception ex)
         {
             sw.Stop();
-            logger.LogError(ex, "Failed to connect to Google Document AI.");
+            logger.LogError(ex, "Failed to test connection to Google Document AI.");
             return new OcrConnectionTestResult(
                 Success: false,
                 Message: $"Google Document AI connection failed: {ex.Message}",
@@ -80,10 +120,9 @@ public sealed class GoogleDocumentAiOcrEngine(
         var sw = Stopwatch.StartNew();
         logger.LogInformation("Processing invoice {FileName} via Google Document AI...", fileName);
 
-        if (string.IsNullOrWhiteSpace(config.EndpointUrl) || string.IsNullOrWhiteSpace(config.ApiKeyOrSecret))
-        {
-            throw new InvalidOperationException("Google Document AI endpoint URL and credentials must be configured by Super Admin.");
-        }
+        var (_, processUrl, _, _, _) = ResolveProcessorUrls(config);
+        var client = httpClientFactory.CreateClient();
+        var accessToken = await GetGoogleAccessTokenAsync(client, config, cancellationToken);
 
         byte[] fileBytes;
         if (documentStream is MemoryStream ms)
@@ -108,19 +147,12 @@ public sealed class GoogleDocumentAiOcrEngine(
             }
         };
 
-        var client = httpClientFactory.CreateClient();
-        var endpoint = config.EndpointUrl.TrimEnd('/');
-        if (!endpoint.Contains(":processDocument"))
+        using var request = new HttpRequestMessage(HttpMethod.Post, processUrl);
+        if (!string.IsNullOrWhiteSpace(accessToken))
         {
-            endpoint += ":processDocument";
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         }
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
-        if (config.ApiKeyOrSecret.StartsWith("ya29.") || config.ApiKeyOrSecret.Contains("Bearer", StringComparison.OrdinalIgnoreCase))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", config.ApiKeyOrSecret.Replace("Bearer ", ""));
-        }
-        else
+        else if (!string.IsNullOrWhiteSpace(config.ApiKeyOrSecret))
         {
             request.Headers.Add("X-Goog-Api-Key", config.ApiKeyOrSecret);
         }
@@ -132,28 +164,212 @@ public sealed class GoogleDocumentAiOcrEngine(
 
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException($"Google Document AI API error ({response.StatusCode}): {responseBody}");
+            string errorDetail = responseBody;
+            try
+            {
+                using var errDoc = JsonDocument.Parse(responseBody);
+                if (errDoc.RootElement.TryGetProperty("error", out var errObj) &&
+                    errObj.TryGetProperty("message", out var msgElem))
+                {
+                    errorDetail = msgElem.GetString() ?? responseBody;
+                }
+            }
+            catch { }
+
+            throw new InvalidOperationException($"Google Document AI API error ({response.StatusCode}): {errorDetail}");
         }
 
         sw.Stop();
         using var doc = JsonDocument.Parse(responseBody);
-        return MapGoogleInvoiceResult(doc, config.Name, sw.ElapsedMilliseconds);
+        return MapGoogleInvoiceResult(doc, config.Name, sw.ElapsedMilliseconds, clientRawText);
     }
 
-    private static StructuredInvoiceOcrResult MapGoogleInvoiceResult(JsonDocument doc, string providerName, long elapsedMs)
+    private static (string GetProcessorUrl, string ProcessUrl, string ProjectId, string Location, string ProcessorId)
+        ResolveProcessorUrls(OcrProviderConfig config)
     {
-        string vendorName = "Vendor";
-        string vendorGstin = "";
-        string billNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}";
-        string billDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
-        decimal grandTotal = 0m;
-        var items = new List<ExtractedInvoiceItem>();
+        string projectId = "";
+        string location = !string.IsNullOrWhiteSpace(config.Region) ? config.Region.Trim() : "us";
+        string processorId = "";
+
+        // 1. Try extracting project_id from AdditionalConfigJson
+        if (!string.IsNullOrWhiteSpace(config.AdditionalConfigJson))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(config.AdditionalConfigJson);
+                if (doc.RootElement.TryGetProperty("project_id", out var pid))
+                    projectId = pid.GetString() ?? "";
+                else if (doc.RootElement.TryGetProperty("projectId", out var pid2))
+                    projectId = pid2.GetString() ?? "";
+
+                if (doc.RootElement.TryGetProperty("location", out var loc))
+                    location = loc.GetString() ?? location;
+            }
+            catch { }
+        }
+
+        // 2. Parse candidate strings for full resource path: projects/{project}/locations/{location}/processors/{processor}
+        var candidate = (config.ModelIdOrProcessorId ?? "") + " " + (config.EndpointUrl ?? "");
+        var match = Regex.Match(candidate, @"projects/([^/\s]+)/locations/([^/\s]+)/processors/([^/\s:]+)", RegexOptions.IgnoreCase);
+        if (match.Success)
+        {
+            projectId = match.Groups[1].Value;
+            location = match.Groups[2].Value;
+            processorId = match.Groups[3].Value;
+        }
+        else
+        {
+            processorId = (config.ModelIdOrProcessorId ?? "").Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(processorId))
+        {
+            throw new InvalidOperationException("Google Document AI Model / Processor ID is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(projectId))
+        {
+            throw new InvalidOperationException("Google Cloud Project ID is required. Please paste your Google Service Account JSON in 'Additional Configuration (JSON)' or specify {\"projectId\": \"your-project-id\"}.");
+        }
+
+        // 3. Determine host
+        string host;
+        if (!string.IsNullOrWhiteSpace(config.EndpointUrl) && config.EndpointUrl.Contains("googleapis.com"))
+        {
+            var uri = new Uri(config.EndpointUrl);
+            host = $"{uri.Scheme}://{uri.Authority}";
+        }
+        else
+        {
+            host = location.Equals("eu", StringComparison.OrdinalIgnoreCase)
+                ? "https://eu-documentai.googleapis.com"
+                : location.Equals("us", StringComparison.OrdinalIgnoreCase)
+                ? "https://us-documentai.googleapis.com"
+                : $"https://{location}-documentai.googleapis.com";
+        }
+
+        var resourcePath = $"v1/projects/{projectId}/locations/{location}/processors/{processorId}";
+        var getUrl = $"{host.TrimEnd('/')}/{resourcePath}";
+        var processUrl = $"{getUrl}:process";
+
+        return (getUrl, processUrl, projectId, location, processorId);
+    }
+
+    private static async Task<string?> GetGoogleAccessTokenAsync(
+        HttpClient client, OcrProviderConfig config, CancellationToken cancellationToken)
+    {
+        // 1. Direct Bearer token
+        if (!string.IsNullOrWhiteSpace(config.ApiKeyOrSecret) &&
+            (config.ApiKeyOrSecret.StartsWith("ya29.") || config.ApiKeyOrSecret.Contains("Bearer", StringComparison.OrdinalIgnoreCase)))
+        {
+            return config.ApiKeyOrSecret.Replace("Bearer ", "").Trim();
+        }
+
+        // 2. Extract service account JSON
+        JsonDocument? saDoc = null;
+        if (!string.IsNullOrWhiteSpace(config.AdditionalConfigJson) && config.AdditionalConfigJson.Contains("private_key"))
+        {
+            try { saDoc = JsonDocument.Parse(config.AdditionalConfigJson); } catch { }
+        }
+        else if (!string.IsNullOrWhiteSpace(config.ApiKeyOrSecret) && config.ApiKeyOrSecret.Contains("private_key"))
+        {
+            try { saDoc = JsonDocument.Parse(config.ApiKeyOrSecret); } catch { }
+        }
+
+        if (saDoc != null &&
+            saDoc.RootElement.TryGetProperty("client_email", out var emailElem) &&
+            saDoc.RootElement.TryGetProperty("private_key", out var keyElem))
+        {
+            var clientEmail = emailElem.GetString();
+            var privateKeyPem = keyElem.GetString();
+
+            if (!string.IsNullOrWhiteSpace(clientEmail) && !string.IsNullOrWhiteSpace(privateKeyPem))
+            {
+                return await CreateServiceAccountAccessTokenAsync(client, clientEmail, privateKeyPem, cancellationToken);
+            }
+        }
+
+        return null;
+    }
+
+    private static async Task<string> CreateServiceAccountAccessTokenAsync(
+        HttpClient client, string clientEmail, string privateKeyPem, CancellationToken cancellationToken)
+    {
+        if (TokenCache.TryGetValue(clientEmail, out var cached) && cached.ExpiresAtUtc > DateTime.UtcNow.AddMinutes(5))
+        {
+            return cached.Token;
+        }
+
+        using var rsa = RSA.Create();
+        rsa.ImportFromPem(privateKeyPem);
+
+        var now = DateTimeOffset.UtcNow;
+        var signingCredentials = new SigningCredentials(new RsaSecurityKey(rsa), SecurityAlgorithms.RsaSha256);
+
+        var header = new JwtHeader(signingCredentials);
+        var payload = new JwtPayload
+        {
+            { "iss", clientEmail },
+            { "sub", clientEmail },
+            { "aud", "https://oauth2.googleapis.com/token" },
+            { "iat", now.ToUnixTimeSeconds() },
+            { "exp", now.AddHours(1).ToUnixTimeSeconds() },
+            { "scope", "https://www.googleapis.com/auth/cloud-platform" }
+        };
+
+        var token = new JwtSecurityToken(header, payload);
+        var handler = new JwtSecurityTokenHandler();
+        var signedJwt = handler.WriteToken(token);
+
+        using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, "https://oauth2.googleapis.com/token");
+        tokenRequest.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            ["assertion"] = signedJwt
+        });
+
+        var tokenResponse = await client.SendAsync(tokenRequest, cancellationToken);
+        var tokenJson = await tokenResponse.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!tokenResponse.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"Google OAuth2 token exchange failed ({tokenResponse.StatusCode}): {tokenJson}");
+        }
+
+        using var respDoc = JsonDocument.Parse(tokenJson);
+        var accessToken = respDoc.RootElement.GetProperty("access_token").GetString()
+            ?? throw new InvalidOperationException("Google OAuth2 response did not contain access_token.");
+
+        var expiresIn = respDoc.RootElement.TryGetProperty("expires_in", out var expElem) ? expElem.GetInt32() : 3600;
+        TokenCache[clientEmail] = (accessToken, DateTime.UtcNow.AddSeconds(expiresIn));
+
+        return accessToken;
+    }
+
+    private static StructuredInvoiceOcrResult MapGoogleInvoiceResult(
+        JsonDocument doc,
+        string providerName,
+        long elapsedMs,
+        string? clientRawText)
+    {
+        string? vendorName = null;
+        string? vendorGstin = null;
+        string? vendorAddress = null;
+        string? billNumber = null;
+        string? billDate = null;
+        decimal? grandTotal = null;
+        string? documentText = null;
+        var rawLines = new List<(string Description, decimal Quantity, decimal UnitPrice, decimal TotalAmount)>();
 
         if (doc.RootElement.TryGetProperty("document", out var documentElem))
         {
+            if (documentElem.TryGetProperty("text", out var textElem))
+            {
+                documentText = textElem.GetString();
+            }
+
             if (documentElem.TryGetProperty("entities", out var entities))
             {
-                int lineNo = 1;
                 foreach (var entity in entities.EnumerateArray())
                 {
                     if (entity.TryGetProperty("type", out var typeProp))
@@ -161,26 +377,54 @@ public sealed class GoogleDocumentAiOcrEngine(
                         var entityType = typeProp.GetString();
                         var mentionText = entity.TryGetProperty("mentionText", out var mt) ? mt.GetString() : null;
 
-                        switch (entityType)
+                        var normalizedType = (entityType ?? "").Trim().ToLowerInvariant();
+
+                        switch (normalizedType)
                         {
                             case "supplier_name":
+                            case "vendor_name":
+                            case "seller_name":
+                            case "vendor":
+                            case "supplier":
                                 if (!string.IsNullOrWhiteSpace(mentionText)) vendorName = mentionText;
                                 break;
                             case "supplier_tax_id":
                             case "supplier_vat_id":
+                            case "supplier_gstin":
+                            case "gstin":
+                            case "tax_id":
+                            case "vat_id":
                                 if (!string.IsNullOrWhiteSpace(mentionText)) vendorGstin = mentionText;
                                 break;
+                            case "supplier_address":
+                            case "vendor_address":
+                            case "seller_address":
+                            case "address":
+                                if (!string.IsNullOrWhiteSpace(mentionText)) vendorAddress = mentionText;
+                                break;
                             case "invoice_id":
+                            case "invoice_number":
+                            case "bill_number":
+                            case "bill_no":
+                            case "invoice":
                                 if (!string.IsNullOrWhiteSpace(mentionText)) billNumber = mentionText;
                                 break;
                             case "invoice_date":
+                            case "bill_date":
+                            case "date":
                                 if (!string.IsNullOrWhiteSpace(mentionText)) billDate = mentionText;
                                 break;
                             case "total_amount":
-                                if (decimal.TryParse(mentionText, out var tot)) grandTotal = tot;
+                            case "grand_total":
+                            case "invoice_total":
+                            case "total":
+                                if (decimal.TryParse(mentionText?.Replace(",", ""), out var tot)) grandTotal = tot;
                                 break;
                             case "line_item":
-                                string desc = "Product Line Item";
+                            case "item":
+                            case "product":
+                            case "line":
+                                string desc = "";
                                 decimal qty = 1;
                                 decimal unitPrice = 0;
                                 decimal lineAmount = 0;
@@ -189,41 +433,25 @@ public sealed class GoogleDocumentAiOcrEngine(
                                 {
                                     foreach (var p in props.EnumerateArray())
                                     {
-                                        var pType = p.TryGetProperty("type", out var pt) ? pt.GetString() : "";
-                                        var pVal = p.TryGetProperty("mentionText", out var pv) ? pv.GetString() : "";
+                                        var pType = (p.TryGetProperty("type", out var pt) ? pt.GetString() : null)?.ToLowerInvariant() ?? "";
+                                        var pVal = (p.TryGetProperty("mentionText", out var pv) ? pv.GetString() : null) ?? "";
 
-                                        if (pType == "line_item/description" && !string.IsNullOrWhiteSpace(pVal)) desc = pVal;
-                                        if (pType == "line_item/quantity" && decimal.TryParse(pVal, out var q)) qty = q;
-                                        if (pType == "line_item/unit_price" && decimal.TryParse(pVal, out var up)) unitPrice = up;
-                                        if (pType == "line_item/amount" && decimal.TryParse(pVal, out var amt)) lineAmount = amt;
+                                        if ((pType == "line_item/description" || pType == "description" || pType == "product_name" || pType == "item_name" || pType == "item_description" || pType == "name") && !string.IsNullOrWhiteSpace(pVal)) desc = pVal;
+                                        if ((pType == "line_item/quantity" || pType == "quantity" || pType == "qty") && decimal.TryParse(pVal.Replace(",", ""), out var q)) qty = q;
+                                        if ((pType == "line_item/unit_price" || pType == "unit_price" || pType == "price" || pType == "rate") && decimal.TryParse(pVal.Replace(",", ""), out var up)) unitPrice = up;
+                                        if ((pType == "line_item/amount" || pType == "line_item/total_amount" || pType == "amount" || pType == "line_total" || pType == "total") && decimal.TryParse(pVal.Replace(",", ""), out var amt)) lineAmount = amt;
                                     }
                                 }
 
-                                decimal taxable = lineAmount > 0 ? lineAmount : (qty * unitPrice);
-                                decimal tax = taxable * 0.18m;
-                                items.Add(new ExtractedInvoiceItem(
-                                    Id: Guid.NewGuid().ToString(),
-                                    LineNumber: lineNo++,
-                                    Description: desc,
-                                    Brand: "Generic",
-                                    Model: "Standard",
-                                    Variant: "Default",
-                                    Color: "Black",
-                                    SerialNumber: $"SN{DateTime.UtcNow:yyyyMMdd}{lineNo:D3}",
-                                    SerialNumber1: null,
-                                    HsnCode: "85171300",
-                                    Quantity: (int)Math.Max(1, qty),
-                                    Unit: "NOS",
-                                    TaxableRate: unitPrice > 0 ? unitPrice : taxable,
-                                    TaxableAmount: taxable,
-                                    CgstRate: 9m,
-                                    SgstRate: 9m,
-                                    GstRate: 18m,
-                                    CgstAmount: tax / 2,
-                                    SgstAmount: tax / 2,
-                                    TotalTaxAmount: tax,
-                                    TotalAmount: taxable + tax
-                                ));
+                                if (string.IsNullOrWhiteSpace(desc) && !string.IsNullOrWhiteSpace(mentionText))
+                                {
+                                    desc = mentionText;
+                                }
+
+                                if (!string.IsNullOrWhiteSpace(desc))
+                                {
+                                    rawLines.Add((desc, qty, unitPrice, lineAmount));
+                                }
                                 break;
                         }
                     }
@@ -231,83 +459,18 @@ public sealed class GoogleDocumentAiOcrEngine(
             }
         }
 
-        if (items.Count == 0)
-        {
-            items.Add(new ExtractedInvoiceItem(
-                Id: Guid.NewGuid().ToString(),
-                LineNumber: 1,
-                Description: "Google DocAI Extracted Item",
-                Brand: "Generic",
-                Model: "Standard",
-                Variant: "Default",
-                Color: "Default",
-                SerialNumber: $"SN{DateTime.UtcNow:yyyyMMdd}001",
-                SerialNumber1: null,
-                HsnCode: "85171300",
-                Quantity: 1,
-                Unit: "NOS",
-                TaxableRate: grandTotal > 0 ? grandTotal / 1.18m : 10000m,
-                TaxableAmount: grandTotal > 0 ? grandTotal / 1.18m : 10000m,
-                CgstRate: 9m,
-                SgstRate: 9m,
-                GstRate: 18m,
-                CgstAmount: (grandTotal > 0 ? grandTotal / 1.18m : 10000m) * 0.09m,
-                SgstAmount: (grandTotal > 0 ? grandTotal / 1.18m : 10000m) * 0.09m,
-                TotalTaxAmount: (grandTotal > 0 ? grandTotal / 1.18m : 10000m) * 0.18m,
-                TotalAmount: grandTotal > 0 ? grandTotal : 11800m
-            ));
-        }
-
-        decimal subtotal = items.Sum(x => x.TaxableAmount);
-        decimal cgst = items.Sum(x => x.CgstAmount);
-        decimal sgst = items.Sum(x => x.SgstAmount);
-        decimal totalTax = cgst + sgst;
-        decimal finalGrand = grandTotal > 0 ? grandTotal : (subtotal + totalTax);
-
-        var summary = new ExtractedInvoiceSummary(
-            TotalItems: items.Count,
-            TotalQuantity: items.Sum(x => x.Quantity),
-            SubtotalTaxable: subtotal,
-            CgstAmount: cgst,
-            SgstAmount: sgst,
-            TotalTax: totalTax,
-            RoundOff: 0m,
-            GrandTotal: finalGrand,
-            AmountInWords: null
-        );
-
-        var header = new ExtractedInvoiceHeader(
-            VendorName: vendorName,
-            VendorGstin: vendorGstin,
-            VendorAddress: "Extracted Address",
-            VendorPhone: null,
-            VendorEmail: "vendor@supplier.com",
-            VendorState: "Maharashtra",
-            VendorStateCode: "27",
-            BuyerName: "Self Store",
-            BuyerGstin: "",
-            BuyerState: "Maharashtra",
-            BuyerStateCode: "27",
-            BillNumber: billNumber,
-            BillDate: billDate,
-            DueDate: billDate,
-            PaymentTermsDays: 0,
-            BankName: "State Bank of India",
-            BankAccountNo: "98765432101",
-            BankIfsc: "SBIN0000123",
-            Pan: vendorGstin.Length >= 12 ? vendorGstin.Substring(2, 10) : ""
-        );
-
-        return new StructuredInvoiceOcrResult(
-            Header: header,
-            Items: items,
-            Summary: summary,
-            RawText: doc.RootElement.ToString(),
-            Confidence: 0.95,
-            ProviderUsed: providerName,
-            ProcessingTimeMs: elapsedMs,
-            RemainingScans: 0
+        return Common.InvoiceExtractionParser.ParseStructuredInvoice(
+            rawDocumentText: documentText,
+            clientRawText: clientRawText,
+            extractedVendorName: vendorName,
+            extractedVendorGstin: vendorGstin,
+            extractedVendorAddress: vendorAddress,
+            extractedBillNumber: billNumber,
+            extractedBillDate: billDate,
+            extractedGrandTotal: grandTotal,
+            rawLineItems: rawLines,
+            providerName: providerName,
+            elapsedMs: elapsedMs
         );
     }
 }
-

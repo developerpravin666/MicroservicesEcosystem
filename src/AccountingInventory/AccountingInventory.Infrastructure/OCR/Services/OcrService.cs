@@ -335,38 +335,61 @@ public sealed class OcrService(
     public async Task<TenantOcrStatusDto> GetTenantOcrStatusAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
         var setting = await dbContext.TenantOcrSettings.AsNoTracking().FirstOrDefaultAsync(s => s.TenantId == tenantId, cancellationToken);
-        var defaultProvider = await dbContext.OcrProviders.AsNoTracking().FirstOrDefaultAsync(p => p.IsDefault && p.IsEnabled, cancellationToken);
+        var activeProviders = await dbContext.OcrProviders.AsNoTracking()
+            .Where(p => p.IsEnabled)
+            .OrderByDescending(p => p.IsDefault)
+            .ThenBy(p => p.Name)
+            .ToListAsync(cancellationToken);
+
+        var defaultProvider = activeProviders.FirstOrDefault(p => p.IsDefault);
+
+        Guid? activeProviderId = null;
+        string providerName = "Tesseract Local Engine";
+        string providerType = "TesseractLocal";
+
+        if (setting?.PreferredProviderId.HasValue == true)
+        {
+            var assigned = activeProviders.FirstOrDefault(p => p.Id == setting.PreferredProviderId.Value);
+            if (assigned != null)
+            {
+                activeProviderId = assigned.Id;
+                providerName = assigned.Name;
+                providerType = assigned.ProviderType;
+            }
+        }
+
+        if (activeProviderId == null && defaultProvider != null)
+        {
+            activeProviderId = defaultProvider.Id;
+            providerName = defaultProvider.Name;
+            providerType = defaultProvider.ProviderType;
+        }
+
+        var availableList = activeProviders.Select(p => new TenantAvailableProviderDto(
+            Id: p.Id,
+            Name: p.Name,
+            ProviderType: p.ProviderType,
+            Description: p.Description,
+            IsDefault: p.IsDefault,
+            IsAssignedToTenant: setting?.PreferredProviderId.HasValue == true
+                ? (p.Id == setting.PreferredProviderId.Value)
+                : p.IsDefault
+        )).ToList();
 
         if (setting == null)
         {
             return new TenantOcrStatusDto(
                 IsOcrEnabled: true,
                 CanUploadInvoice: true,
-                ActiveProviderName: defaultProvider?.Name ?? "Tesseract Local Engine",
-                ActiveProviderType: defaultProvider?.ProviderType ?? "TesseractLocal",
+                ActiveProviderName: providerName,
+                ActiveProviderType: providerType,
+                ActiveProviderId: activeProviderId,
                 MaxScansLimit: 100,
                 UsedScansCount: 0,
                 RemainingScans: 100,
-                LastScanAtUtc: null
+                LastScanAtUtc: null,
+                AvailableProviders: availableList
             );
-        }
-
-        string providerName = "Tesseract Local Engine";
-        string providerType = "TesseractLocal";
-
-        if (setting.PreferredProviderId.HasValue)
-        {
-            var p = await dbContext.OcrProviders.AsNoTracking().FirstOrDefaultAsync(x => x.Id == setting.PreferredProviderId.Value, cancellationToken);
-            if (p != null)
-            {
-                providerName = p.Name;
-                providerType = p.ProviderType;
-            }
-        }
-        else if (defaultProvider != null)
-        {
-            providerName = defaultProvider.Name;
-            providerType = defaultProvider.ProviderType;
         }
 
         int remaining = Math.Max(0, setting.MaxScansLimit - setting.UsedScansCount);
@@ -377,10 +400,12 @@ public sealed class OcrService(
             CanUploadInvoice: canUpload,
             ActiveProviderName: providerName,
             ActiveProviderType: providerType,
+            ActiveProviderId: activeProviderId,
             MaxScansLimit: setting.MaxScansLimit,
             UsedScansCount: setting.UsedScansCount,
             RemainingScans: remaining,
-            LastScanAtUtc: setting.LastScanAtUtc
+            LastScanAtUtc: setting.LastScanAtUtc,
+            AvailableProviders: availableList
         );
     }
 
@@ -394,6 +419,7 @@ public sealed class OcrService(
         string mimeType,
         string? clientRawText,
         string scannedBy,
+        Guid? preferredProviderId = null,
         CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();
@@ -435,11 +461,20 @@ public sealed class OcrService(
 
         // 3. Resolve active provider
         OcrProviderConfig? activeProvider = null;
-        if (setting.PreferredProviderId.HasValue)
+
+        // 3a. Explicit requested provider from invoice upload (if valid and enabled)
+        if (preferredProviderId.HasValue)
+        {
+            activeProvider = await dbContext.OcrProviders.FirstOrDefaultAsync(x => x.Id == preferredProviderId.Value && x.IsEnabled, cancellationToken);
+        }
+
+        // 3b. Assigned provider method configured for tenant by super admin
+        if (activeProvider == null && setting.PreferredProviderId.HasValue)
         {
             activeProvider = await dbContext.OcrProviders.FirstOrDefaultAsync(x => x.Id == setting.PreferredProviderId.Value && x.IsEnabled, cancellationToken);
         }
 
+        // 3c. Platform default or any enabled provider
         activeProvider ??= await dbContext.OcrProviders.FirstOrDefaultAsync(x => x.IsDefault && x.IsEnabled, cancellationToken);
         activeProvider ??= await dbContext.OcrProviders.FirstOrDefaultAsync(x => x.IsEnabled, cancellationToken);
         activeProvider ??= new OcrProviderConfig

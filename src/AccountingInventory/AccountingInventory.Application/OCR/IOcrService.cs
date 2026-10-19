@@ -27,6 +27,7 @@ public interface IOcrService
         string mimeType,
         string? clientRawText,
         string scannedBy,
+        Guid? preferredProviderId = null,
         CancellationToken cancellationToken = default);
 
     // Logs & Audit

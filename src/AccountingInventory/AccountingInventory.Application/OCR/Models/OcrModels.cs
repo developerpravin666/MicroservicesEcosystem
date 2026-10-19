@@ -143,14 +143,26 @@ public sealed record StructuredInvoiceOcrResult(
     int RemainingScans
 );
 
+public sealed record TenantAvailableProviderDto(
+    Guid Id,
+    string Name,
+    string ProviderType,
+    string? Description,
+    bool IsDefault,
+    bool IsAssignedToTenant
+);
+
 public sealed record TenantOcrStatusDto(
     bool IsOcrEnabled,
     bool CanUploadInvoice,
     string ActiveProviderName,
     string ActiveProviderType,
+    Guid? ActiveProviderId,
     int MaxScansLimit,
     int UsedScansCount,
     int RemainingScans,
-    DateTime? LastScanAtUtc
+    DateTime? LastScanAtUtc,
+    List<TenantAvailableProviderDto> AvailableProviders
 );
+
 

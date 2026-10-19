@@ -54,18 +54,19 @@ public sealed class LocalTesseractOcrEngine(ILogger<LocalTesseractOcrEngine> log
             }
         }
 
-        var (header, items, summary, confidence) = ParseInvoiceText(textToParse, fileName);
         sw.Stop();
-
-        return new StructuredInvoiceOcrResult(
-            Header: header,
-            Items: items,
-            Summary: summary,
-            RawText: textToParse,
-            Confidence: confidence,
-            ProviderUsed: config.Name,
-            ProcessingTimeMs: sw.ElapsedMilliseconds,
-            RemainingScans: 0
+        return Common.InvoiceExtractionParser.ParseStructuredInvoice(
+            rawDocumentText: textToParse,
+            clientRawText: clientRawText,
+            extractedVendorName: null,
+            extractedVendorGstin: null,
+            extractedVendorAddress: null,
+            extractedBillNumber: null,
+            extractedBillDate: null,
+            extractedGrandTotal: null,
+            rawLineItems: null,
+            providerName: config.Name,
+            elapsedMs: sw.ElapsedMilliseconds
         );
     }
 
