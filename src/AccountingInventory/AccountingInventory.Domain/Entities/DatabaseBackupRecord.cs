@@ -4,7 +4,7 @@ public sealed class DatabaseBackupRecord
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string BackupName { get; set; } = string.Empty;
-    public string BackupSchemaName { get; set; } = string.Empty; // {{actual db name}}_bkp_YYYYMMDD
+    public string BackupSchemaName { get; set; } = string.Empty; // {{tenant db name}}_bkp_YYYYMMDD
     public string DatabaseName { get; set; } = string.Empty;
     public string SourceSchema { get; set; } = "tenant";
     public int TotalTables { get; set; }

@@ -716,13 +716,23 @@ public sealed class DatabaseBackupService(
             throw new InvalidOperationException("No eligible tables selected for backup.");
         }
 
-        // Format: {{actual db name}}_bkp_YYYYMMDD
-        var rawDbName = conn.Database;
-        var safeDbName = new string(rawDbName.Select(c => char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '_').ToArray()).Trim('_');
-        if (string.IsNullOrWhiteSpace(safeDbName)) safeDbName = "db";
+        // Format: {{tenant db name}}_bkp_YYYYMMDD for the tenant being backed up
+        var tenant = await tenantDb.Tenants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.SchemaName == schema || t.Slug == schema, ct);
+
+        var rawTenantDbName = tenant?.SchemaName ?? schema;
+        var safeTenantDbName = new string(rawTenantDbName.Select(c => char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '_').ToArray()).Trim('_');
+        if (string.IsNullOrWhiteSpace(safeTenantDbName)) safeTenantDbName = "tenant";
+
+        // PostgreSQL max identifier length is 63 chars. Ensure prefix leaves room for _bkp_YYYYMMDD_xx
+        if (safeTenantDbName.Length > 45)
+        {
+            safeTenantDbName = safeTenantDbName[..45].TrimEnd('_');
+        }
 
         var dateStr = DateTime.UtcNow.ToString("yyyyMMdd");
-        var baseSchemaName = $"{safeDbName}_bkp_{dateStr}";
+        var baseSchemaName = $"{safeTenantDbName}_bkp_{dateStr}";
         var backupSchemaName = baseSchemaName;
         int counter = 2;
         while (await SchemaExistsAsync(conn, backupSchemaName, ct))
@@ -740,8 +750,9 @@ public sealed class DatabaseBackupService(
         }
 
         var snapshotId = Guid.NewGuid();
+        var tenantDisplayName = tenant?.Name ?? rawTenantDbName;
         var finalBackupName = string.IsNullOrWhiteSpace(backupName)
-            ? $"{backupSchemaName} ({schema})"
+            ? $"{backupSchemaName} ({tenantDisplayName})"
             : backupName.Trim();
 
         var tableInfos = new List<SnapshotTableInfoDto>();
@@ -791,7 +802,7 @@ public sealed class DatabaseBackupService(
             insertCmd.Parameters.AddWithValue("id", snapshotId);
             insertCmd.Parameters.AddWithValue("name", finalBackupName);
             insertCmd.Parameters.AddWithValue("schema_name", backupSchemaName);
-            insertCmd.Parameters.AddWithValue("db_name", rawDbName);
+            insertCmd.Parameters.AddWithValue("db_name", rawTenantDbName);
             insertCmd.Parameters.AddWithValue("src_schema", schema);
             insertCmd.Parameters.AddWithValue("totalTables", tableInfos.Count);
             insertCmd.Parameters.AddWithValue("totalRows", totalRows);
@@ -813,7 +824,7 @@ public sealed class DatabaseBackupService(
             logCmd.Parameters.AddWithValue("schema_name", backupSchemaName);
             logCmd.Parameters.AddWithValue("target_schema", schema);
             logCmd.Parameters.AddWithValue("rows", totalRows);
-            logCmd.Parameters.AddWithValue("msg", $"Created backup schema '{backupSchemaName}' containing {tableInfos.Count} tables and {totalRows} records.");
+            logCmd.Parameters.AddWithValue("msg", $"Created backup schema '{backupSchemaName}' for tenant '{rawTenantDbName}' containing {tableInfos.Count} tables and {totalRows} records.");
             logCmd.Parameters.AddWithValue("now", createdAt);
             logCmd.Parameters.AddWithValue("user", createdBy);
             await logCmd.ExecuteNonQueryAsync(ct);
@@ -823,7 +834,7 @@ public sealed class DatabaseBackupService(
             Id: snapshotId,
             BackupName: finalBackupName,
             BackupSchemaName: backupSchemaName,
-            DatabaseName: rawDbName,
+            DatabaseName: rawTenantDbName,
             SourceSchema: schema,
             TotalTables: tableInfos.Count,
             TotalRows: totalRows,
@@ -849,17 +860,28 @@ public sealed class DatabaseBackupService(
 
         var list = new List<DatabaseSnapshotDto>();
 
-        var sql = @"
-            SELECT id, backup_name, backup_schema_name, database_name, source_schema,
-                   total_tables, total_rows, status, tables_json, created_at_utc, created_by,
-                   notes, last_restored_at_utc, last_restored_by, dropped_at_utc, dropped_by
-            FROM tenant.database_backups
-            WHERE (@schema IS NULL OR LOWER(source_schema) = LOWER(@schema))
-            ORDER BY created_at_utc DESC";
+        var cleanedSchema = schema?.Trim();
+        var hasSchemaFilter = !string.IsNullOrWhiteSpace(cleanedSchema) && !cleanedSchema.Equals("ALL", StringComparison.OrdinalIgnoreCase);
+
+        var sql = hasSchemaFilter
+            ? @"SELECT id, backup_name, backup_schema_name, database_name, source_schema,
+                       total_tables, total_rows, status, tables_json, created_at_utc, created_by,
+                       notes, last_restored_at_utc, last_restored_by, dropped_at_utc, dropped_by
+                FROM tenant.database_backups
+                WHERE LOWER(source_schema) = LOWER(@schema)
+                ORDER BY created_at_utc DESC"
+            : @"SELECT id, backup_name, backup_schema_name, database_name, source_schema,
+                       total_tables, total_rows, status, tables_json, created_at_utc, created_by,
+                       notes, last_restored_at_utc, last_restored_by, dropped_at_utc, dropped_by
+                FROM tenant.database_backups
+                ORDER BY created_at_utc DESC";
 
         await using (var cmd = new NpgsqlCommand(sql, conn))
         {
-            cmd.Parameters.AddWithValue("schema", (object?)schema?.Trim() ?? DBNull.Value);
+            if (hasSchemaFilter)
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("schema", NpgsqlDbType.Text) { Value = cleanedSchema! });
+            }
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {

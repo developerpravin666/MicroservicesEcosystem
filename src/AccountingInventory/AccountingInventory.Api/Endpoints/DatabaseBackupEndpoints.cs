@@ -224,7 +224,7 @@ public static class DatabaseBackupEndpoints
         .WithName("CreateDatabaseSnapshotInSameDb")
         .Produces<DatabaseSnapshotDto>();
 
-        // 6. GET /api/admin/backup/snapshots - List all in-database backup snapshots
+        // 6. GET /api/admin/backup/snapshots - List in-database backup snapshots
         group.MapGet("/snapshots", async (
             [FromQuery] string? schema,
             IDatabaseBackupService backupService,
@@ -232,7 +232,9 @@ public static class DatabaseBackupEndpoints
             ITenantContext? tenantContext,
             CancellationToken ct) =>
         {
-            var targetSchema = ResolveTargetSchema(schema, tenantContext, tenantDb);
+            var targetSchema = (string.IsNullOrWhiteSpace(schema) || schema.Equals("ALL", StringComparison.OrdinalIgnoreCase))
+                ? null
+                : ResolveTargetSchema(schema, tenantContext, tenantDb);
             var snapshots = await backupService.GetDatabaseSnapshotsAsync(targetSchema, ct);
             return Results.Ok(snapshots);
         })
@@ -277,7 +279,9 @@ public static class DatabaseBackupEndpoints
             ITenantContext? tenantContext,
             CancellationToken ct) =>
         {
-            var targetSchema = ResolveTargetSchema(schema, tenantContext, tenantDb);
+            var targetSchema = (string.IsNullOrWhiteSpace(schema) || schema.Equals("ALL", StringComparison.OrdinalIgnoreCase))
+                ? null
+                : ResolveTargetSchema(schema, tenantContext, tenantDb);
             var snapshots = await backupService.GetDatabaseSnapshotsAsync(targetSchema, ct);
             return Results.Ok(snapshots);
         })
