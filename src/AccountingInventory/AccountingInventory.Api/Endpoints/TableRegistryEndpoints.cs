@@ -342,6 +342,65 @@ public static class TableRegistryEndpoints
             return Results.Ok(new { message = "Cleared records were restored." });
         });
 
+        // 5b. POST /api/admin/tables/drop-schema - Super Admin manual drop of entire schema and data
+        group.MapPost("/drop-schema", async (
+            [FromQuery] string schema,
+            [FromBody] DropSchemaRequest request,
+            TenantDbContext tenantDb,
+            CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(schema) || !IsValidSqlIdentifier(schema))
+                return Results.BadRequest(new { message = "Invalid schema identifier." });
+
+            var protectedSchemas = new[] { "public", "tenant", "pg_catalog", "information_schema", "admin_table_clear" };
+            if (protectedSchemas.Contains(schema.Trim().ToLowerInvariant()))
+            {
+                return Results.BadRequest(new { message = $"Schema '{schema}' is a protected system schema and cannot be dropped." });
+            }
+
+            var expectedConf = $"DROP SCHEMA {schema.Trim().ToUpperInvariant()}";
+            var conf = request?.Confirmation?.Trim();
+            if (!string.Equals(conf, expectedConf, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(conf, $"DROP {schema.Trim().ToUpperInvariant()}", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.BadRequest(new { message = $"Type '{expectedConf}' to confirm dropping the entire schema and all its data." });
+            }
+
+            var connectionString = tenantDb.Database.GetConnectionString()
+                ?? throw new InvalidOperationException("Database connection string not configured.");
+
+            await using var conn = new NpgsqlConnection(connectionString);
+            await conn.OpenAsync(ct);
+
+            // Drop schema CASCADE
+            await using (var dropCmd = new NpgsqlCommand($"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE;", conn))
+            {
+                await dropCmd.ExecuteNonQueryAsync(ct);
+            }
+
+            // Remove entries from tenant.table_registry
+            try
+            {
+                var tablesToRemove = await tenantDb.TableRegistries
+                    .Where(t => t.SchemaName == schema)
+                    .ToListAsync(ct);
+                if (tablesToRemove.Count > 0)
+                {
+                    tenantDb.TableRegistries.RemoveRange(tablesToRemove);
+                    await tenantDb.SaveChangesAsync(ct);
+                }
+            }
+            catch { /* Ignore if table_registry doesn't exist */ }
+
+            return Results.Ok(new
+            {
+                success = true,
+                schema,
+                message = $"Successfully dropped schema '{schema}' and all of its tables, constraints, and data."
+            });
+        })
+        .WithName("DropSchemaAndData");
+
         // 6. GET /api/admin/tables/{tableName}/records - Paginated view of table records
         group.MapGet("/{tableName}/records", async (
             string tableName,
@@ -665,6 +724,7 @@ public sealed record ClearTableRequest(string? ConfirmTableName = null);
 public sealed record ClearAllTablesRequest(string? Confirmation = null);
 public sealed record ClearSelectedTablesRequest(string[] Tables, string? Confirmation);
 public sealed record RestoreTablesRequest(string? Confirmation);
+public sealed record DropSchemaRequest(string? Confirmation);
 
 public sealed record TableRegistryDto(
     Guid Id,

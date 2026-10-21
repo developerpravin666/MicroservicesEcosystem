@@ -30,10 +30,9 @@ public static class TableClearRecovery
             throw new InvalidOperationException("This operation would affect protected system or recovery tables.");
         var targets = string.Join(",", affected.Select(t => $"{Quote(t[0])}.{Quote(t[1])}"));
         await Execute($"LOCK TABLE {targets} IN ACCESS EXCLUSIVE MODE;");
-        var id = Guid.NewGuid(); var backup = "table_clear_" + id.ToString("N");
-        await Execute($"CREATE SCHEMA {Quote(backup)};");
+        var id = Guid.NewGuid();
         for (var i = 0; i < affected.Count; i++)
-            await Execute($"CREATE TABLE {Quote(backup)}.t{i} AS SELECT * FROM {Quote(affected[i][0])}.{Quote(affected[i][1])};");
+            await Execute($"CREATE TABLE admin_table_clear.{Quote($"temp_clear_{id:N}_{i}")} AS SELECT * FROM {Quote(affected[i][0])}.{Quote(affected[i][1])};");
         await using (var cmd = new NpgsqlCommand("INSERT INTO admin_table_clear.operations(id,source_schema,tables_json) VALUES(@id,@schema,@tables)", conn, tx))
         {
             cmd.Parameters.AddWithValue("id", id); cmd.Parameters.AddWithValue("schema", schema); cmd.Parameters.AddWithValue("tables", JsonSerializer.Serialize(affected));
@@ -63,19 +62,37 @@ public static class TableClearRecovery
             await using var cmd = new NpgsqlCommand($"SELECT EXISTS(SELECT 1 FROM {Quote(table[0])}.{Quote(table[1])})", conn, tx);
             if ((bool)(await cmd.ExecuteScalarAsync(ct))!) throw new InvalidOperationException("Restore is blocked because affected tables contain new records. No data was changed.");
         }
-        var backup = "table_clear_" + id.ToString("N");
+        var legacyBackupSchema = "table_clear_" + id.ToString("N");
         for (var i = 0; i < affected.Count; i++)
         {
-            await using var shape = new NpgsqlCommand("""
-                SELECT
-                  (SELECT jsonb_agg(jsonb_build_array(attname,atttypid,atttypmod) ORDER BY attnum) FROM pg_attribute
-                    WHERE attrelid=to_regclass(format('%I.%I',@schema,@table)) AND attnum>0 AND NOT attisdropped)
-                  IS NOT DISTINCT FROM
-                  (SELECT jsonb_agg(jsonb_build_array(attname,atttypid,atttypmod) ORDER BY attnum) FROM pg_attribute
-                    WHERE attrelid=to_regclass(format('%I.%I',@backup,@copy)) AND attnum>0 AND NOT attisdropped)
-                """, conn, tx);
+            var tempTableName = $"temp_clear_{id:N}_{i}";
+            await using var checkCmd = new NpgsqlCommand("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema='admin_table_clear' AND table_name=@name)", conn, tx);
+            checkCmd.Parameters.AddWithValue("name", tempTableName);
+            var isTempTable = (bool)(await checkCmd.ExecuteScalarAsync(ct))!;
+
+            var sourceRef = isTempTable
+                ? $"admin_table_clear.{Quote(tempTableName)}"
+                : $"{Quote(legacyBackupSchema)}.t{i}";
+
+            await using var shape = new NpgsqlCommand(isTempTable
+                ? """
+                    SELECT
+                      (SELECT jsonb_agg(jsonb_build_array(attname,atttypid,atttypmod) ORDER BY attnum) FROM pg_attribute
+                        WHERE attrelid=to_regclass(format('%I.%I',@schema,@table)) AND attnum>0 AND NOT attisdropped)
+                      IS NOT DISTINCT FROM
+                      (SELECT jsonb_agg(jsonb_build_array(attname,atttypid,atttypmod) ORDER BY attnum) FROM pg_attribute
+                        WHERE attrelid=to_regclass(format('admin_table_clear.%I',@copy)) AND attnum>0 AND NOT attisdropped)
+                  """
+                : """
+                    SELECT
+                      (SELECT jsonb_agg(jsonb_build_array(attname,atttypid,atttypmod) ORDER BY attnum) FROM pg_attribute
+                        WHERE attrelid=to_regclass(format('%I.%I',@schema,@table)) AND attnum>0 AND NOT attisdropped)
+                      IS NOT DISTINCT FROM
+                      (SELECT jsonb_agg(jsonb_build_array(attname,atttypid,atttypmod) ORDER BY attnum) FROM pg_attribute
+                        WHERE attrelid=to_regclass(format('%I.%I',@backup,@copy)) AND attnum>0 AND NOT attisdropped)
+                  """, conn, tx);
             shape.Parameters.AddWithValue("schema", affected[i][0]); shape.Parameters.AddWithValue("table", affected[i][1]);
-            shape.Parameters.AddWithValue("backup", backup); shape.Parameters.AddWithValue("copy", $"t{i}");
+            shape.Parameters.AddWithValue("backup", legacyBackupSchema); shape.Parameters.AddWithValue("copy", isTempTable ? tempTableName : $"t{i}");
             if (!(bool)(await shape.ExecuteScalarAsync(ct))!)
                 throw new InvalidOperationException("Restore is blocked because the table structure changed. No records were changed.");
         }
@@ -92,10 +109,19 @@ public static class TableClearRecovery
                 try
                 {
                     var table = affected[i];
+                    var tempTableName = $"temp_clear_{id:N}_{i}";
+                    await using var checkCmd = new NpgsqlCommand("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema='admin_table_clear' AND table_name=@name)", conn, tx);
+                    checkCmd.Parameters.AddWithValue("name", tempTableName);
+                    var isTempTable = (bool)(await checkCmd.ExecuteScalarAsync(ct))!;
+
+                    var sourceRef = isTempTable
+                        ? $"admin_table_clear.{Quote(tempTableName)}"
+                        : $"{Quote(legacyBackupSchema)}.t{i}";
+
                     await using var columns = new NpgsqlCommand("SELECT string_agg(quote_ident(attname), ',' ORDER BY attnum) FROM pg_attribute WHERE attrelid=to_regclass(format('%I.%I',@schema,@table)) AND attnum>0 AND NOT attisdropped AND attgenerated=''", conn, tx);
                     columns.Parameters.AddWithValue("schema", table[0]); columns.Parameters.AddWithValue("table", table[1]);
                     var names = (string)(await columns.ExecuteScalarAsync(ct))!;
-                    await Execute($"INSERT INTO {Quote(table[0])}.{Quote(table[1])} ({names}) OVERRIDING SYSTEM VALUE SELECT {names} FROM {Quote(backup)}.t{i};");
+                    await Execute($"INSERT INTO {Quote(table[0])}.{Quote(table[1])} ({names}) OVERRIDING SYSTEM VALUE SELECT {names} FROM {sourceRef};");
                     await Execute("RELEASE SAVEPOINT restore_table;"); remaining.Remove(i); progress = true;
                 }
                 catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
@@ -105,7 +131,11 @@ public static class TableClearRecovery
         }
         await using (var cmd = new NpgsqlCommand("UPDATE admin_table_clear.operations SET reverted=true WHERE id=@id", conn, tx))
         { cmd.Parameters.AddWithValue("id", id); await cmd.ExecuteNonQueryAsync(ct); }
-        await Execute($"DROP SCHEMA {Quote(backup)} CASCADE;");
+        for (var i = 0; i < affected.Count; i++)
+        {
+            await Execute($"DROP TABLE IF EXISTS admin_table_clear.{Quote($"temp_clear_{id:N}_{i}")};");
+        }
+        await Execute($"DROP SCHEMA IF EXISTS {Quote(legacyBackupSchema)} CASCADE;");
         await tx.CommitAsync(ct);
     }
 }

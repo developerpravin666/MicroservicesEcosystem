@@ -168,8 +168,8 @@ public sealed class DatabaseBackupService(
             while (workbook.Worksheets.Contains(sheetName))
             {
                 var suffix = $"_{sheetIndex++}";
-                sheetName = sheetName.Length + suffix.Length > 31 
-                    ? sheetName[..(31 - suffix.Length)] + suffix 
+                sheetName = sheetName.Length + suffix.Length > 31
+                    ? sheetName[..(31 - suffix.Length)] + suffix
                     : sheetName + suffix;
             }
 
@@ -687,6 +687,857 @@ public sealed class DatabaseBackupService(
             throw new InvalidOperationException($"Database restore failed and changes were rolled back: {ex.Message}", ex);
         }
     }
+    #region In-Database Temp-Table Snapshot Backup & Restore
+
+    private static string Quote(string name) => "\"" + name.Replace("\"", "\"\"") + "\"";
+
+    public async Task<DatabaseSnapshotDto> CreateDatabaseSnapshotAsync(
+        string schema,
+        IReadOnlyList<string>? selectedTables,
+        string? backupName,
+        string? notes,
+        string createdBy,
+        CancellationToken ct)
+    {
+        ValidateIdentifier(schema);
+        var connStr = GetConnectionString();
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync(ct);
+
+        await EnsureBackupRegistryTablesAsync(conn, ct);
+
+        var allTables = await GetEligibleTablesAsync(schema, ct);
+        var targetTables = (selectedTables == null || selectedTables.Count == 0)
+            ? allTables.Select(t => t.TableName).ToList()
+            : allTables.Where(t => selectedTables.Contains(t.TableName, StringComparer.OrdinalIgnoreCase)).Select(t => t.TableName).ToList();
+
+        if (targetTables.Count == 0)
+        {
+            throw new InvalidOperationException("No eligible tables selected for backup.");
+        }
+
+        // Format: {{tenant db name}}_bkp_YYYYMMDD for the tenant being backed up
+        var tenant = await tenantDb.Tenants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.SchemaName == schema || t.Slug == schema, ct);
+
+        var rawTenantDbName = tenant?.SchemaName ?? schema;
+        var safeTenantDbName = new string(rawTenantDbName.Select(c => char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '_').ToArray()).Trim('_');
+        if (string.IsNullOrWhiteSpace(safeTenantDbName)) safeTenantDbName = "tenant";
+
+        // PostgreSQL max identifier length is 63 chars. Ensure prefix leaves room for _bkp_YYYYMMDD_xx
+        if (safeTenantDbName.Length > 45)
+        {
+            safeTenantDbName = safeTenantDbName[..45].TrimEnd('_');
+        }
+
+        var dateStr = DateTime.UtcNow.ToString("yyyyMMdd");
+        var baseSchemaName = $"{safeTenantDbName}_bkp_{dateStr}";
+        var backupSchemaName = baseSchemaName;
+        int counter = 2;
+        while (await SchemaExistsAsync(conn, backupSchemaName, ct))
+        {
+            backupSchemaName = $"{baseSchemaName}_{counter}";
+            counter++;
+        }
+
+        ValidateIdentifier(backupSchemaName);
+
+        // Create the dedicated backup schema in the same database
+        await using (var createSchemaCmd = new NpgsqlCommand($"CREATE SCHEMA IF NOT EXISTS {Quote(backupSchemaName)};", conn))
+        {
+            await createSchemaCmd.ExecuteNonQueryAsync(ct);
+        }
+
+        var snapshotId = Guid.NewGuid();
+        var tenantDisplayName = tenant?.Name ?? rawTenantDbName;
+        var finalBackupName = string.IsNullOrWhiteSpace(backupName)
+            ? $"{backupSchemaName} ({tenantDisplayName})"
+            : backupName.Trim();
+
+        var tableInfos = new List<SnapshotTableInfoDto>();
+        long totalRows = 0;
+
+        for (var i = 0; i < targetTables.Count; i++)
+        {
+            var tableName = targetTables[i];
+            ValidateIdentifier(tableName);
+            var meta = allTables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+            var displayName = meta?.DisplayName ?? FormatDisplayName(tableName);
+
+            // Copy table into the backup schema with actual table name
+            var createSql = $"CREATE TABLE {Quote(backupSchemaName)}.{Quote(tableName)} AS SELECT * FROM {Quote(schema)}.{Quote(tableName)};";
+            await using (var createCmd = new NpgsqlCommand(createSql, conn))
+            {
+                await createCmd.ExecuteNonQueryAsync(ct);
+            }
+
+            long rowCount = 0;
+            await using (var countCmd = new NpgsqlCommand($"SELECT COUNT(*) FROM {Quote(backupSchemaName)}.{Quote(tableName)}", conn))
+            {
+                var scalar = await countCmd.ExecuteScalarAsync(ct);
+                rowCount = Convert.ToInt64(scalar);
+            }
+
+            totalRows += rowCount;
+            tableInfos.Add(new SnapshotTableInfoDto(
+                TableName: tableName,
+                DisplayName: displayName,
+                RowCount: rowCount,
+                TempTableName: tableName
+            ));
+        }
+
+        var tablesJson = JsonSerializer.Serialize(tableInfos);
+        var createdAt = DateTime.UtcNow;
+
+        // Insert into tenant.database_backups
+        var insertSql = @"
+            INSERT INTO tenant.database_backups
+            (id, backup_name, backup_schema_name, database_name, source_schema, total_tables, total_rows, tables_json, status, notes, created_at_utc, created_by)
+            VALUES (@id, @name, @schema_name, @db_name, @src_schema, @totalTables, @totalRows, @tablesJson, 'Active', @notes, @createdAt, @createdBy)";
+
+        await using (var insertCmd = new NpgsqlCommand(insertSql, conn))
+        {
+            insertCmd.Parameters.AddWithValue("id", snapshotId);
+            insertCmd.Parameters.AddWithValue("name", finalBackupName);
+            insertCmd.Parameters.AddWithValue("schema_name", backupSchemaName);
+            insertCmd.Parameters.AddWithValue("db_name", rawTenantDbName);
+            insertCmd.Parameters.AddWithValue("src_schema", schema);
+            insertCmd.Parameters.AddWithValue("totalTables", tableInfos.Count);
+            insertCmd.Parameters.AddWithValue("totalRows", totalRows);
+            insertCmd.Parameters.AddWithValue("tablesJson", tablesJson);
+            insertCmd.Parameters.AddWithValue("notes", (object?)notes ?? DBNull.Value);
+            insertCmd.Parameters.AddWithValue("createdAt", createdAt);
+            insertCmd.Parameters.AddWithValue("createdBy", createdBy);
+            await insertCmd.ExecuteNonQueryAsync(ct);
+        }
+
+        // Insert into tenant.database_backup_restore_logs
+        await using (var logCmd = new NpgsqlCommand(@"
+            INSERT INTO tenant.database_backup_restore_logs
+            (id, backup_id, backup_schema_name, target_schema, action, status, total_rows_processed, message, executed_at_utc, executed_by)
+            VALUES (@id, @backupId, @schema_name, @target_schema, 'BACKUP_CREATED', 'Success', @rows, @msg, @now, @user)", conn))
+        {
+            logCmd.Parameters.AddWithValue("id", Guid.NewGuid());
+            logCmd.Parameters.AddWithValue("backupId", snapshotId);
+            logCmd.Parameters.AddWithValue("schema_name", backupSchemaName);
+            logCmd.Parameters.AddWithValue("target_schema", schema);
+            logCmd.Parameters.AddWithValue("rows", totalRows);
+            logCmd.Parameters.AddWithValue("msg", $"Created backup schema '{backupSchemaName}' for tenant '{rawTenantDbName}' containing {tableInfos.Count} tables and {totalRows} records.");
+            logCmd.Parameters.AddWithValue("now", createdAt);
+            logCmd.Parameters.AddWithValue("user", createdBy);
+            await logCmd.ExecuteNonQueryAsync(ct);
+        }
+
+        return new DatabaseSnapshotDto(
+            Id: snapshotId,
+            BackupName: finalBackupName,
+            BackupSchemaName: backupSchemaName,
+            DatabaseName: rawTenantDbName,
+            SourceSchema: schema,
+            TotalTables: tableInfos.Count,
+            TotalRows: totalRows,
+            Status: "Active",
+            CreatedAtUtc: createdAt,
+            CreatedBy: createdBy,
+            Notes: notes,
+            LastRestoredAtUtc: null,
+            LastRestoredBy: null,
+            DroppedAtUtc: null,
+            DroppedBy: null,
+            Tables: tableInfos
+        );
+    }
+
+    public async Task<IReadOnlyList<DatabaseSnapshotDto>> GetDatabaseSnapshotsAsync(string? schema, CancellationToken ct)
+    {
+        var connStr = GetConnectionString();
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync(ct);
+
+        await EnsureBackupRegistryTablesAsync(conn, ct);
+
+        var list = new List<DatabaseSnapshotDto>();
+
+        var cleanedSchema = schema?.Trim();
+        var hasSchemaFilter = !string.IsNullOrWhiteSpace(cleanedSchema) && !cleanedSchema.Equals("ALL", StringComparison.OrdinalIgnoreCase);
+
+        var sql = hasSchemaFilter
+            ? @"SELECT id, backup_name, backup_schema_name, database_name, source_schema,
+                       total_tables, total_rows, status, tables_json, created_at_utc, created_by,
+                       notes, last_restored_at_utc, last_restored_by, dropped_at_utc, dropped_by
+                FROM tenant.database_backups
+                WHERE LOWER(source_schema) = LOWER(@schema)
+                ORDER BY created_at_utc DESC"
+            : @"SELECT id, backup_name, backup_schema_name, database_name, source_schema,
+                       total_tables, total_rows, status, tables_json, created_at_utc, created_by,
+                       notes, last_restored_at_utc, last_restored_by, dropped_at_utc, dropped_by
+                FROM tenant.database_backups
+                ORDER BY created_at_utc DESC";
+
+        await using (var cmd = new NpgsqlCommand(sql, conn))
+        {
+            if (hasSchemaFilter)
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("schema", NpgsqlDbType.Text) { Value = cleanedSchema! });
+            }
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var id = reader.GetGuid(0);
+                var name = reader.GetString(1);
+                var bkpSchema = reader.GetString(2);
+                var dbName = reader.GetString(3);
+                var srcSchema = reader.GetString(4);
+                var totalTables = reader.GetInt32(5);
+                var totalRows = reader.GetInt64(6);
+                var status = reader.GetString(7);
+                var json = reader.GetString(8);
+                var createdAt = reader.GetDateTime(9);
+                var createdBy = reader.GetString(10);
+                var notes = reader.IsDBNull(11) ? null : reader.GetString(11);
+                var lastRestoredAt = reader.IsDBNull(12) ? (DateTime?)null : reader.GetDateTime(12);
+                var lastRestoredBy = reader.IsDBNull(13) ? null : reader.GetString(13);
+                var droppedAt = reader.IsDBNull(14) ? (DateTime?)null : reader.GetDateTime(14);
+                var droppedBy = reader.IsDBNull(15) ? null : reader.GetString(15);
+
+                var tableInfos = JsonSerializer.Deserialize<List<SnapshotTableInfoDto>>(json) ?? new List<SnapshotTableInfoDto>();
+
+                list.Add(new DatabaseSnapshotDto(
+                    Id: id,
+                    BackupName: name,
+                    BackupSchemaName: bkpSchema,
+                    DatabaseName: dbName,
+                    SourceSchema: srcSchema,
+                    TotalTables: totalTables,
+                    TotalRows: totalRows,
+                    Status: status,
+                    CreatedAtUtc: createdAt,
+                    CreatedBy: createdBy,
+                    Notes: notes,
+                    LastRestoredAtUtc: lastRestoredAt,
+                    LastRestoredBy: lastRestoredBy,
+                    DroppedAtUtc: droppedAt,
+                    DroppedBy: droppedBy,
+                    Tables: tableInfos
+                ));
+            }
+        }
+
+        // Live check if schema still exists in PostgreSQL for active backups
+        for (int i = 0; i < list.Count; i++)
+        {
+            var item = list[i];
+            if (item.Status == "Active")
+            {
+                var exists = await SchemaExistsAsync(conn, item.BackupSchemaName, ct);
+                if (!exists)
+                {
+                    list[i] = item with { Status = "Dropped" };
+                }
+            }
+        }
+
+        return list;
+    }
+
+    public async Task<DatabaseRestoreResultDto> RestoreFromDatabaseSnapshotAsync(
+        Guid snapshotId,
+        string? targetSchemaOverride,
+        IReadOnlyList<string>? selectedTables,
+        Guid? userId,
+        string userEmail,
+        CancellationToken ct)
+    {
+        var connStr = GetConnectionString();
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync(ct);
+
+        await EnsureBackupRegistryTablesAsync(conn, ct);
+
+        string sourceSchema;
+        string backupSchemaName;
+        string backupName;
+        string tablesJson;
+        bool isFromTenantRegistry = false;
+
+        await using (var cmd = new NpgsqlCommand("SELECT source_schema, backup_schema_name, backup_name, tables_json FROM tenant.database_backups WHERE id = @id", conn))
+        {
+            cmd.Parameters.AddWithValue("id", snapshotId);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            if (await reader.ReadAsync(ct))
+            {
+                sourceSchema = reader.GetString(0);
+                backupSchemaName = reader.GetString(1);
+                backupName = reader.GetString(2);
+                tablesJson = reader.GetString(3);
+                isFromTenantRegistry = true;
+            }
+            else
+            {
+                sourceSchema = "tenant";
+                backupSchemaName = "admin_table_clear";
+                backupName = "Backup";
+                tablesJson = "[]";
+            }
+        }
+
+        if (!isFromTenantRegistry)
+        {
+            await using var checkCmd = new NpgsqlCommand("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema='admin_table_clear' AND table_name='database_backup_snapshots')", conn);
+            if ((bool)(await checkCmd.ExecuteScalarAsync(ct))!)
+            {
+                await using var legCmd = new NpgsqlCommand("SELECT source_schema, backup_name, tables_json FROM admin_table_clear.database_backup_snapshots WHERE id = @id", conn);
+                legCmd.Parameters.AddWithValue("id", snapshotId);
+                await using var reader = await legCmd.ExecuteReaderAsync(ct);
+                if (await reader.ReadAsync(ct))
+                {
+                    sourceSchema = reader.GetString(0);
+                    backupName = reader.GetString(1);
+                    tablesJson = reader.GetString(2);
+                }
+                else
+                {
+                    throw new KeyNotFoundException($"Snapshot with ID '{snapshotId}' was not found in database backup registry.");
+                }
+            }
+            else
+            {
+                throw new KeyNotFoundException($"Snapshot with ID '{snapshotId}' was not found in database backup registry.");
+            }
+        }
+
+        var targetSchema = string.IsNullOrWhiteSpace(targetSchemaOverride) ? sourceSchema : targetSchemaOverride.Trim();
+        ValidateIdentifier(targetSchema);
+
+        var tableInfos = JsonSerializer.Deserialize<List<SnapshotTableInfoDto>>(tablesJson) ?? new List<SnapshotTableInfoDto>();
+        var filteredTables = (selectedTables == null || selectedTables.Count == 0)
+            ? tableInfos
+            : tableInfos.Where(t => selectedTables.Contains(t.TableName, StringComparer.OrdinalIgnoreCase)).ToList();
+
+        if (filteredTables.Count == 0)
+        {
+            return new DatabaseRestoreResultDto(
+                Success: false,
+                Message: "No matching tables selected for restore.",
+                TargetSchema: targetSchema,
+                BackupFileName: backupName,
+                RestoredAtUtc: DateTime.UtcNow,
+                TotalTablesInFile: tableInfos.Count,
+                SelectedTablesCount: 0,
+                TotalRowsProcessed: 0,
+                TotalInserted: 0,
+                TotalUpdated: 0,
+                TotalUnchanged: 0,
+                TotalErrors: 0,
+                TableAudits: Array.Empty<TableRestoreAuditDto>()
+            );
+        }
+
+        var topologicalOrder = await GetTopologicalTableOrderAsync(conn, targetSchema, filteredTables.Select(t => t.TableName).ToList(), ct);
+        var orderedTables = filteredTables
+            .OrderBy(s => topologicalOrder.IndexOf(s.TableName.ToLowerInvariant()))
+            .ToList();
+
+        var tableAudits = new List<TableRestoreAuditDto>();
+        int totalRowsProcessed = 0;
+        int totalInserted = 0;
+        int totalUpdated = 0;
+        int totalUnchanged = 0;
+        long totalErrors = 0;
+
+        await using var tx = await conn.BeginTransactionAsync(ct);
+        try
+        {
+            try
+            {
+                await using var deferCmd = new NpgsqlCommand("SET CONSTRAINTS ALL DEFERRED;", conn, tx);
+                await deferCmd.ExecuteNonQueryAsync(ct);
+            }
+            catch { /* immediate constraints fallback */ }
+
+            foreach (var info in orderedTables)
+            {
+                ValidateIdentifier(info.TableName);
+                var sourceSchemaForTable = isFromTenantRegistry ? backupSchemaName : "admin_table_clear";
+                var sourceTable = isFromTenantRegistry ? info.TableName : info.TempTableName;
+
+                var columns = await GetTableColumnsAsync(conn, targetSchema, info.TableName, ct);
+                if (columns.Count == 0)
+                {
+                    tableAudits.Add(new TableRestoreAuditDto(
+                        TableName: info.TableName,
+                        DisplayName: info.DisplayName,
+                        RowsInFile: (int)info.RowCount,
+                        InsertedCount: 0,
+                        UpdatedCount: 0,
+                        UnchangedCount: 0,
+                        ErrorCount: (int)info.RowCount,
+                        Status: "Failed",
+                        SampleDifferences: Array.Empty<string>(),
+                        ErrorMessage: $"Destination table '{targetSchema}.{info.TableName}' does not exist in target database."
+                    ));
+                    totalErrors += (int)info.RowCount;
+                    continue;
+                }
+
+                await using var checkTemp = new NpgsqlCommand("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=@schema AND table_name=@name)", conn, tx);
+                checkTemp.Parameters.AddWithValue("schema", sourceSchemaForTable);
+                checkTemp.Parameters.AddWithValue("name", sourceTable);
+                var tempExists = (bool)(await checkTemp.ExecuteScalarAsync(ct))!;
+                if (!tempExists)
+                {
+                    tableAudits.Add(new TableRestoreAuditDto(
+                        TableName: info.TableName,
+                        DisplayName: info.DisplayName,
+                        RowsInFile: (int)info.RowCount,
+                        InsertedCount: 0,
+                        UpdatedCount: 0,
+                        UnchangedCount: 0,
+                        ErrorCount: (int)info.RowCount,
+                        Status: "Failed",
+                        SampleDifferences: Array.Empty<string>(),
+                        ErrorMessage: $"Backup table '{sourceSchemaForTable}.{sourceTable}' does not exist in database."
+                    ));
+                    totalErrors += (int)info.RowCount;
+                    continue;
+                }
+
+                var colMap = columns.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
+                var pkCol = await GetPrimaryKeyColumnAsync(conn, targetSchema, info.TableName, ct) ?? columns[0].Name;
+                var colNamesList = columns.Select(c => Quote(c.Name)).ToList();
+                var colNamesStr = string.Join(", ", colNamesList);
+
+                int tableInserted = 0;
+                int tableUpdated = 0;
+                int tableUnchanged = 0;
+                int tableErrors = 0;
+                var sampleDiffs = new List<string>();
+
+                var selectFromTempSql = $"SELECT {colNamesStr} FROM {Quote(sourceSchemaForTable)}.{Quote(sourceTable)} ORDER BY {Quote(pkCol)} ASC";
+                var tempRows = new List<Dictionary<string, object?>>();
+
+                await using (var readCmd = new NpgsqlCommand(selectFromTempSql, conn, tx))
+                await using (var reader = await readCmd.ExecuteReaderAsync(ct))
+                {
+                    while (await reader.ReadAsync(ct))
+                    {
+                        var dict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                        for (var c = 0; c < columns.Count; c++)
+                        {
+                            dict[columns[c].Name] = reader.IsDBNull(c) ? null : reader.GetValue(c);
+                        }
+                        tempRows.Add(dict);
+                    }
+                }
+
+                foreach (var rowDict in tempRows)
+                {
+                    totalRowsProcessed++;
+                    var pkVal = rowDict.TryGetValue(pkCol, out var val) ? val : null;
+                    var spName = $"sp_row_{Guid.NewGuid():N}";
+                    await using (var spCmd = new NpgsqlCommand($"SAVEPOINT {spName};", conn, tx))
+                    {
+                        await spCmd.ExecuteNonQueryAsync(ct);
+                    }
+
+                    try
+                    {
+                        if (pkVal == null || pkVal == DBNull.Value)
+                        {
+                            await ExecuteInsertAsync(conn, tx, targetSchema, info.TableName, rowDict, colMap, ct);
+                            tableInserted++;
+                            totalInserted++;
+                        }
+                        else
+                        {
+                            var existingRow = await GetExistingRowAsync(conn, tx, targetSchema, info.TableName, pkCol, pkVal, ct);
+                            if (existingRow == null)
+                            {
+                                await ExecuteInsertAsync(conn, tx, targetSchema, info.TableName, rowDict, colMap, ct);
+                                tableInserted++;
+                                totalInserted++;
+                            }
+                            else
+                            {
+                                var differences = FindDifferences(existingRow, rowDict);
+                                if (differences.Count > 0)
+                                {
+                                    await ExecuteUpdateAsync(conn, tx, targetSchema, info.TableName, pkCol, pkVal, rowDict, colMap, ct);
+                                    tableUpdated++;
+                                    totalUpdated++;
+                                    if (sampleDiffs.Count < 5)
+                                    {
+                                        sampleDiffs.Add($"Row '{pkVal}': {string.Join(", ", differences.Take(3))}");
+                                    }
+                                }
+                                else
+                                {
+                                    tableUnchanged++;
+                                    totalUnchanged++;
+                                }
+                            }
+                        }
+
+                        await using var relCmd = new NpgsqlCommand($"RELEASE SAVEPOINT {spName};", conn, tx);
+                        await relCmd.ExecuteNonQueryAsync(ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        await using var rbCmd = new NpgsqlCommand($"ROLLBACK TO SAVEPOINT {spName};", conn, tx);
+                        await rbCmd.ExecuteNonQueryAsync(ct);
+                        tableErrors++;
+                        totalErrors++;
+                        if (sampleDiffs.Count < 5)
+                        {
+                            sampleDiffs.Add($"Row '{pkVal}': Error - {ex.Message}");
+                        }
+                    }
+                }
+
+                tableAudits.Add(new TableRestoreAuditDto(
+                    TableName: info.TableName,
+                    DisplayName: info.DisplayName,
+                    RowsInFile: (int)info.RowCount,
+                    InsertedCount: tableInserted,
+                    UpdatedCount: tableUpdated,
+                    UnchangedCount: tableUnchanged,
+                    ErrorCount: tableErrors,
+                    Status: tableErrors == 0 ? "Success" : tableInserted + tableUpdated > 0 ? "Partial" : "Failed",
+                    SampleDifferences: sampleDiffs
+                ));
+            }
+
+            await tx.CommitAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync(ct);
+            logger.LogError(ex, "Transaction rolled back during database snapshot restore.");
+            throw;
+        }
+
+        // Update tenant registry with restore record and log
+        if (isFromTenantRegistry)
+        {
+            var now = DateTime.UtcNow;
+            await using (var updCmd = new NpgsqlCommand(@"
+                UPDATE tenant.database_backups
+                SET status = 'Restored', last_restored_at_utc = @now, last_restored_by = @user
+                WHERE id = @id", conn))
+            {
+                updCmd.Parameters.AddWithValue("id", snapshotId);
+                updCmd.Parameters.AddWithValue("now", now);
+                updCmd.Parameters.AddWithValue("user", userEmail);
+                await updCmd.ExecuteNonQueryAsync(ct);
+            }
+
+            await using (var logCmd = new NpgsqlCommand(@"
+                INSERT INTO tenant.database_backup_restore_logs
+                (id, backup_id, backup_schema_name, target_schema, action, status, total_rows_processed, total_inserted, total_updated, total_errors, details_json, message, executed_at_utc, executed_by)
+                VALUES (@id, @backupId, @schema_name, @target_schema, 'RESTORE_EXECUTED', @status, @rows, @ins, @upd, @err, @details, @msg, @now, @user)", conn))
+            {
+                logCmd.Parameters.AddWithValue("id", Guid.NewGuid());
+                logCmd.Parameters.AddWithValue("backupId", snapshotId);
+                logCmd.Parameters.AddWithValue("schema_name", backupSchemaName);
+                logCmd.Parameters.AddWithValue("target_schema", targetSchema);
+                logCmd.Parameters.AddWithValue("status", totalErrors == 0 ? "Success" : "Partial");
+                logCmd.Parameters.AddWithValue("rows", (long)totalRowsProcessed);
+                logCmd.Parameters.AddWithValue("ins", totalInserted);
+                logCmd.Parameters.AddWithValue("upd", totalUpdated);
+                logCmd.Parameters.AddWithValue("err", (int)totalErrors);
+                logCmd.Parameters.AddWithValue("details", JsonSerializer.Serialize(tableAudits));
+                logCmd.Parameters.AddWithValue("msg", $"Restored {totalInserted} inserted and {totalUpdated} updated records from backup schema '{backupSchemaName}'.");
+                logCmd.Parameters.AddWithValue("now", now);
+                logCmd.Parameters.AddWithValue("user", userEmail);
+                await logCmd.ExecuteNonQueryAsync(ct);
+            }
+        }
+
+        return new DatabaseRestoreResultDto(
+            Success: totalErrors == 0,
+            Message: totalErrors == 0
+                ? $"Successfully restored {totalInserted} new and {totalUpdated} updated records directly from backup schema '{backupSchemaName}' ({totalUnchanged} unchanged)."
+                : $"Restore completed with errors. {totalInserted} inserted, {totalUpdated} updated, {totalErrors} errors.",
+            TargetSchema: targetSchema,
+            BackupFileName: backupName,
+            RestoredAtUtc: DateTime.UtcNow,
+            TotalTablesInFile: tableInfos.Count,
+            SelectedTablesCount: orderedTables.Count,
+            TotalRowsProcessed: totalRowsProcessed,
+            TotalInserted: totalInserted,
+            TotalUpdated: totalUpdated,
+            TotalUnchanged: totalUnchanged,
+            TotalErrors: (int)totalErrors,
+            TableAudits: tableAudits
+        );
+    }
+
+    public async Task<bool> DeleteDatabaseBackupAndDropSchemaAsync(Guid backupId, string userEmail, CancellationToken ct)
+    {
+        var connStr = GetConnectionString();
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync(ct);
+
+        await EnsureBackupRegistryTablesAsync(conn, ct);
+
+        string? backupSchemaName = null;
+        await using (var cmd = new NpgsqlCommand("SELECT backup_schema_name FROM tenant.database_backups WHERE id = @id", conn))
+        {
+            cmd.Parameters.AddWithValue("id", backupId);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            if (await reader.ReadAsync(ct))
+            {
+                backupSchemaName = reader.GetString(0);
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(backupSchemaName))
+        {
+            return await DeleteDatabaseSnapshotAsync(backupId, ct);
+        }
+
+        ValidateIdentifier(backupSchemaName);
+
+        // Drop the backup schema CASCADE
+        await using (var dropCmd = new NpgsqlCommand($"DROP SCHEMA IF EXISTS {Quote(backupSchemaName)} CASCADE;", conn))
+        {
+            await dropCmd.ExecuteNonQueryAsync(ct);
+        }
+
+        var now = DateTime.UtcNow;
+
+        // Update status in tenant.database_backups
+        await using (var updCmd = new NpgsqlCommand(@"
+            UPDATE tenant.database_backups
+            SET status = 'Dropped', dropped_at_utc = @now, dropped_by = @user
+            WHERE id = @id", conn))
+        {
+            updCmd.Parameters.AddWithValue("id", backupId);
+            updCmd.Parameters.AddWithValue("now", now);
+            updCmd.Parameters.AddWithValue("user", userEmail);
+            await updCmd.ExecuteNonQueryAsync(ct);
+        }
+
+        // Insert log in tenant.database_backup_restore_logs
+        await using (var logCmd = new NpgsqlCommand(@"
+            INSERT INTO tenant.database_backup_restore_logs
+            (id, backup_id, backup_schema_name, target_schema, action, status, total_rows_processed, message, executed_at_utc, executed_by)
+            VALUES (@id, @backupId, @schema_name, 'None', 'SCHEMA_DROPPED', 'Success', 0, @msg, @now, @user)", conn))
+        {
+            logCmd.Parameters.AddWithValue("id", Guid.NewGuid());
+            logCmd.Parameters.AddWithValue("backupId", backupId);
+            logCmd.Parameters.AddWithValue("schema_name", backupSchemaName);
+            logCmd.Parameters.AddWithValue("msg", $"Dropped backup schema '{backupSchemaName}' and removed all backed up data.");
+            logCmd.Parameters.AddWithValue("now", now);
+            logCmd.Parameters.AddWithValue("user", userEmail);
+            await logCmd.ExecuteNonQueryAsync(ct);
+        }
+
+        return true;
+    }
+
+    public async Task<bool> DeleteDatabaseSnapshotAsync(Guid snapshotId, CancellationToken ct)
+    {
+        var connStr = GetConnectionString();
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync(ct);
+
+        // Check if exists in tenant.database_backups first
+        await using (var checkCmd = new NpgsqlCommand("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema='tenant' AND table_name='database_backups')", conn))
+        {
+            if ((bool)(await checkCmd.ExecuteScalarAsync(ct))!)
+            {
+                await using var checkBkp = new NpgsqlCommand("SELECT EXISTS(SELECT 1 FROM tenant.database_backups WHERE id = @id)", conn);
+                checkBkp.Parameters.AddWithValue("id", snapshotId);
+                if ((bool)(await checkBkp.ExecuteScalarAsync(ct))!)
+                {
+                    return await DeleteDatabaseBackupAndDropSchemaAsync(snapshotId, "SuperAdmin", ct);
+                }
+            }
+        }
+
+        string? tablesJson = null;
+        await using (var cmd = new NpgsqlCommand("SELECT tables_json FROM admin_table_clear.database_backup_snapshots WHERE id = @id", conn))
+        {
+            cmd.Parameters.AddWithValue("id", snapshotId);
+            tablesJson = await cmd.ExecuteScalarAsync(ct) as string;
+        }
+
+        if (tablesJson != null)
+        {
+            try
+            {
+                var tables = JsonSerializer.Deserialize<List<SnapshotTableInfoDto>>(tablesJson);
+                if (tables != null)
+                {
+                    foreach (var t in tables)
+                    {
+                        await using var dropCmd = new NpgsqlCommand($"DROP TABLE IF EXISTS admin_table_clear.{Quote(t.TempTableName)};", conn);
+                        await dropCmd.ExecuteNonQueryAsync(ct);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not drop temporary tables for snapshot {SnapshotId}", snapshotId);
+            }
+        }
+
+        await using (var delCmd = new NpgsqlCommand("DELETE FROM admin_table_clear.database_backup_snapshots WHERE id = @id", conn))
+        {
+            delCmd.Parameters.AddWithValue("id", snapshotId);
+            var rows = await delCmd.ExecuteNonQueryAsync(ct);
+            return rows > 0;
+        }
+    }
+
+    public async Task<IReadOnlyList<DatabaseBackupRestoreLogDto>> GetRestoreLogsAsync(CancellationToken ct)
+    {
+        var connStr = GetConnectionString();
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync(ct);
+
+        await EnsureBackupRegistryTablesAsync(conn, ct);
+
+        var list = new List<DatabaseBackupRestoreLogDto>();
+        var sql = @"
+            SELECT id, backup_id, backup_schema_name, target_schema, action, status,
+                   total_rows_processed, total_inserted, total_updated, total_errors,
+                   details_json, message, executed_at_utc, executed_by
+            FROM tenant.database_backup_restore_logs
+            ORDER BY executed_at_utc DESC
+            LIMIT 200";
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            list.Add(new DatabaseBackupRestoreLogDto(
+                Id: reader.GetGuid(0),
+                BackupId: reader.IsDBNull(1) ? null : reader.GetGuid(1),
+                BackupSchemaName: reader.GetString(2),
+                TargetSchema: reader.GetString(3),
+                Action: reader.GetString(4),
+                Status: reader.GetString(5),
+                TotalRowsProcessed: reader.GetInt64(6),
+                TotalInserted: reader.GetInt32(7),
+                TotalUpdated: reader.GetInt32(8),
+                TotalErrors: reader.GetInt32(9),
+                DetailsJson: reader.IsDBNull(10) ? null : reader.GetString(10),
+                Message: reader.IsDBNull(11) ? null : reader.GetString(11),
+                ExecutedAtUtc: reader.GetDateTime(12),
+                ExecutedBy: reader.GetString(13)
+            ));
+        }
+        return list;
+    }
+
+    public async Task<DropBackupSchemaResultDto> DropBackupTempDataAndSchemaAsync(CancellationToken ct)
+    {
+        var connStr = GetConnectionString();
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync(ct);
+
+        var droppedTables = new List<string>();
+
+        // 1. Gather all tables currently in admin_table_clear if schema exists
+        await using (var cmd = new NpgsqlCommand(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'admin_table_clear'", conn))
+        await using (var reader = await cmd.ExecuteReaderAsync(ct))
+        {
+            while (await reader.ReadAsync(ct))
+            {
+                droppedTables.Add(reader.GetString(0));
+            }
+        }
+
+        // 2. Drop admin_table_clear CASCADE
+        await using (var dropCmd = new NpgsqlCommand("DROP SCHEMA IF EXISTS admin_table_clear CASCADE;", conn))
+        {
+            await dropCmd.ExecuteNonQueryAsync(ct);
+        }
+
+        // 3. Clean up any legacy table_clear_* schemas if lingering
+        var legacySchemas = new List<string>();
+        await using (var legacyCmd = new NpgsqlCommand(
+            "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'table_clear_%'", conn))
+        await using (var reader = await legacyCmd.ExecuteReaderAsync(ct))
+        {
+            while (await reader.ReadAsync(ct))
+            {
+                legacySchemas.Add(reader.GetString(0));
+            }
+        }
+
+        foreach (var legacy in legacySchemas)
+        {
+            await using var dropLegacyCmd = new NpgsqlCommand($"DROP SCHEMA IF EXISTS {Quote(legacy)} CASCADE;", conn);
+            await dropLegacyCmd.ExecuteNonQueryAsync(ct);
+        }
+
+        logger.LogInformation("Super Admin dropped temporary backup schema 'admin_table_clear' and {Count} temporary tables.", droppedTables.Count);
+
+        return new DropBackupSchemaResultDto(
+            Success: true,
+            Message: $"Successfully dropped temporary backup schema 'admin_table_clear' and {droppedTables.Count} temporary backup tables.",
+            DroppedTablesCount: droppedTables.Count,
+            DroppedTables: droppedTables,
+            SchemaDropped: true
+        );
+    }
+
+    private static async Task EnsureBackupRegistryTablesAsync(NpgsqlConnection conn, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand(@"
+            CREATE SCHEMA IF NOT EXISTS tenant;
+            CREATE TABLE IF NOT EXISTS tenant.database_backups (
+                id uuid PRIMARY KEY,
+                backup_name varchar(200) NOT NULL,
+                backup_schema_name varchar(200) NOT NULL,
+                database_name varchar(100) NOT NULL,
+                source_schema varchar(100) NOT NULL,
+                total_tables int NOT NULL,
+                total_rows bigint NOT NULL,
+                tables_json text NOT NULL,
+                status varchar(50) NOT NULL DEFAULT 'Active',
+                notes text,
+                created_at_utc timestamptz NOT NULL DEFAULT now(),
+                created_by varchar(200) NOT NULL,
+                last_restored_at_utc timestamptz,
+                last_restored_by varchar(200),
+                dropped_at_utc timestamptz,
+                dropped_by varchar(200)
+            );
+
+            CREATE TABLE IF NOT EXISTS tenant.database_backup_restore_logs (
+                id uuid PRIMARY KEY,
+                backup_id uuid,
+                backup_schema_name varchar(200) NOT NULL,
+                target_schema varchar(100) NOT NULL,
+                action varchar(50) NOT NULL,
+                status varchar(50) NOT NULL DEFAULT 'Success',
+                total_rows_processed bigint NOT NULL DEFAULT 0,
+                total_inserted int NOT NULL DEFAULT 0,
+                total_updated int NOT NULL DEFAULT 0,
+                total_errors int NOT NULL DEFAULT 0,
+                details_json text,
+                message text,
+                executed_at_utc timestamptz NOT NULL DEFAULT now(),
+                executed_by varchar(200) NOT NULL
+            );", conn);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    private static async Task<bool> SchemaExistsAsync(NpgsqlConnection conn, string schemaName, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand("SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = @s)", conn);
+        cmd.Parameters.AddWithValue("s", schemaName);
+        return (bool)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    #endregion
 
     #region Helper Methods
 

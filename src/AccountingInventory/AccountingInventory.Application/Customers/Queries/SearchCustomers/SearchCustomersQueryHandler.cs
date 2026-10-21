@@ -12,15 +12,20 @@ public sealed class SearchCustomersQueryHandler(IAccountingInventoryDbContext db
         CancellationToken cancellationToken)
     {
         var search = request.Search?.Trim();
-        if (string.IsNullOrWhiteSpace(search) || search.Length < 2)
-            return [];
+        var query = db.Customers.AsNoTracking();
 
-        var normalized = search.ToLower();
-        return await db.Customers.AsNoTracking()
-            .Where(customer => customer.Name.ToLower().Contains(normalized)
-                || customer.Mobile.ToLower().Contains(normalized))
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalized = search.ToLower();
+            query = query.Where(customer => customer.Name.ToLower().Contains(normalized)
+                || customer.Mobile.ToLower().Contains(normalized)
+                || (customer.Email != null && customer.Email.ToLower().Contains(normalized)));
+        }
+
+        var limit = Math.Clamp(request.Limit, 1, 200);
+        return await query
             .OrderBy(customer => customer.Name)
-            .Take(Math.Clamp(request.Limit, 1, 20))
+            .Take(limit)
             .Select(customer => new CustomerLookupSummary(
                 customer.Id, customer.Name, customer.Mobile, customer.Address, customer.Email, customer.Gstin, customer.StateCode, customer.StateName))
             .ToListAsync(cancellationToken);

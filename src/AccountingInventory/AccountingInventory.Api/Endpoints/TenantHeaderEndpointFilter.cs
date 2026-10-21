@@ -19,25 +19,58 @@ public sealed class TenantHeaderEndpointFilter(bool allowBootstrapRegistration =
         EndpointFilterInvocationContext context,
         EndpointFilterDelegate next)
     {
+        var userPrincipal = context.HttpContext.User;
+        var isAuthenticated = userPrincipal.Identity?.IsAuthenticated == true;
+        var isProductOwner = isAuthenticated && (userPrincipal.IsInRole("ProductOwner") || userPrincipal.IsInRole("SuperAdmin"));
+
         var values = context.HttpContext.Request.Headers[TenantIdHeader];
-        if (values.Count != 1 || !Guid.TryParse(values[0], out var tenantId))
+        Guid tenantId;
+        if (values.Count == 1 && Guid.TryParse(values[0], out var parsedId) && parsedId != Guid.Empty)
+        {
+            tenantId = parsedId;
+        }
+        else if (isProductOwner)
+        {
+            // Product Owner / SuperAdmin without an explicit X-Tenant-Id header:
+            // Auto-resolve the first active tenant from directory so requests don't fail
+            var directory = context.HttpContext.RequestServices.GetRequiredService<ITenantDirectoryContext>();
+            var defaultTenant = await directory.Tenants.AsNoTracking()
+                .Where(t => t.Status == TenantStatus.Active && t.IsActive)
+                .OrderBy(t => t.CreatedAt)
+                .FirstOrDefaultAsync(context.HttpContext.RequestAborted);
+
+            if (defaultTenant is not null)
+            {
+                tenantId = defaultTenant.Id;
+            }
+            else
+            {
+                return Results.Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "No active tenant found to operate on.");
+            }
+        }
+        else
         {
             return Results.Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: $"Request header '{TenantIdHeader}' must contain one valid tenant id.");
         }
 
-        if (!allowBootstrapRegistration && !allowInvitationAcceptance && context.HttpContext.User.Identity?.IsAuthenticated != true)
+        if (!allowBootstrapRegistration && !allowInvitationAcceptance && !isAuthenticated)
             return Results.Unauthorized();
 
         var tenantContext = context.HttpContext.RequestServices.GetRequiredService<ITenantContext>();
-        if (context.HttpContext.User.Identity?.IsAuthenticated == true && tenantContext.TenantId is null)
-            return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "The access token does not identify a tenant.");
-        if (tenantContext.TenantId is { } authenticatedTenantId && authenticatedTenantId != tenantId)
+        if (isAuthenticated && !isProductOwner)
         {
-            return Results.Problem(
-                statusCode: StatusCodes.Status403Forbidden,
-                title: "The tenant header does not match the authenticated user's tenant.");
+            if (tenantContext.TenantId is null)
+                return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "The access token does not identify a tenant.");
+            if (tenantContext.TenantId is { } authenticatedTenantId && authenticatedTenantId != tenantId)
+            {
+                return Results.Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "The tenant header does not match the authenticated user's tenant.");
+            }
         }
 
         var tenantDirectory = context.HttpContext.RequestServices.GetRequiredService<ITenantDirectoryContext>();
@@ -59,11 +92,14 @@ public sealed class TenantHeaderEndpointFilter(bool allowBootstrapRegistration =
             .SetTenant(tenant.Id, tenant.SchemaName);
 
         var db = context.HttpContext.RequestServices.GetRequiredService<IAccountingInventoryDbContext>();
-        if (context.HttpContext.User.Identity?.IsAuthenticated == true)
+        if (isAuthenticated)
         {
-            if (!Guid.TryParse(context.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
-                || !await db.Users.AnyAsync(user => user.Id == userId && user.IsActive, context.HttpContext.RequestAborted))
-                return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "The user account is inactive or does not belong to this tenant.");
+            if (!isProductOwner)
+            {
+                if (!Guid.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+                    || !await db.Users.AnyAsync(user => user.Id == userId && user.IsActive, context.HttpContext.RequestAborted))
+                    return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "The user account is inactive or does not belong to this tenant.");
+            }
         }
         else if (allowBootstrapRegistration && await db.Users.AnyAsync(context.HttpContext.RequestAborted))
             return Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "This tenant is already registered. Its owner must create additional accounts.");

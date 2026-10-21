@@ -25,7 +25,7 @@ public static class CustomerEndpoints
                 if (page.HasValue || pageSize.HasValue)
                     return (IResult)Results.Ok(await sender.Send(new GetCustomersQuery(page ?? 1,
                         pageSize ?? 20, search, sortBy, sortDirection), cancellationToken));
-                return Results.Ok(await sender.Send(new SearchCustomersQuery(search, limit ?? 10), cancellationToken));
+                return Results.Ok(await sender.Send(new SearchCustomersQuery(search, limit ?? 50), cancellationToken));
             })
             .WithName("SearchCustomers")
             .Produces<IReadOnlyList<CustomerLookupSummary>>(StatusCodes.Status200OK)

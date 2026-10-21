@@ -60,6 +60,69 @@ public sealed class DatabaseMigrationCoordinator(
         CREATE UNIQUE INDEX IF NOT EXISTS ix_table_registry_schema_table
             ON tenant.table_registry (schema_name, table_name);
 
+        CREATE TABLE IF NOT EXISTS tenant.ocr_providers (
+            id uuid NOT NULL PRIMARY KEY,
+            name character varying(150) NOT NULL,
+            provider_type character varying(50) NOT NULL,
+            endpoint_url character varying(500),
+            api_key_or_secret character varying(500),
+            model_id_or_processor_id character varying(150),
+            region character varying(50),
+            additional_config_json text,
+            is_enabled boolean NOT NULL DEFAULT true,
+            is_default boolean NOT NULL DEFAULT false,
+            description text,
+            created_at_utc timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            modified_at_utc timestamp with time zone
+        );
+        CREATE INDEX IF NOT EXISTS ix_ocr_providers_provider_type ON tenant.ocr_providers (provider_type);
+        CREATE INDEX IF NOT EXISTS ix_ocr_providers_is_default ON tenant.ocr_providers (is_default);
+
+        INSERT INTO tenant.ocr_providers (id, name, provider_type, endpoint_url, api_key_or_secret, model_id_or_processor_id, region, is_enabled, is_default, description, created_at_utc)
+        VALUES 
+            ('c1a00000-0000-0000-0000-000000000001', 'Tesseract Local Engine', 'TesseractLocal', '', '', 'gst-invoice-v1', 'local', true, true, 'Default built-in local OCR engine with specialized Indian GST purchase invoice & item table regex layout extractor.', CURRENT_TIMESTAMP),
+            ('c1a00000-0000-0000-0000-000000000002', 'Azure AI Document Intelligence', 'AzureDocumentIntelligence', 'https://<your-resource>.cognitiveservices.azure.com/', '', 'prebuilt-invoice', 'eastus', false, false, 'Microsoft Azure Document Intelligence Prebuilt Invoice extraction model.', CURRENT_TIMESTAMP),
+            ('c1a00000-0000-0000-0000-000000000003', 'Google Document AI', 'GoogleDocumentAi', 'https://us-documentai.googleapis.com/v1', '', 'invoice-processor', 'us', false, false, 'Google Cloud Document AI Invoice Parser for automated tax, vendor, and line item parsing.', CURRENT_TIMESTAMP)
+        ON CONFLICT (id) DO NOTHING;
+
+        CREATE TABLE IF NOT EXISTS tenant.tenant_ocr_settings (
+            id uuid NOT NULL PRIMARY KEY,
+            tenant_id uuid NOT NULL,
+            is_ocr_enabled boolean NOT NULL DEFAULT true,
+            preferred_provider_id uuid,
+            max_scans_limit integer NOT NULL DEFAULT 100,
+            used_scans_count integer NOT NULL DEFAULT 0,
+            allow_ocr_upload_purchase_invoice boolean NOT NULL DEFAULT true,
+            last_scan_at_utc timestamp with time zone,
+            notes text,
+            created_at_utc timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            modified_at_utc timestamp with time zone
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ix_tenant_ocr_settings_tenant_id ON tenant.tenant_ocr_settings (tenant_id);
+
+        CREATE TABLE IF NOT EXISTS tenant.tenant_ocr_scan_logs (
+            id uuid NOT NULL PRIMARY KEY,
+            tenant_id uuid NOT NULL,
+            provider_id uuid,
+            provider_name character varying(150) NOT NULL,
+            provider_type character varying(50) NOT NULL,
+            file_name character varying(255) NOT NULL,
+            file_size bigint NOT NULL DEFAULT 0,
+            mime_type character varying(100) NOT NULL,
+            status character varying(50) NOT NULL DEFAULT 'Success',
+            error_message text,
+            processing_time_ms bigint NOT NULL DEFAULT 0,
+            extracted_vendor_name character varying(255),
+            extracted_bill_number character varying(100),
+            extracted_grand_total numeric(18,2),
+            extracted_item_count integer,
+            extracted_data_json text,
+            scanned_by character varying(200),
+            scanned_at_utc timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS ix_tenant_ocr_scan_logs_tenant_id ON tenant.tenant_ocr_scan_logs (tenant_id);
+        CREATE INDEX IF NOT EXISTS ix_tenant_ocr_scan_logs_scanned_at ON tenant.tenant_ocr_scan_logs (scanned_at_utc);
+
         CREATE OR REPLACE FUNCTION tenant.sync_table_registry(p_schema text)
         RETURNS void AS $$
         BEGIN
@@ -70,7 +133,7 @@ public sealed class DatabaseMigrationCoordinator(
                 t.table_name,
                 INITCAP(REPLACE(t.table_name, '_', ' ')),
                 CASE 
-                    WHEN t.table_name IN ('brands', 'variants', 'colors', 'product_types', 'product_models', 'vendors', 'finance_vendors', 'taxes', 'customer_bill_settings', 'chart_accounts', 'accounting_periods', 'accounting_dimensions', 'account_budgets', 'users', 'accounting_user_permissions', 'tenants', 'feature_flags', 'table_registry') THEN 'Master'
+                    WHEN t.table_name IN ('brands', 'variants', 'colors', 'product_types', 'product_models', 'vendors', 'finance_vendors', 'taxes', 'customer_bill_settings', 'chart_accounts', 'accounting_periods', 'accounting_dimensions', 'account_budgets', 'users', 'accounting_user_permissions', 'tenants', 'feature_flags', 'table_registry', 'ocr_providers', 'tenant_ocr_settings') THEN 'Master'
                     ELSE 'Data'
                 END,
                 CASE
@@ -79,6 +142,7 @@ public sealed class DatabaseMigrationCoordinator(
                     WHEN t.table_name IN ('taxes', 'customer_bill_settings') THEN 'Configuration / Master'
                     WHEN t.table_name IN ('chart_accounts', 'accounting_periods', 'accounting_dimensions', 'account_budgets') THEN 'Finance / Master'
                     WHEN t.table_name IN ('users', 'accounting_user_permissions', 'tenants', 'feature_flags') THEN 'System / Master'
+                    WHEN t.table_name IN ('ocr_providers', 'tenant_ocr_settings', 'tenant_ocr_scan_logs') THEN 'AI & Document OCR'
                     WHEN t.table_name IN ('products', 'stock_skus', 'sku_movements', 'inventory_adjustments') THEN 'Inventory'
                     WHEN t.table_name IN ('sales_products', 'sales_invoices', 'sales_invoice_lines', 'sales_payments', 'sales_receipts', 'sales_invoice_receipts', 'customers', 'customer_advances', 'customer_advance_refunds', 'invoice_corrections', 'correction_refunds', 'invoice_snapshots') THEN 'Sales'
                     WHEN t.table_name IN ('purchase_payments') THEN 'Purchases'
