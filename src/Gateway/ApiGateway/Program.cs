@@ -16,16 +16,45 @@ builder.Services
 
 builder.Services.AddRateLimiter(options =>
 {
+    var rateLimitConfig = builder.Configuration.GetSection("RateLimiting");
+    var isEnabled = rateLimitConfig.GetValue<bool?>("Enabled") ?? true;
+    var permitLimit = rateLimitConfig.GetValue<int?>("PermitLimit") ?? 5000;
+    var windowSeconds = rateLimitConfig.GetValue<int?>("WindowSeconds") ?? 60;
+    var queueLimit = rateLimitConfig.GetValue<int?>("QueueLimit") ?? 100;
+
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    {
+        if (!isEnabled)
+        {
+            return RateLimitPartition.GetNoLimiter("disabled");
+        }
+
+        var path = context.Request.Path;
+
+        // Exempt health checks, metrics, and diagnostics
+        if (path.StartsWithSegments("/health") || path.StartsWithSegments("/metrics"))
+        {
+            return RateLimitPartition.GetNoLimiter("health-exempt");
+        }
+
+        // Exempt authorized load test traffic
+        if (context.Request.Headers.ContainsKey("X-Load-Test") ||
+            context.Request.Headers.ContainsKey("X-Bypass-Rate-Limit") ||
+            path.StartsWithSegments("/api/admin/load-test"))
+        {
+            return RateLimitPartition.GetNoLimiter("load-test-exempt");
+        }
+
+        return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
-                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                QueueLimit = 20,
-            }));
+                QueueLimit = queueLimit,
+            });
+    });
 
     options.OnRejected = async (context, ct) =>
     {

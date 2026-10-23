@@ -26,6 +26,7 @@ if (isMessaging)
 }
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddSingleton<AccountingInventory.Api.LoadTesting.ILoadTestRunner, AccountingInventory.Api.LoadTesting.LoadTestRunnerService>();
 
 builder.Services.AddCors(options =>
 {
@@ -103,6 +104,7 @@ app.MapFeatureFlagEndpoints();
 app.MapTableRegistryEndpoints();
 app.MapDatabaseBackupEndpoints();
 app.MapOcrEndpoints();
+app.MapLoadTestEndpoints();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = ServiceName }));
 app.MapGet("/health/ready", async (TenantDbContext db, CancellationToken ct) =>
 {
