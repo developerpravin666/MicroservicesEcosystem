@@ -1,3 +1,4 @@
+using Prometheus;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -77,6 +78,7 @@ public static class DependencyInjection
     {
         app.UseExceptionHandler(_ => { });
         app.UseMiddleware<ApiResponseEnvelopeMiddleware>();
+        app.UseHttpMetrics();
 
         if (app.Environment.IsDevelopment() || (bool.TryParse(app.Configuration["Swagger:Enabled"], out var swaggerEnabled) && swaggerEnabled))
         {
@@ -84,6 +86,7 @@ public static class DependencyInjection
             app.UseSwaggerUI();
         }
 
+        app.MapMetrics();
         return app;
     }
 }

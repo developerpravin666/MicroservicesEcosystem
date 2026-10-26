@@ -17,6 +17,7 @@
 		<PackageReference Include="OpenTelemetry.Instrumentation.Http" />
 		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
 		<PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" />
+		<PackageReference Include="prometheus-net.AspNetCore" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -1,3 +1,4 @@
+using Prometheus;
 using System.Threading.RateLimiting;
 using BuildingBlocks.Observability;
 using BuildingBlocks.Observability.Middleware;
@@ -58,6 +59,7 @@ builder.Services.AddRateLimiter(options =>
 
     options.OnRejected = async (context, ct) =>
     {
+        GatewayMetrics.RateLimitRejectedCount.Inc();
         Log.Warning(
             "Rate limit exceeded for {RemoteIp} on {Path}. Correlation Id: {CorrelationId}",
             context.HttpContext.Connection.RemoteIpAddress,
@@ -101,8 +103,10 @@ app.UseCors(myCorsPolicy);
 
 app.UseCorrelationId();
 app.UseSharedRequestLogging();
+app.UseHttpMetrics();
 app.UseRateLimiter();
 
+app.MapMetrics();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = ServiceName }));
 
 app.MapReverseProxy(pipeline =>
@@ -129,4 +133,11 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
+}
+
+internal static class GatewayMetrics
+{
+    public static readonly Counter RateLimitRejectedCount = Metrics.CreateCounter(
+        "siddhi_ratelimit_rejected_total",
+        "Total requests rejected by the API Gateway rate limiter.");
 }
