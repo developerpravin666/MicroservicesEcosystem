@@ -1,0 +1,24 @@
+namespace AccountingInventory.Application.Hr.Payroll.Models;
+
+public sealed record SalaryStructureDto(
+    Guid Id,
+    Guid EmployeeId,
+    string EmployeeCode,
+    string EmployeeName,
+    decimal BasicSalary,
+    decimal Hra,
+    decimal DearnessAllowance,
+    decimal ConveyanceAllowance,
+    decimal SpecialAllowance,
+    decimal MedicalAllowance,
+    decimal PerformanceBonus,
+    decimal GrossSalary,
+    decimal ProvidentFund,
+    decimal Esi,
+    decimal ProfessionalTax,
+    decimal TdsTax,
+    decimal OtherDeductions,
+    decimal TotalDeductions,
+    decimal NetSalary,
+    string PaymentMode,
+    string? Remarks);

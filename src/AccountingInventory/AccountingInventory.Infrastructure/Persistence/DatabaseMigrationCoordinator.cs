@@ -17,14 +17,22 @@ public sealed class DatabaseMigrationCoordinator(
         CREATE TABLE IF NOT EXISTS tenant.__email_templates (
             key varchar(100) PRIMARY KEY, subject text NOT NULL, html_body text NOT NULL
         );
-        ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS owner_name character varying(150);
-        ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS owner_email character varying(150);
-        ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS owner_mobile character varying(25);
-        ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS initial_password_hash character varying(255);
-        ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS state_code character varying(10);
-        ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS gstin character varying(20);
-        ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS address character varying(500);
-        ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS rejection_reason character varying(500);
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = 'tenant' AND table_name = 'tenants'
+            ) THEN
+                ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS owner_name character varying(150);
+                ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS owner_email character varying(150);
+                ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS owner_mobile character varying(25);
+                ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS initial_password_hash character varying(255);
+                ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS state_code character varying(10);
+                ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS gstin character varying(20);
+                ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS address character varying(500);
+                ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS rejection_reason character varying(500);
+            END IF;
+        END $$;
 
         CREATE TABLE IF NOT EXISTS tenant.feature_flags (
             id uuid NOT NULL,
@@ -42,7 +50,11 @@ public sealed class DatabaseMigrationCoordinator(
             ON tenant.feature_flags (key, COALESCE(tenant_id, '00000000-0000-0000-0000-000000000000'::uuid));
 
         INSERT INTO tenant.feature_flags (id, key, name, description, is_enabled, category, tenant_id, created_at)
-        VALUES ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'voice_typing', 'Voice Typing & Speech Dictation', 'Enables automatic speech-to-text dictation across input fields and form controls via Web Speech API', true, 'Accessibility', NULL, CURRENT_TIMESTAMP)
+        VALUES 
+            ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'voice_typing', 'Voice Typing & Speech Dictation', 'Enables automatic speech-to-text dictation across input fields and form controls via Web Speech API', true, 'Accessibility', NULL, CURRENT_TIMESTAMP),
+            ('a1b2c3d4-e5f6-7890-abcd-ef1234567891', 'smart_hr', 'Smart HR & Employee Directory', 'Enables employee master, workforce records, designations, departments, documents, and staff directory', true, 'Human Resources', NULL, CURRENT_TIMESTAMP),
+            ('a1b2c3d4-e5f6-7890-abcd-ef1234567892', 'leave_management', 'Leave Management & Approvals', 'Enables leave balances, leave types, employee leave requests, and approval workflows', true, 'Human Resources', NULL, CURRENT_TIMESTAMP),
+            ('a1b2c3d4-e5f6-7890-abcd-ef1234567893', 'payroll', 'Smart Payroll & Compensation', 'Enables salary structures, monthly payroll run batches, payslip generation, and disbursements', true, 'Human Resources', NULL, CURRENT_TIMESTAMP)
         ON CONFLICT DO NOTHING;
 
         CREATE TABLE IF NOT EXISTS tenant.table_registry (
@@ -133,7 +145,7 @@ public sealed class DatabaseMigrationCoordinator(
                 t.table_name,
                 INITCAP(REPLACE(t.table_name, '_', ' ')),
                 CASE 
-                    WHEN t.table_name IN ('brands', 'variants', 'colors', 'product_types', 'product_models', 'vendors', 'finance_vendors', 'taxes', 'customer_bill_settings', 'chart_accounts', 'accounting_periods', 'accounting_dimensions', 'account_budgets', 'users', 'accounting_user_permissions', 'tenants', 'feature_flags', 'table_registry', 'ocr_providers', 'tenant_ocr_settings') THEN 'Master'
+                    WHEN t.table_name IN ('brands', 'variants', 'colors', 'product_types', 'product_models', 'vendors', 'finance_vendors', 'taxes', 'customer_bill_settings', 'chart_accounts', 'accounting_periods', 'accounting_dimensions', 'account_budgets', 'users', 'accounting_user_permissions', 'tenants', 'feature_flags', 'table_registry', 'ocr_providers', 'tenant_ocr_settings', 'hr_departments', 'hr_leave_types', 'hr_salary_structures', 'hr_master_items') THEN 'Master'
                     ELSE 'Data'
                 END,
                 CASE
@@ -143,6 +155,7 @@ public sealed class DatabaseMigrationCoordinator(
                     WHEN t.table_name IN ('chart_accounts', 'accounting_periods', 'accounting_dimensions', 'account_budgets') THEN 'Finance / Master'
                     WHEN t.table_name IN ('users', 'accounting_user_permissions', 'tenants', 'feature_flags') THEN 'System / Master'
                     WHEN t.table_name IN ('ocr_providers', 'tenant_ocr_settings', 'tenant_ocr_scan_logs') THEN 'AI & Document OCR'
+                    WHEN t.table_name IN ('hr_departments', 'hr_employees', 'hr_leave_types', 'hr_leave_balances', 'hr_leave_requests', 'hr_salary_structures', 'hr_payroll_runs', 'hr_payslips', 'hr_master_items') THEN 'Human Resources & Payroll'
                     WHEN t.table_name IN ('products', 'stock_skus', 'sku_movements', 'inventory_adjustments') THEN 'Inventory'
                     WHEN t.table_name IN ('sales_products', 'sales_invoices', 'sales_invoice_lines', 'sales_payments', 'sales_receipts', 'sales_invoice_receipts', 'customers', 'customer_advances', 'customer_advance_refunds', 'invoice_corrections', 'correction_refunds', 'invoice_snapshots') THEN 'Sales'
                     WHEN t.table_name IN ('purchase_payments') THEN 'Purchases'
@@ -179,6 +192,14 @@ public sealed class DatabaseMigrationCoordinator(
                     WHEN t.table_name = 'journal_entries' THEN 'General ledger double-entry journal transactions'
                     WHEN t.table_name = 'journal_lines' THEN 'Debit and credit posting financial entries'
                     WHEN t.table_name = 'audit_logs' THEN 'System mutation and compliance activity logs'
+                    WHEN t.table_name = 'hr_departments' THEN 'Organizational departments and business units master'
+                    WHEN t.table_name = 'hr_employees' THEN 'Workforce employee profiles and payroll details'
+                    WHEN t.table_name = 'hr_leave_types' THEN 'Company leave policies and entitlements master'
+                    WHEN t.table_name = 'hr_leave_balances' THEN 'Employee annual leave balance allocations and usage'
+                    WHEN t.table_name = 'hr_leave_requests' THEN 'Employee leave applications and approval workflows'
+                    WHEN t.table_name = 'hr_salary_structures' THEN 'Employee compensation, allowances, and statutory deduction plans'
+                    WHEN t.table_name = 'hr_payroll_runs' THEN 'Monthly payroll calculation and disbursement batch runs'
+                    WHEN t.table_name = 'hr_payslips' THEN 'Monthly employee salary slips and payment records'
                     ELSE 'Operational transactional table'
                 END,
                 t.table_name LIKE '__%' OR t.table_name = 'table_registry',
@@ -342,7 +363,7 @@ public sealed class DatabaseMigrationCoordinator(
             catch (Exception ex)
             {
                 logger.LogError(ex, "Tenant schema '{Schema}' migration failed: {Message}", schema, ex.Message);
-                failed[schema] = ex.Message;
+                failed[schema] = ex.InnerException != null ? $"{ex.Message} -> {ex.InnerException.Message}" : ex.Message;
             }
         }
 

@@ -4,6 +4,7 @@ using BuildingBlocks.Observability.Middleware;
 using BuildingBlocks.Security;
 using BuildingBlocks.WebDefaults;
 using AccountingInventory.Api.Endpoints;
+using AccountingInventory.Api.Endpoints.Hr;
 using AccountingInventory.Application;
 using AccountingInventory.Application.Abstractions;
 using AccountingInventory.Infrastructure;
@@ -19,6 +20,7 @@ builder.AddSharedLogging(ServiceName);
 
 builder.Services.AddPlatformSecurity(builder.Configuration);
 builder.Services.AddWebDefaults(ServiceName);
+builder.Services.AddHrJsonOptions();
 bool isMessaging = builder.Configuration.GetSection("RabbitMq:Enable").Get<bool>();
 if (isMessaging)
 {
@@ -103,6 +105,7 @@ app.MapFeatureFlagEndpoints();
 app.MapTableRegistryEndpoints();
 app.MapDatabaseBackupEndpoints();
 app.MapOcrEndpoints();
+app.MapHrEndpoints();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = ServiceName }));
 app.MapGet("/health/ready", async (TenantDbContext db, CancellationToken ct) =>
 {
@@ -120,9 +123,10 @@ await using (var scope = app.Services.CreateAsyncScope())
     var result = await coordinator.MigrateAllAsync();
     if (!result.Success)
     {
-        Log.Error("Platform database migrations failed: {Message}. Schemas with issues: {Count}",
-            result.Message, result.FailedSchemas.Count);
-        throw new InvalidOperationException("Database migrations failed. Review migration logs before starting the API.");
+        var failureDetails = string.Join("; ", result.FailedSchemas.Select(kv => $"{kv.Key}: {kv.Value}"));
+        Log.Error("Platform database migrations failed: {Message}. Schemas with issues: {Count}. Details: {Details}",
+            result.Message, result.FailedSchemas.Count, failureDetails);
+        throw new InvalidOperationException($"Database migrations failed: {result.Message}. Issues: {failureDetails}");
     }
     else
     {

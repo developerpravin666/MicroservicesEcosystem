@@ -154,7 +154,8 @@ public static class FeatureFlagEndpoints
                 .AsNoTracking()
                 .ToListAsync(ct);
 
-            // Ensure baseline voice_typing flag exists globally
+            // Ensure baseline flags exist globally
+            var hasNewBaseline = false;
             if (!allFlags.Any(f => f.Key.Equals("voice_typing", StringComparison.OrdinalIgnoreCase) && f.TenantId == null))
             {
                 var defaultVoice = FeatureFlag.Create(
@@ -164,10 +165,56 @@ public static class FeatureFlagEndpoints
                     isEnabled: true,
                     category: "Accessibility",
                     tenantId: null);
-
                 directory.FeatureFlags.Add(defaultVoice);
-                await directory.SaveChangesAsync(ct);
                 allFlags.Add(defaultVoice);
+                hasNewBaseline = true;
+            }
+
+            if (!allFlags.Any(f => f.Key.Equals("smart_hr", StringComparison.OrdinalIgnoreCase) && f.TenantId == null))
+            {
+                var defaultHr = FeatureFlag.Create(
+                    "smart_hr",
+                    "Smart HR & Employee Directory",
+                    "Enables employee master, workforce records, designations, departments, documents, and staff directory",
+                    isEnabled: true,
+                    category: "Human Resources",
+                    tenantId: null);
+                directory.FeatureFlags.Add(defaultHr);
+                allFlags.Add(defaultHr);
+                hasNewBaseline = true;
+            }
+
+            if (!allFlags.Any(f => f.Key.Equals("leave_management", StringComparison.OrdinalIgnoreCase) && f.TenantId == null))
+            {
+                var defaultLeave = FeatureFlag.Create(
+                    "leave_management",
+                    "Leave Management & Approvals",
+                    "Enables leave balances, leave types, employee leave requests, and approval workflows",
+                    isEnabled: true,
+                    category: "Human Resources",
+                    tenantId: null);
+                directory.FeatureFlags.Add(defaultLeave);
+                allFlags.Add(defaultLeave);
+                hasNewBaseline = true;
+            }
+
+            if (!allFlags.Any(f => f.Key.Equals("payroll", StringComparison.OrdinalIgnoreCase) && f.TenantId == null))
+            {
+                var defaultPayroll = FeatureFlag.Create(
+                    "payroll",
+                    "Smart Payroll & Compensation",
+                    "Enables salary structures, monthly payroll run batches, payslip generation, and disbursements",
+                    isEnabled: true,
+                    category: "Human Resources",
+                    tenantId: null);
+                directory.FeatureFlags.Add(defaultPayroll);
+                allFlags.Add(defaultPayroll);
+                hasNewBaseline = true;
+            }
+
+            if (hasNewBaseline)
+            {
+                await directory.SaveChangesAsync(ct);
             }
 
             var distinctKeys = allFlags.Select(f => f.Key).Distinct(StringComparer.OrdinalIgnoreCase);

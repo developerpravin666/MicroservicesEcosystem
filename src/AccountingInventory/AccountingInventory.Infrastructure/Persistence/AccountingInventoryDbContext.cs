@@ -81,6 +81,15 @@ public sealed class AccountingInventoryDbContext(
     public DbSet<EWayBill> EWayBills => Set<EWayBill>();
     public DbSet<EInvoice> EInvoices => Set<EInvoice>();
     public DbSet<RcmSelfInvoice> RcmSelfInvoices => Set<RcmSelfInvoice>();
+    public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<LeaveType> LeaveTypes => Set<LeaveType>();
+    public DbSet<LeaveBalance> LeaveBalances => Set<LeaveBalance>();
+    public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<SalaryStructure> SalaryStructures => Set<SalaryStructure>();
+    public DbSet<PayrollRun> PayrollRuns => Set<PayrollRun>();
+    public DbSet<Payslip> Payslips => Set<Payslip>();
+    public DbSet<HrMasterItem> HrMasterItems => Set<HrMasterItem>();
 
     public async Task<string> GenerateSalesBillNumberAsync(int year, CancellationToken cancellationToken)
         => await Database.SqlQueryRaw<string>(
@@ -228,6 +237,118 @@ public sealed class AccountingInventoryDbContext(
         modelBuilder.ApplyConfiguration(new EWayBillConfiguration());
         modelBuilder.ApplyConfiguration(new EInvoiceConfiguration());
         P0Configurations.Configure(modelBuilder);
+
+        modelBuilder.Entity<Employee>(b =>
+        {
+            b.ToTable("hr_employees");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.EmployeeCode).HasMaxLength(50).IsRequired();
+            b.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
+            b.Property(x => x.LastName).HasMaxLength(100).IsRequired();
+            b.Property(x => x.Phone).HasMaxLength(30).IsRequired();
+            b.Property(x => x.Designation).HasMaxLength(150).IsRequired();
+            b.Property(x => x.Department).HasMaxLength(100);
+            b.Property(x => x.MonthlyBaseSalary).HasPrecision(18, 2);
+            b.HasIndex(x => x.EmployeeCode).IsUnique();
+        });
+
+        modelBuilder.Entity<Department>(b =>
+        {
+            b.ToTable("hr_departments");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            b.Property(x => x.Code).HasMaxLength(50).IsRequired();
+            b.HasIndex(x => x.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<LeaveType>(b =>
+        {
+            b.ToTable("hr_leave_types");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            b.Property(x => x.Code).HasMaxLength(20).IsRequired();
+            b.HasIndex(x => x.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<LeaveBalance>(b =>
+        {
+            b.ToTable("hr_leave_balances");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.TotalAllocated).HasPrecision(8, 2);
+            b.Property(x => x.UsedDays).HasPrecision(8, 2);
+            b.Property(x => x.PendingApprovalDays).HasPrecision(8, 2);
+            b.HasIndex(x => new { x.EmployeeId, x.LeaveTypeId, x.Year }).IsUnique();
+        });
+
+        modelBuilder.Entity<LeaveRequest>(b =>
+        {
+            b.ToTable("hr_leave_requests");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.TotalDays).HasPrecision(8, 2);
+            b.Property(x => x.Reason).HasMaxLength(500).IsRequired();
+            b.HasIndex(x => x.EmployeeId);
+            b.HasIndex(x => x.Status);
+        });
+
+        modelBuilder.Entity<SalaryStructure>(b =>
+        {
+            b.ToTable("hr_salary_structures");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.BasicSalary).HasPrecision(18, 2);
+            b.Property(x => x.Hra).HasPrecision(18, 2);
+            b.Property(x => x.DearnessAllowance).HasPrecision(18, 2);
+            b.Property(x => x.ConveyanceAllowance).HasPrecision(18, 2);
+            b.Property(x => x.SpecialAllowance).HasPrecision(18, 2);
+            b.Property(x => x.MedicalAllowance).HasPrecision(18, 2);
+            b.Property(x => x.PerformanceBonus).HasPrecision(18, 2);
+            b.Property(x => x.ProvidentFund).HasPrecision(18, 2);
+            b.Property(x => x.Esi).HasPrecision(18, 2);
+            b.Property(x => x.ProfessionalTax).HasPrecision(18, 2);
+            b.Property(x => x.TdsTax).HasPrecision(18, 2);
+            b.Property(x => x.OtherDeductions).HasPrecision(18, 2);
+            b.HasIndex(x => x.EmployeeId).IsUnique();
+        });
+
+        modelBuilder.Entity<PayrollRun>(b =>
+        {
+            b.ToTable("hr_payroll_runs");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.TotalGrossAmount).HasPrecision(18, 2);
+            b.Property(x => x.TotalDeductions).HasPrecision(18, 2);
+            b.Property(x => x.TotalNetAmount).HasPrecision(18, 2);
+            b.HasIndex(x => new { x.Month, x.Year });
+        });
+
+        modelBuilder.Entity<Payslip>(b =>
+        {
+            b.ToTable("hr_payslips");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.BasicSalary).HasPrecision(18, 2);
+            b.Property(x => x.Hra).HasPrecision(18, 2);
+            b.Property(x => x.Allowances).HasPrecision(18, 2);
+            b.Property(x => x.Bonus).HasPrecision(18, 2);
+            b.Property(x => x.GrossEarnings).HasPrecision(18, 2);
+            b.Property(x => x.PfDeduction).HasPrecision(18, 2);
+            b.Property(x => x.EsiDeduction).HasPrecision(18, 2);
+            b.Property(x => x.ProfessionalTax).HasPrecision(18, 2);
+            b.Property(x => x.TdsDeduction).HasPrecision(18, 2);
+            b.Property(x => x.LopDeduction).HasPrecision(18, 2);
+            b.Property(x => x.OtherDeductions).HasPrecision(18, 2);
+            b.Property(x => x.TotalDeductions).HasPrecision(18, 2);
+            b.Property(x => x.NetSalary).HasPrecision(18, 2);
+            b.HasIndex(x => x.PayrollRunId);
+            b.HasIndex(x => x.EmployeeId);
+        });
+
+        modelBuilder.Entity<HrMasterItem>(b =>
+        {
+            b.ToTable("hr_master_items");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Category).HasMaxLength(50).IsRequired();
+            b.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            b.Property(x => x.Code).HasMaxLength(50).IsRequired();
+            b.HasIndex(x => new { x.Category, x.Code }).IsUnique();
+        });
         modelBuilder.Entity<JournalLine>().HasOne<AccountingDimension>().WithMany()
             .HasForeignKey(line => line.DimensionId).OnDelete(DeleteBehavior.Restrict);
         //modelBuilder.ApplyConfiguration(new RoleConfiguration());

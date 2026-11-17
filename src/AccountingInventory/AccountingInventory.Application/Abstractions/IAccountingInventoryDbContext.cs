@@ -62,6 +62,15 @@ public interface IAccountingInventoryDbContext
     DbSet<EWayBill> EWayBills { get; }
     DbSet<EInvoice> EInvoices { get; }
     DbSet<RcmSelfInvoice> RcmSelfInvoices { get; }
+    DbSet<Employee> Employees { get; }
+    DbSet<Department> Departments { get; }
+    DbSet<LeaveType> LeaveTypes { get; }
+    DbSet<LeaveBalance> LeaveBalances { get; }
+    DbSet<LeaveRequest> LeaveRequests { get; }
+    DbSet<SalaryStructure> SalaryStructures { get; }
+    DbSet<PayrollRun> PayrollRuns { get; }
+    DbSet<Payslip> Payslips { get; }
+    DbSet<HrMasterItem> HrMasterItems { get; }
     Task<string> GenerateSalesBillNumberAsync(int year, CancellationToken cancellationToken);
 
     //DbSet<Role> Roles { get; }
