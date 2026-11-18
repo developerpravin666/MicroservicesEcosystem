@@ -40,8 +40,8 @@ public static class TenantEndpoints
             .Produces<IReadOnlyList<PendingTenantDto>>();
 
         // Administrator approval: triggers automatic schema creation, EF migrations & seed data
-        group.MapPost("/{id:guid}/approve", async (Guid id, ISender sender, CancellationToken ct) =>
-                Results.Ok(await sender.Send(new ApproveTenantCommand(id), ct)))
+        group.MapPost("/{id:guid}/approve", async (Guid id, ApproveTenantRequest? request, ISender sender, CancellationToken ct) =>
+                Results.Ok(await sender.Send(new ApproveTenantCommand(id, request?.AssignedModules), ct)))
             .WithName("ApproveTenant").AllowAnonymous()
             .Produces<ApproveTenantResult>()
             .ProducesProblem(StatusCodes.Status404NotFound)
@@ -79,13 +79,70 @@ public static class TenantEndpoints
                     t.Address,
                     t.RejectionReason,
                     t.IsActive,
-                    t.CreatedAt))
+                    t.CreatedAt,
+                    t.SubscribedModules))
                 .ToListAsync(ct);
             return Results.Ok(tenants);
         }
 
         group.MapGet("", GetAllTenants).WithName("GetTenantsRoot").AllowAnonymous();
         group.MapGet("/all", GetAllTenants).WithName("GetAllTenants").AllowAnonymous().Produces<IReadOnlyList<AdminTenantDto>>();
+
+        // Super Admin update assigned modules for any tenant
+        group.MapPut("/{id:guid}/modules", async (Guid id, UpdateTenantModulesRequest request, ITenantDirectoryContext directory, CancellationToken ct) =>
+        {
+            var tenant = await directory.Tenants.FirstOrDefaultAsync(t => t.Id == id, ct);
+            if (tenant == null)
+            {
+                return Results.NotFound(new { message = $"Tenant with ID '{id}' was not found." });
+            }
+
+            var modulesList = request.Modules ?? [];
+            var normalizedModules = string.Join(",", modulesList.Select(m => m.Trim().ToLowerInvariant()));
+            tenant.SetSubscribedModules(normalizedModules);
+
+            var hasAccountingInventory = modulesList.Any(m => m.Equals("accounting_inventory", StringComparison.OrdinalIgnoreCase) || m.Equals("accounting", StringComparison.OrdinalIgnoreCase));
+            var hasHrPayroll = modulesList.Any(m => m.Equals("hr_payroll", StringComparison.OrdinalIgnoreCase) || m.Equals("smart_hr", StringComparison.OrdinalIgnoreCase));
+
+            var moduleFlagMap = new Dictionary<string, (string Name, string Description, string Category, bool Enabled)>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["inventory"] = ("Inventory & Stock Management", "Enables products, serialized IMEI stock tracking, godowns, valuation, and purchases", "Inventory & POS", hasAccountingInventory),
+                ["accounting"] = ("Double-Entry General Ledger", "Enables chart of accounts, journal vouchers, balance sheet, party statements, and GST returns", "Accounting", hasAccountingInventory),
+                ["smart_hr"] = ("Smart HR & Employee Directory", "Enables employee master, workforce records, designations, departments, documents, and staff directory", "Human Resources", hasHrPayroll),
+                ["leave_management"] = ("Leave Management & Approvals", "Enables leave balances, leave types, employee leave requests, and approval workflows", "Human Resources", hasHrPayroll),
+                ["payroll"] = ("Smart Payroll & Compensation", "Enables salary structures, monthly payroll run batches, payslip generation, and disbursements", "Human Resources", hasHrPayroll),
+            };
+
+            var existingFlags = await directory.FeatureFlags.Where(f => f.TenantId == id).ToListAsync(ct);
+            foreach (var (key, meta) in moduleFlagMap)
+            {
+                var existing = existingFlags.FirstOrDefault(f => f.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+                if (existing != null)
+                {
+                    existing.IsEnabled = meta.Enabled;
+                    existing.ModifiedAt = DateTimeOffset.UtcNow;
+                }
+                else
+                {
+                    directory.FeatureFlags.Add(FeatureFlag.Create(
+                        key,
+                        meta.Name,
+                        meta.Description,
+                        isEnabled: meta.Enabled,
+                        category: meta.Category,
+                        tenantId: id));
+                }
+            }
+
+            await directory.SaveChangesAsync(ct);
+            return Results.Ok(new
+            {
+                success = true,
+                subscribedModules = normalizedModules,
+                message = $"Modules updated successfully for tenant '{tenant.Name}'."
+            });
+        })
+        .WithName("UpdateTenantModules").AllowAnonymous();
 
         group.MapGet("/metrics", async (ITenantDirectoryContext directory, IConfiguration config, CancellationToken ct) =>
         {
@@ -169,6 +226,8 @@ public static class TenantEndpoints
 }
 
 public sealed record RejectTenantRequest(string? Reason = null);
+public sealed record ApproveTenantRequest(List<string>? AssignedModules = null);
+public sealed record UpdateTenantModulesRequest(List<string>? Modules = null);
 
 public sealed record AdminTenantDto(
     Guid Id,
@@ -184,7 +243,8 @@ public sealed record AdminTenantDto(
     string? Address,
     string? RejectionReason,
     bool IsActive,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string? SubscribedModules = null);
 
 public sealed record TenantMetricsDto(
     int TotalTenants,

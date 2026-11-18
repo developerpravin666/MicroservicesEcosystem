@@ -30,6 +30,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.Gstin).HasMaxLength(20);
         builder.Property(t => t.Address).HasMaxLength(500);
         builder.Property(t => t.RejectionReason).HasMaxLength(500);
+        builder.Property(t => t.SubscribedModules).HasMaxLength(250).HasDefaultValue("accounting_inventory,hr_payroll");
 
         builder.HasIndex(t => t.OwnerEmail).IsUnique();
         builder.HasIndex(t => t.Slug).IsUnique();

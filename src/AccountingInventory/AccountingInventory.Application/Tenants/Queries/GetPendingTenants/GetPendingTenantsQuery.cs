@@ -14,7 +14,8 @@ public sealed record PendingTenantDto(
     string? StateCode,
     string? Gstin,
     string? Address,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string? SubscribedModules = null);
 
 public sealed record GetPendingTenantsQuery() : IRequest<IReadOnlyList<PendingTenantDto>>;
 

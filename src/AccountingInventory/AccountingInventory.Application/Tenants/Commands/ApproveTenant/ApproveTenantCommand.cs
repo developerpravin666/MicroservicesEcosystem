@@ -2,7 +2,7 @@ using MediatR;
 
 namespace AccountingInventory.Application.Tenants.Commands.ApproveTenant;
 
-public sealed record ApproveTenantCommand(Guid TenantId) : IRequest<ApproveTenantResult>;
+public sealed record ApproveTenantCommand(Guid TenantId, IReadOnlyList<string>? AssignedModules = null) : IRequest<ApproveTenantResult>;
 
 public sealed record ApproveTenantResult(
     Guid TenantId,

@@ -12,7 +12,8 @@ public sealed record RegisterTenantCommand(
     string? Password = null,
     string? StateCode = null,
     string? Gstin = null,
-    string? Address = null) : IRequest<RegisterTenantResult>;
+    string? Address = null,
+    IReadOnlyList<string>? SelectedModules = null) : IRequest<RegisterTenantResult>;
 
 public sealed record RegisterTenantResult(
     Guid TenantId,

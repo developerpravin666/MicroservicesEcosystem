@@ -26,6 +26,7 @@ public sealed class Tenant : AggregateRoot
     public string? Gstin { get; private set; }
     public string? Address { get; private set; }
     public string? RejectionReason { get; private set; }
+    public string? SubscribedModules { get; private set; }
 
     public static Tenant Create(
         string name,
@@ -37,7 +38,8 @@ public sealed class Tenant : AggregateRoot
         string? stateCode = null,
         string? gstin = null,
         string? address = null,
-        bool requireApproval = true)
+        bool requireApproval = true,
+        string? subscribedModules = null)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -67,6 +69,7 @@ public sealed class Tenant : AggregateRoot
             StateCode = stateCode?.Trim(),
             Gstin = gstin?.Trim().ToUpperInvariant(),
             Address = address?.Trim(),
+            SubscribedModules = !string.IsNullOrWhiteSpace(subscribedModules) ? subscribedModules.Trim() : "accounting_inventory,hr_payroll"
         };
 
         //tenant.RaiseDomainEvent(new TenantCreatedDomainEvent(
@@ -105,6 +108,8 @@ public sealed class Tenant : AggregateRoot
     }
 
     public void SetInitialPasswordHash(string hash) => InitialPasswordHash = hash;
+
+    public void SetSubscribedModules(string? modules) => SubscribedModules = string.IsNullOrWhiteSpace(modules) ? null : modules.Trim();
 
     public void Approve() => Activate();
 

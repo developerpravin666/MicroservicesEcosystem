@@ -31,6 +31,7 @@ public sealed class DatabaseMigrationCoordinator(
                 ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS gstin character varying(20);
                 ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS address character varying(500);
                 ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS rejection_reason character varying(500);
+                ALTER TABLE tenant.tenants ADD COLUMN IF NOT EXISTS subscribed_modules character varying(250) DEFAULT 'accounting_inventory,hr_payroll';
             END IF;
         END $$;
 
@@ -54,7 +55,9 @@ public sealed class DatabaseMigrationCoordinator(
             ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'voice_typing', 'Voice Typing & Speech Dictation', 'Enables automatic speech-to-text dictation across input fields and form controls via Web Speech API', true, 'Accessibility', NULL, CURRENT_TIMESTAMP),
             ('a1b2c3d4-e5f6-7890-abcd-ef1234567891', 'smart_hr', 'Smart HR & Employee Directory', 'Enables employee master, workforce records, designations, departments, documents, and staff directory', true, 'Human Resources', NULL, CURRENT_TIMESTAMP),
             ('a1b2c3d4-e5f6-7890-abcd-ef1234567892', 'leave_management', 'Leave Management & Approvals', 'Enables leave balances, leave types, employee leave requests, and approval workflows', true, 'Human Resources', NULL, CURRENT_TIMESTAMP),
-            ('a1b2c3d4-e5f6-7890-abcd-ef1234567893', 'payroll', 'Smart Payroll & Compensation', 'Enables salary structures, monthly payroll run batches, payslip generation, and disbursements', true, 'Human Resources', NULL, CURRENT_TIMESTAMP)
+            ('a1b2c3d4-e5f6-7890-abcd-ef1234567893', 'payroll', 'Smart Payroll & Compensation', 'Enables salary structures, monthly payroll run batches, payslip generation, and disbursements', true, 'Human Resources', NULL, CURRENT_TIMESTAMP),
+            ('78898ead-87f7-4fee-9b1a-eb32cf6b0df5', 'inventory', 'Inventory & Stock Management', 'Enables products, serialized IMEI stock tracking, godowns, valuation, and purchases', true, 'Inventory & POS', NULL, CURRENT_TIMESTAMP),
+            ('aece145c-a24a-41c7-b863-f34f0e368e6b', 'accounting', 'Double-Entry General Ledger', 'Enables chart of accounts, journal vouchers, balance sheet, party statements, and GST returns', true, 'Accounting', NULL, CURRENT_TIMESTAMP)
         ON CONFLICT DO NOTHING;
 
         CREATE TABLE IF NOT EXISTS tenant.table_registry (

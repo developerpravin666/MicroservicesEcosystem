@@ -26,7 +26,8 @@ public sealed class GetPendingTenantsQueryHandler(ITenantDirectoryContext tenant
                 t.StateCode,
                 t.Gstin,
                 t.Address,
-                t.CreatedAt))
+                t.CreatedAt,
+                t.SubscribedModules))
             .ToListAsync(cancellationToken);
     }
 }

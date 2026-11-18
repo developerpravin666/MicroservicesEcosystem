@@ -54,6 +54,10 @@ public sealed class RegisterTenantCommandHandler(
             initialPasswordHash = passwordHasher.HashPassword(dummyUser, request.Password);
         }
 
+        var modules = request.SelectedModules != null && request.SelectedModules.Count > 0
+            ? string.Join(",", request.SelectedModules.Select(m => m.Trim().ToLowerInvariant()))
+            : "accounting_inventory,hr_payroll";
+
         var tenant = Tenant.Create(
             name: request.Name,
             slug: normalizedSlug,
@@ -64,7 +68,8 @@ public sealed class RegisterTenantCommandHandler(
             stateCode: request.StateCode,
             gstin: request.Gstin,
             address: request.Address,
-            requireApproval: true);
+            requireApproval: true,
+            subscribedModules: modules);
 
         tenantDirectory.Tenants.Add(tenant);
         await tenantDirectory.SaveChangesAsync(cancellationToken);

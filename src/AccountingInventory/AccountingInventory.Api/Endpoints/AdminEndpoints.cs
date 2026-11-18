@@ -105,7 +105,8 @@ public static class AdminEndpoints
                     t.Address,
                     t.RejectionReason,
                     t.IsActive,
-                    t.CreatedAt))
+                    t.CreatedAt,
+                    t.SubscribedModules))
                 .ToListAsync(ct);
             return Results.Ok(tenants);
         }
@@ -121,12 +122,68 @@ public static class AdminEndpoints
         group.MapGet("/pending", GetPendingTenantsHandler).WithName("AdminGetPendingShort").AllowAnonymous();
 
         // 5. Approve Store (POST /api/admin/tenants/{id}/approve)
-        group.MapPost("/tenants/{id:guid}/approve", async (Guid id, ISender sender, CancellationToken ct) =>
-                Results.Ok(await sender.Send(new ApproveTenantCommand(id), ct)))
+        group.MapPost("/tenants/{id:guid}/approve", async (Guid id, ApproveTenantRequest? request, ISender sender, CancellationToken ct) =>
+                Results.Ok(await sender.Send(new ApproveTenantCommand(id, request?.AssignedModules), ct)))
             .WithName("AdminApproveTenant").AllowAnonymous()
             .Produces<ApproveTenantResult>()
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
+
+        // 5b. Update Assigned Modules (PUT /api/admin/tenants/{id}/modules)
+        group.MapPut("/tenants/{id:guid}/modules", async (Guid id, UpdateTenantModulesRequest request, ITenantDirectoryContext directory, CancellationToken ct) =>
+        {
+            var tenant = await directory.Tenants.FirstOrDefaultAsync(t => t.Id == id, ct);
+            if (tenant == null)
+            {
+                return Results.NotFound(new { message = $"Tenant with ID '{id}' was not found." });
+            }
+
+            var modulesList = request.Modules ?? [];
+            var normalizedModules = string.Join(",", modulesList.Select(m => m.Trim().ToLowerInvariant()));
+            tenant.SetSubscribedModules(normalizedModules);
+
+            var hasAccountingInventory = modulesList.Any(m => m.Equals("accounting_inventory", StringComparison.OrdinalIgnoreCase) || m.Equals("accounting", StringComparison.OrdinalIgnoreCase));
+            var hasHrPayroll = modulesList.Any(m => m.Equals("hr_payroll", StringComparison.OrdinalIgnoreCase) || m.Equals("smart_hr", StringComparison.OrdinalIgnoreCase));
+
+            var moduleFlagMap = new Dictionary<string, (string Name, string Description, string Category, bool Enabled)>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["inventory"] = ("Inventory & Stock Management", "Enables products, serialized IMEI stock tracking, godowns, valuation, and purchases", "Inventory & POS", hasAccountingInventory),
+                ["accounting"] = ("Double-Entry General Ledger", "Enables chart of accounts, journal vouchers, balance sheet, party statements, and GST returns", "Accounting", hasAccountingInventory),
+                ["smart_hr"] = ("Smart HR & Employee Directory", "Enables employee master, workforce records, designations, departments, documents, and staff directory", "Human Resources", hasHrPayroll),
+                ["leave_management"] = ("Leave Management & Approvals", "Enables leave balances, leave types, employee leave requests, and approval workflows", "Human Resources", hasHrPayroll),
+                ["payroll"] = ("Smart Payroll & Compensation", "Enables salary structures, monthly payroll run batches, payslip generation, and disbursements", "Human Resources", hasHrPayroll),
+            };
+
+            var existingFlags = await directory.FeatureFlags.Where(f => f.TenantId == id).ToListAsync(ct);
+            foreach (var (key, meta) in moduleFlagMap)
+            {
+                var existing = existingFlags.FirstOrDefault(f => f.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+                if (existing != null)
+                {
+                    existing.IsEnabled = meta.Enabled;
+                    existing.ModifiedAt = DateTimeOffset.UtcNow;
+                }
+                else
+                {
+                    directory.FeatureFlags.Add(FeatureFlag.Create(
+                        key,
+                        meta.Name,
+                        meta.Description,
+                        isEnabled: meta.Enabled,
+                        category: meta.Category,
+                        tenantId: id));
+                }
+            }
+
+            await directory.SaveChangesAsync(ct);
+            return Results.Ok(new
+            {
+                success = true,
+                subscribedModules = normalizedModules,
+                message = $"Modules updated successfully for tenant '{tenant.Name}'."
+            });
+        })
+        .WithName("AdminUpdateTenantModules").AllowAnonymous();
 
         // 6. Reject Store (POST /api/admin/tenants/{id}/reject)
         group.MapPost("/tenants/{id:guid}/reject", async (Guid id, RejectTenantRequest request, ISender sender, CancellationToken ct) =>

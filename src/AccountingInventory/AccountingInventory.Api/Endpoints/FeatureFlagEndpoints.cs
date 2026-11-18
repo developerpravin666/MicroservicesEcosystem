@@ -212,6 +212,34 @@ public static class FeatureFlagEndpoints
                 hasNewBaseline = true;
             }
 
+            if (!allFlags.Any(f => f.Key.Equals("inventory", StringComparison.OrdinalIgnoreCase) && f.TenantId == null))
+            {
+                var defaultInv = FeatureFlag.Create(
+                    "inventory",
+                    "Inventory & Stock Management",
+                    "Enables products, serialized IMEI stock tracking, godowns, valuation, and purchases",
+                    isEnabled: true,
+                    category: "Inventory & POS",
+                    tenantId: null);
+                directory.FeatureFlags.Add(defaultInv);
+                allFlags.Add(defaultInv);
+                hasNewBaseline = true;
+            }
+
+            if (!allFlags.Any(f => f.Key.Equals("accounting", StringComparison.OrdinalIgnoreCase) && f.TenantId == null))
+            {
+                var defaultAcc = FeatureFlag.Create(
+                    "accounting",
+                    "Double-Entry General Ledger",
+                    "Enables chart of accounts, journal vouchers, balance sheet, party statements, and GST returns",
+                    isEnabled: true,
+                    category: "Accounting",
+                    tenantId: null);
+                directory.FeatureFlags.Add(defaultAcc);
+                allFlags.Add(defaultAcc);
+                hasNewBaseline = true;
+            }
+
             if (hasNewBaseline)
             {
                 await directory.SaveChangesAsync(ct);

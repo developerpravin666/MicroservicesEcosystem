@@ -132,14 +132,30 @@ public sealed class ApproveTenantCommandHandler(
         await accInvDbContext.SaveChangesAsync(cancellationToken);
 
         // 7. Mark tenant Active in shared registry if not already active
+        if (request.AssignedModules != null && request.AssignedModules.Count > 0)
+        {
+            var normalizedModules = string.Join(",", request.AssignedModules.Select(m => m.Trim().ToLowerInvariant()));
+            tenant.SetSubscribedModules(normalizedModules);
+        }
+
+        var effectiveModules = !string.IsNullOrWhiteSpace(tenant.SubscribedModules)
+            ? tenant.SubscribedModules
+            : "accounting_inventory,hr_payroll";
+
+        await SyncTenantFeatureFlagsAsync(tenant.Id, effectiveModules, cancellationToken);
+
         if (!isAlreadyActive)
         {
             tenant.Approve();
             await tenantDirectory.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation(
-                "Tenant {TenantId} ('{Name}') fully approved, migrated and seeded with owner user '{OwnerUsername}'.",
-                tenant.Id, tenant.Name, ownerUsername);
+                "Tenant {TenantId} ('{Name}') fully approved, migrated and seeded with owner user '{OwnerUsername}'. Modules: {Modules}",
+                tenant.Id, tenant.Name, ownerUsername, effectiveModules);
+        }
+        else
+        {
+            await tenantDirectory.SaveChangesAsync(cancellationToken);
         }
 
         // 8. Send Approval confirmation email to store owner
@@ -185,6 +201,46 @@ public sealed class ApproveTenantCommandHandler(
             isAlreadyActive
                 ? $"Store '{tenant.Name}' database schema and seed ledgers verified successfully."
                 : "Tenant approved! Database schema migrated, seed ledgers created, and owner account activated.");
+    }
+
+    private async Task SyncTenantFeatureFlagsAsync(Guid tenantId, string subscribedModules, CancellationToken ct)
+    {
+        var modulesList = subscribedModules.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var hasAccountingInventory = modulesList.Any(m => m.Equals("accounting_inventory", StringComparison.OrdinalIgnoreCase) || m.Equals("accounting", StringComparison.OrdinalIgnoreCase));
+        var hasHrPayroll = modulesList.Any(m => m.Equals("hr_payroll", StringComparison.OrdinalIgnoreCase) || m.Equals("smart_hr", StringComparison.OrdinalIgnoreCase));
+
+        var moduleFlagMap = new Dictionary<string, (string Name, string Description, string Category, bool Enabled)>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["inventory"] = ("Inventory & Stock Management", "Enables products, serialized IMEI stock tracking, godowns, valuation, and purchases", "Inventory & POS", hasAccountingInventory),
+            ["accounting"] = ("Double-Entry General Ledger", "Enables chart of accounts, journal vouchers, balance sheet, party statements, and GST returns", "Accounting", hasAccountingInventory),
+            ["smart_hr"] = ("Smart HR & Employee Directory", "Enables employee master, workforce records, designations, departments, documents, and staff directory", "Human Resources", hasHrPayroll),
+            ["leave_management"] = ("Leave Management & Approvals", "Enables leave balances, leave types, employee leave requests, and approval workflows", "Human Resources", hasHrPayroll),
+            ["payroll"] = ("Smart Payroll & Compensation", "Enables salary structures, monthly payroll run batches, payslip generation, and disbursements", "Human Resources", hasHrPayroll),
+        };
+
+        var existingFlags = await tenantDirectory.FeatureFlags
+            .Where(f => f.TenantId == tenantId)
+            .ToListAsync(ct);
+
+        foreach (var (key, meta) in moduleFlagMap)
+        {
+            var existing = existingFlags.FirstOrDefault(f => f.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+            if (existing != null)
+            {
+                existing.IsEnabled = meta.Enabled;
+                existing.ModifiedAt = DateTimeOffset.UtcNow;
+            }
+            else
+            {
+                tenantDirectory.FeatureFlags.Add(FeatureFlag.Create(
+                    key,
+                    meta.Name,
+                    meta.Description,
+                    isEnabled: meta.Enabled,
+                    category: meta.Category,
+                    tenantId: tenantId));
+            }
+        }
     }
 }
 
