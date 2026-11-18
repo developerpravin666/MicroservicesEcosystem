@@ -6,6 +6,7 @@ public sealed record SalaryStructureDto(
     string EmployeeCode,
     string EmployeeName,
     decimal BasicSalary,
+    decimal HouseRentAllowance,
     decimal Hra,
     decimal DearnessAllowance,
     decimal ConveyanceAllowance,

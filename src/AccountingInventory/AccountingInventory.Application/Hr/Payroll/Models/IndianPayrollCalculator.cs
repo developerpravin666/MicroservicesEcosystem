@@ -2,7 +2,9 @@ namespace AccountingInventory.Application.Hr.Payroll.Models;
 
 public sealed record StatutoryCalculationResult(
     decimal GrossMonthlySalary,
+    decimal MonthlyGross,
     decimal BasicSalary,
+    decimal HouseRentAllowance,
     decimal Hra,
     decimal ConveyanceAllowance,
     decimal MedicalAllowance,
@@ -11,12 +13,16 @@ public sealed record StatutoryCalculationResult(
     decimal ProvidentFundEmployee,
     decimal ProvidentFundEmployer,
     decimal EsiEmployee,
+    decimal EmployeeStateInsurance,
     decimal EsiEmployer,
     decimal ProfessionalTax,
     decimal TdsTax,
+    decimal TaxDeductedAtSource,
     decimal TotalDeductions,
     decimal NetMonthlySalary,
-    decimal AnnualCtc);
+    decimal NetTakeHome,
+    decimal AnnualCtc,
+    string SalaryType);
 
 public static class IndianPayrollCalculator
 {
@@ -104,7 +110,9 @@ public static class IndianPayrollCalculator
 
         return new StatutoryCalculationResult(
             GrossMonthlySalary: grossMonthly,
+            MonthlyGross: grossMonthly,
             BasicSalary: basic,
+            HouseRentAllowance: hra,
             Hra: hra,
             ConveyanceAllowance: conveyance,
             MedicalAllowance: medical,
@@ -113,11 +121,15 @@ public static class IndianPayrollCalculator
             ProvidentFundEmployee: pfEmployee,
             ProvidentFundEmployer: pfEmployer,
             EsiEmployee: esiEmployee,
+            EmployeeStateInsurance: esiEmployee,
             EsiEmployer: esiEmployer,
             ProfessionalTax: professionalTax,
             TdsTax: tdsTax,
+            TaxDeductedAtSource: tdsTax,
             TotalDeductions: totalDeductions,
             NetMonthlySalary: netMonthly,
-            AnnualCtc: annualCtc);
+            NetTakeHome: netMonthly,
+            AnnualCtc: annualCtc,
+            SalaryType: isCtc ? "Annual CTC" : "Monthly");
     }
 }

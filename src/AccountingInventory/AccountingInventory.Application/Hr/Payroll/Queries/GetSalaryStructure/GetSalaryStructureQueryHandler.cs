@@ -18,7 +18,7 @@ public sealed class GetSalaryStructureQueryHandler(IAccountingInventoryDbContext
 
         return new SalaryStructureDto(
             structure.Id, structure.EmployeeId, structure.EmployeeCode, structure.EmployeeName,
-            structure.BasicSalary, structure.Hra, structure.DearnessAllowance, structure.ConveyanceAllowance,
+            structure.BasicSalary, structure.HouseRentAllowance, structure.Hra, structure.DearnessAllowance, structure.ConveyanceAllowance,
             structure.SpecialAllowance, structure.MedicalAllowance, structure.PerformanceBonus,
             structure.GrossSalary, structure.ProvidentFund, structure.Esi, structure.ProfessionalTax,
             structure.TdsTax, structure.OtherDeductions, structure.TotalDeductions, structure.NetSalary,

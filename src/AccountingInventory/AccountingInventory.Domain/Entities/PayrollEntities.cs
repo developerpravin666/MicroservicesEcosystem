@@ -28,13 +28,14 @@ public sealed class SalaryStructure : AggregateRoot
     
     // Earnings
     public decimal BasicSalary { get; private set; } = 0m;
+    public decimal HouseRentAllowance { get; private set; } = 0m;
     public decimal Hra { get; private set; } = 0m;
     public decimal DearnessAllowance { get; private set; } = 0m;
     public decimal ConveyanceAllowance { get; private set; } = 0m;
     public decimal SpecialAllowance { get; private set; } = 0m;
     public decimal MedicalAllowance { get; private set; } = 0m;
     public decimal PerformanceBonus { get; private set; } = 0m;
-    public decimal GrossSalary => BasicSalary + Hra + DearnessAllowance + ConveyanceAllowance + SpecialAllowance + MedicalAllowance + PerformanceBonus;
+    public decimal GrossSalary => BasicSalary + (HouseRentAllowance > 0m ? HouseRentAllowance : Hra) + DearnessAllowance + ConveyanceAllowance + SpecialAllowance + MedicalAllowance + PerformanceBonus;
 
     // Deductions
     public decimal ProvidentFund { get; private set; } = 0m;
@@ -65,8 +66,10 @@ public sealed class SalaryStructure : AggregateRoot
         decimal tdsTax = 0m,
         decimal otherDeductions = 0m,
         string paymentMode = "Bank Transfer",
-        string? remarks = null)
+        string? remarks = null,
+        decimal houseRentAllowance = 0m)
     {
+        var effectiveHra = Math.Max(0m, houseRentAllowance > 0m ? houseRentAllowance : hra);
         return new SalaryStructure
         {
             Id = Guid.NewGuid(),
@@ -74,7 +77,8 @@ public sealed class SalaryStructure : AggregateRoot
             EmployeeCode = employeeCode.Trim().ToUpperInvariant(),
             EmployeeName = employeeName.Trim(),
             BasicSalary = Math.Max(0m, basicSalary),
-            Hra = Math.Max(0m, hra),
+            HouseRentAllowance = effectiveHra,
+            Hra = effectiveHra,
             DearnessAllowance = Math.Max(0m, dearnessAllowance),
             ConveyanceAllowance = Math.Max(0m, conveyanceAllowance),
             SpecialAllowance = Math.Max(0m, specialAllowance),
@@ -106,10 +110,13 @@ public sealed class SalaryStructure : AggregateRoot
         decimal tdsTax,
         decimal otherDeductions,
         string paymentMode = "Bank Transfer",
-        string? remarks = null)
+        string? remarks = null,
+        decimal houseRentAllowance = 0m)
     {
+        var effectiveHra = Math.Max(0m, houseRentAllowance > 0m ? houseRentAllowance : hra);
         BasicSalary = Math.Max(0m, basicSalary);
-        Hra = Math.Max(0m, hra);
+        HouseRentAllowance = effectiveHra;
+        Hra = effectiveHra;
         DearnessAllowance = Math.Max(0m, dearnessAllowance);
         ConveyanceAllowance = Math.Max(0m, conveyanceAllowance);
         SpecialAllowance = Math.Max(0m, specialAllowance);
@@ -219,12 +226,14 @@ public sealed class Payslip : AggregateRoot
     public Guid EmployeeId { get; private set; }
     public string EmployeeCode { get; private set; } = null!;
     public string EmployeeName { get; private set; } = null!;
+    public string? DepartmentName { get; private set; }
     public string? Department { get; private set; }
     public string Designation { get; private set; } = null!;
     public int Month { get; private set; }
     public int Year { get; private set; }
     
     // Attendance & Days
+    public int TotalWorkingDays { get; private set; } = 30;
     public int WorkingDays { get; private set; } = 30;
     public int PresentDays { get; private set; } = 30;
     public decimal PaidLeaveDays { get; private set; } = 0m;
@@ -232,16 +241,21 @@ public sealed class Payslip : AggregateRoot
 
     // Computed Earnings
     public decimal BasicSalary { get; private set; }
+    public decimal HouseRentAllowance { get; private set; }
     public decimal Hra { get; private set; }
     public decimal Allowances { get; private set; }
     public decimal Bonus { get; private set; }
     public decimal GrossEarnings { get; private set; }
 
     // Computed Deductions
+    public decimal ProvidentFund { get; private set; }
     public decimal PfDeduction { get; private set; }
+    public decimal EmployeeStateInsurance { get; private set; }
     public decimal EsiDeduction { get; private set; }
     public decimal ProfessionalTax { get; private set; }
+    public decimal TaxDeductedAtSource { get; private set; }
     public decimal TdsDeduction { get; private set; }
+    public decimal LossOfPayDeduction { get; private set; }
     public decimal LopDeduction { get; private set; }
     public decimal OtherDeductions { get; private set; }
     public decimal TotalDeductions { get; private set; }
@@ -274,11 +288,19 @@ public sealed class Payslip : AggregateRoot
         decimal professionalTax,
         decimal tdsDeduction,
         decimal lopDeduction,
-        decimal otherDeductions)
+        decimal otherDeductions,
+        decimal houseRentAllowance = 0m)
     {
-        var gross = basicSalary + hra + allowances + bonus;
+        var effectiveHra = Math.Max(0m, houseRentAllowance > 0m ? houseRentAllowance : hra);
+        var gross = basicSalary + effectiveHra + allowances + bonus;
         var totalDeductions = pfDeduction + esiDeduction + professionalTax + tdsDeduction + lopDeduction + otherDeductions;
         var net = Math.Max(0m, gross - totalDeductions);
+
+        var trimmedDept = department?.Trim();
+        var effectivePf = pfDeduction;
+        var effectiveEsi = esiDeduction;
+        var effectiveTds = tdsDeduction;
+        var effectiveLop = lopDeduction;
 
         return new Payslip
         {
@@ -287,24 +309,31 @@ public sealed class Payslip : AggregateRoot
             EmployeeId = employeeId,
             EmployeeCode = employeeCode.Trim().ToUpperInvariant(),
             EmployeeName = employeeName.Trim(),
-            Department = department?.Trim(),
+            DepartmentName = trimmedDept,
+            Department = trimmedDept,
             Designation = designation.Trim(),
             Month = month,
             Year = year,
+            TotalWorkingDays = workingDays,
             WorkingDays = workingDays,
             PresentDays = presentDays,
             PaidLeaveDays = paidLeaveDays,
             UnpaidLeaveDays = unpaidLeaveDays,
             BasicSalary = basicSalary,
-            Hra = hra,
+            HouseRentAllowance = effectiveHra,
+            Hra = effectiveHra,
             Allowances = allowances,
             Bonus = bonus,
             GrossEarnings = gross,
-            PfDeduction = pfDeduction,
-            EsiDeduction = esiDeduction,
+            ProvidentFund = effectivePf,
+            PfDeduction = effectivePf,
+            EmployeeStateInsurance = effectiveEsi,
+            EsiDeduction = effectiveEsi,
             ProfessionalTax = professionalTax,
-            TdsDeduction = tdsDeduction,
-            LopDeduction = lopDeduction,
+            TaxDeductedAtSource = effectiveTds,
+            TdsDeduction = effectiveTds,
+            LossOfPayDeduction = effectiveLop,
+            LopDeduction = effectiveLop,
             OtherDeductions = otherDeductions,
             TotalDeductions = totalDeductions,
             NetSalary = net,

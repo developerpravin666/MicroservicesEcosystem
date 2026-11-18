@@ -25,10 +25,15 @@ public sealed class MarkPayslipPaidCommandHandler(
 
         return new PayslipDto(
             slip.Id, slip.PayrollRunId, slip.EmployeeId, slip.EmployeeCode, slip.EmployeeName,
-            slip.Department, slip.Designation, slip.Month, slip.Year, slip.WorkingDays,
+            slip.Department, slip.DepartmentName ?? slip.Department, slip.Designation, slip.Month, slip.Year, slip.WorkingDays,
+            slip.TotalWorkingDays > 0 ? slip.TotalWorkingDays : slip.WorkingDays,
             slip.PresentDays, slip.PaidLeaveDays, slip.UnpaidLeaveDays, slip.BasicSalary,
-            slip.Hra, slip.Allowances, slip.Bonus, slip.GrossEarnings, slip.PfDeduction,
-            slip.EsiDeduction, slip.ProfessionalTax, slip.TdsDeduction, slip.LopDeduction,
+            slip.HouseRentAllowance, slip.Hra, slip.Allowances, slip.Bonus, slip.GrossEarnings,
+            slip.ProvidentFund > 0m ? slip.ProvidentFund : slip.PfDeduction, slip.PfDeduction,
+            slip.EmployeeStateInsurance > 0m ? slip.EmployeeStateInsurance : slip.EsiDeduction, slip.EsiDeduction,
+            slip.ProfessionalTax,
+            slip.TaxDeductedAtSource > 0m ? slip.TaxDeductedAtSource : slip.TdsDeduction, slip.TdsDeduction,
+            slip.LossOfPayDeduction > 0m ? slip.LossOfPayDeduction : slip.LopDeduction, slip.LopDeduction,
             slip.OtherDeductions, slip.TotalDeductions, slip.NetSalary, slip.PaymentStatus,
             slip.DisbursedAt, slip.PaymentReference);
     }

@@ -48,7 +48,9 @@ public sealed class ProcessPayrollRunCommandHandler(
             structures.TryGetValue(emp.Id, out var structure);
 
             var basic = structure?.BasicSalary ?? (emp.MonthlyBaseSalary > 0 ? emp.MonthlyBaseSalary * 0.5m : 0m);
-            var hra = structure?.Hra ?? (emp.MonthlyBaseSalary > 0 ? emp.MonthlyBaseSalary * 0.25m : 0m);
+            var hra = (structure != null && structure.HouseRentAllowance > 0m)
+                ? structure.HouseRentAllowance
+                : (structure?.Hra ?? (emp.MonthlyBaseSalary > 0 ? emp.MonthlyBaseSalary * 0.25m : 0m));
             var allowances = structure != null
                 ? structure.DearnessAllowance + structure.ConveyanceAllowance + structure.SpecialAllowance + structure.MedicalAllowance
                 : (emp.MonthlyBaseSalary > 0 ? emp.MonthlyBaseSalary * 0.25m : 0m);
@@ -83,7 +85,8 @@ public sealed class ProcessPayrollRunCommandHandler(
                 pt,
                 tds,
                 lop,
-                otherDed);
+                otherDed,
+                hra);
 
             payslips.Add(payslip);
             totalGross += payslip.GrossEarnings;

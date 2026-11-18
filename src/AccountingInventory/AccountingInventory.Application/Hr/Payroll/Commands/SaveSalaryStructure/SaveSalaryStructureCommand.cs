@@ -6,6 +6,7 @@ namespace AccountingInventory.Application.Hr.Payroll.Commands.SaveSalaryStructur
 public sealed record SaveSalaryStructureCommand(
     Guid EmployeeId,
     decimal BasicSalary,
+    decimal HouseRentAllowance = 0m,
     decimal Hra = 0m,
     decimal DearnessAllowance = 0m,
     decimal ConveyanceAllowance = 0m,
@@ -18,4 +19,7 @@ public sealed record SaveSalaryStructureCommand(
     decimal TdsTax = 0m,
     decimal OtherDeductions = 0m,
     string PaymentMode = "Bank Transfer",
-    string? Remarks = null) : IRequest<SalaryStructureDto>;
+    string? Remarks = null) : IRequest<SalaryStructureDto>
+{
+    public decimal EffectiveHouseRentAllowance => HouseRentAllowance > 0m ? HouseRentAllowance : Hra;
+}

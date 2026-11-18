@@ -238,21 +238,37 @@ public sealed class AddSmartHrPayrollLeaveTables : Migration
 
             -- Default Leave Types Seed (RFC 4122 v4 UUIDs)
             INSERT INTO hr_leave_types (id, name, code, days_allowed_per_year, is_paid, is_carry_forward, description, is_active, is_deleted, created_at)
-            VALUES
-                ('69b3d1bb-b24a-4316-b591-60ef2ea933e5', 'Casual Leave', 'CL', 12, true, false, 'Standard annual casual leave for personal work', true, false, NOW()),
-                ('aca66ea5-c58f-41f0-8ec3-4690743bccb8', 'Sick Leave', 'SL', 10, true, false, 'Medical and sickness leave with certificate verification', true, false, NOW()),
-                ('df8d9baf-eea2-42da-9a7e-f20194723076', 'Earned Leave', 'EL', 15, true, true, 'Privilege/Earned leaves eligible for carry-forward and encashment', true, false, NOW()),
-                ('daa2990a-e0df-42ec-b0b7-9a44d826f656', 'Loss of Pay', 'LOP', 0, false, false, 'Unpaid leave where salary deduction applies automatically', true, false, NOW())
-            ON CONFLICT DO NOTHING;
+            SELECT '69b3d1bb-b24a-4316-b591-60ef2ea933e5', 'Casual Leave', 'CL', 12, true, false, 'Standard annual casual leave for personal work', true, false, NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM hr_leave_types WHERE code = 'CL');
+
+            INSERT INTO hr_leave_types (id, name, code, days_allowed_per_year, is_paid, is_carry_forward, description, is_active, is_deleted, created_at)
+            SELECT 'aca66ea5-c58f-41f0-8ec3-4690743bccb8', 'Sick Leave', 'SL', 10, true, false, 'Medical and sickness leave with certificate verification', true, false, NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM hr_leave_types WHERE code = 'SL');
+
+            INSERT INTO hr_leave_types (id, name, code, days_allowed_per_year, is_paid, is_carry_forward, description, is_active, is_deleted, created_at)
+            SELECT 'df8d9baf-eea2-42da-9a7e-f20194723076', 'Earned Leave', 'EL', 15, true, true, 'Privilege/Earned leaves eligible for carry-forward and encashment', true, false, NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM hr_leave_types WHERE code = 'EL');
+
+            INSERT INTO hr_leave_types (id, name, code, days_allowed_per_year, is_paid, is_carry_forward, description, is_active, is_deleted, created_at)
+            SELECT 'daa2990a-e0df-42ec-b0b7-9a44d826f656', 'Loss of Pay', 'LOP', 0, false, false, 'Unpaid leave where salary deduction applies automatically', true, false, NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM hr_leave_types WHERE code = 'LOP');
 
             -- Default Departments Seed (RFC 4122 v4 UUIDs)
             INSERT INTO hr_departments (id, name, code, description, head_of_department, is_active, is_deleted, created_at)
-            VALUES
-                ('0cddb3ae-b316-4fbb-a42f-030b3288fbe1', 'Sales & Counter Billing', 'SALES', 'Retail counter sales, mobile retail consultants & billing cashiers', 'Store Manager', true, false, NOW()),
-                ('3b218440-954f-4536-8bcc-883f1159bdca', 'Inventory & Warehouse', 'INVENTORY', 'Device stocking, godown receiving, barcode allocation & dispatch', 'Warehouse Lead', true, false, NOW()),
-                ('959b265c-f347-4bf0-a6c0-e1055a6c4fe4', 'Accounts & Finance', 'ACCOUNTS', 'GST compliance, tally reconciliation, vendor payments & payroll ledger', 'Chief Accountant', true, false, NOW()),
-                ('e921619f-d60d-4e21-8ef3-f8ce05198ace', 'Administration & HR', 'ADMIN', 'Store operations, staff management, onboarding & compliance', 'Operations Manager', true, false, NOW())
-            ON CONFLICT DO NOTHING;
+            SELECT '0cddb3ae-b316-4fbb-a42f-030b3288fbe1', 'Sales & Counter Billing', 'SALES', 'Retail counter sales, mobile retail consultants & billing cashiers', 'Store Manager', true, false, NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM hr_departments WHERE code = 'SALES');
+
+            INSERT INTO hr_departments (id, name, code, description, head_of_department, is_active, is_deleted, created_at)
+            SELECT '3b218440-954f-4536-8bcc-883f1159bdca', 'Inventory & Warehouse', 'INVENTORY', 'Device stocking, godown receiving, barcode allocation & dispatch', 'Warehouse Lead', true, false, NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM hr_departments WHERE code = 'INVENTORY');
+
+            INSERT INTO hr_departments (id, name, code, description, head_of_department, is_active, is_deleted, created_at)
+            SELECT '959b265c-f347-4bf0-a6c0-e1055a6c4fe4', 'Accounts & Finance', 'ACCOUNTS', 'GST compliance, tally reconciliation, vendor payments & payroll ledger', 'Chief Accountant', true, false, NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM hr_departments WHERE code = 'ACCOUNTS');
+
+            INSERT INTO hr_departments (id, name, code, description, head_of_department, is_active, is_deleted, created_at)
+            SELECT 'e921619f-d60d-4e21-8ef3-f8ce05198ace', 'Administration & HR', 'ADMIN', 'Store operations, staff management, onboarding & compliance', 'Operations Manager', true, false, NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM hr_departments WHERE code = 'ADMIN');
         """);
     }
 

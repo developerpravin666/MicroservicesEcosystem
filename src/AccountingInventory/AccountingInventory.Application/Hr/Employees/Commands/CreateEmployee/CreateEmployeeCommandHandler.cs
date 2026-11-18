@@ -15,7 +15,30 @@ public sealed class CreateEmployeeCommandHandler(
 {
     public async Task<EmployeeDetailDto> Handle(CreateEmployeeCommand request, CancellationToken cancellationToken)
     {
-        var code = request.EmployeeCode.Trim().ToUpperInvariant();
+        var code = request.EmployeeCode?.Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            var now = DateTime.UtcNow;
+            var prefix = $"{now.Year:D4}-{now.Month:D2}-";
+            var existingCodes = await db.Employees
+                .AsNoTracking()
+                .Where(e => e.EmployeeCode.StartsWith(prefix))
+                .Select(e => e.EmployeeCode)
+                .ToListAsync(cancellationToken);
+
+            var maxSeq = 0;
+            foreach (var c in existingCodes)
+            {
+                var suffix = c.Substring(prefix.Length);
+                if (int.TryParse(suffix, out var seq) && seq > maxSeq)
+                {
+                    maxSeq = seq;
+                }
+            }
+
+            code = $"{prefix}{(maxSeq + 1):D6}";
+        }
+
         var exists = await db.Employees.AnyAsync(e => e.EmployeeCode == code && !e.IsDeleted, cancellationToken);
         if (exists)
         {

@@ -11,6 +11,7 @@ using AccountingInventory.Application.Hr.Employees.Commands.UpdateEmployee;
 using AccountingInventory.Application.Hr.Employees.Models;
 using AccountingInventory.Application.Hr.Employees.Queries.GetEmployeeById;
 using AccountingInventory.Application.Hr.Employees.Queries.GetEmployees;
+using AccountingInventory.Application.Hr.Employees.Queries.GetNextEmployeeCode;
 using AccountingInventory.Application.Hr.Leaves.Commands.AllocateLeaveBalance;
 using AccountingInventory.Application.Hr.Leaves.Commands.ApplyLeaveRequest;
 using AccountingInventory.Application.Hr.Leaves.Commands.CreateLeaveType;
@@ -36,6 +37,7 @@ using AccountingInventory.Application.Hr.Payroll.Models;
 using AccountingInventory.Application.Hr.Payroll.Queries.GetPayrollRuns;
 using AccountingInventory.Application.Hr.Payroll.Queries.GetPayslipsByRun;
 using AccountingInventory.Application.Hr.Payroll.Queries.GetSalaryStructure;
+using AccountingInventory.Application.Hr.Payroll.Queries.GetSalaryStructures;
 using AccountingInventory.Domain.Entities;
 using BuildingBlocks.WebDefaults;
 using MediatR;
@@ -85,6 +87,12 @@ public static class HrEndpoints
             var paged = await sender.Send(query, ct);
             return Results.Ok(paged);
         }).WithName("GetHrEmployees");
+
+        group.MapGet("/employees/next-code", async (ISender sender, CancellationToken ct) =>
+        {
+            var nextCode = await sender.Send(new GetNextEmployeeCodeQuery(), ct);
+            return Results.Ok(new { code = nextCode });
+        }).WithName("GetNextHrEmployeeCode");
 
         group.MapGet("/employees/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {
@@ -310,6 +318,21 @@ public static class HrEndpoints
 
         #region 4. Payroll
 
+        group.MapGet("/payroll/structures", async (ISender sender, CancellationToken ct) =>
+        {
+            var structures = await sender.Send(new GetSalaryStructuresQuery(), ct);
+            return Results.Ok(structures);
+        }).WithName("GetHrSalaryStructuresAll");
+
+        group.MapGet("/payroll/structures/{employeeId:guid}", async (Guid employeeId, ISender sender, CancellationToken ct) =>
+        {
+            var structure = await sender.Send(new GetSalaryStructureQuery(employeeId), ct);
+            if (structure is null)
+                return Results.NotFound(new { message = "Salary structure not defined for this employee." });
+
+            return Results.Ok(structure);
+        }).WithName("GetHrSalaryStructureLegacy");
+
         group.MapGet("/payroll/salary-structures/{employeeId:guid}", async (Guid employeeId, ISender sender, CancellationToken ct) =>
         {
             var structure = await sender.Send(new GetSalaryStructureQuery(employeeId), ct);
@@ -319,6 +342,40 @@ public static class HrEndpoints
             return Results.Ok(structure);
         }).WithName("GetHrSalaryStructure");
 
+        group.MapPost("/payroll/structures", async (
+            [FromBody] SaveSalaryStructureRequest req,
+            ISender sender,
+            CancellationToken ct) =>
+        {
+            if (!req.EmployeeId.HasValue || req.EmployeeId == Guid.Empty)
+                return Results.BadRequest(new { message = "employeeId is required to save salary structure." });
+
+            var command = new SaveSalaryStructureCommand(
+                req.EmployeeId.Value, req.BasicSalary, req.EffectiveHouseRentAllowance, req.EffectiveHouseRentAllowance,
+                req.DearnessAllowance, req.ConveyanceAllowance, req.SpecialAllowance, req.MedicalAllowance,
+                req.PerformanceBonus, req.ProvidentFund, req.Esi, req.ProfessionalTax, req.TdsTax,
+                req.OtherDeductions, req.PaymentMode, req.Remarks);
+
+            var result = await sender.Send(command, ct);
+            return Results.Ok(result);
+        }).WithName("SaveHrSalaryStructureFromBody");
+
+        group.MapPost("/payroll/structures/{employeeId:guid}", async (
+            Guid employeeId,
+            [FromBody] SaveSalaryStructureRequest req,
+            ISender sender,
+            CancellationToken ct) =>
+        {
+            var command = new SaveSalaryStructureCommand(
+                employeeId, req.BasicSalary, req.EffectiveHouseRentAllowance, req.EffectiveHouseRentAllowance,
+                req.DearnessAllowance, req.ConveyanceAllowance, req.SpecialAllowance, req.MedicalAllowance,
+                req.PerformanceBonus, req.ProvidentFund, req.Esi, req.ProfessionalTax, req.TdsTax,
+                req.OtherDeductions, req.PaymentMode, req.Remarks);
+
+            var result = await sender.Send(command, ct);
+            return Results.Ok(result);
+        }).WithName("SaveHrSalaryStructureLegacyRoute");
+
         group.MapPost("/payroll/salary-structures/{employeeId:guid}", async (
             Guid employeeId,
             [FromBody] SaveSalaryStructureRequest req,
@@ -326,13 +383,20 @@ public static class HrEndpoints
             CancellationToken ct) =>
         {
             var command = new SaveSalaryStructureCommand(
-                employeeId, req.BasicSalary, req.Hra, req.DearnessAllowance, req.ConveyanceAllowance,
-                req.SpecialAllowance, req.MedicalAllowance, req.PerformanceBonus, req.ProvidentFund,
-                req.Esi, req.ProfessionalTax, req.TdsTax, req.OtherDeductions, req.PaymentMode, req.Remarks);
+                employeeId, req.BasicSalary, req.EffectiveHouseRentAllowance, req.EffectiveHouseRentAllowance,
+                req.DearnessAllowance, req.ConveyanceAllowance, req.SpecialAllowance, req.MedicalAllowance,
+                req.PerformanceBonus, req.ProvidentFund, req.Esi, req.ProfessionalTax, req.TdsTax,
+                req.OtherDeductions, req.PaymentMode, req.Remarks);
 
             var result = await sender.Send(command, ct);
             return Results.Ok(result);
         }).WithName("SaveHrSalaryStructure");
+
+        group.MapDelete("/payroll/structures/{employeeId:guid}", async (Guid employeeId, ISender sender, CancellationToken ct) =>
+        {
+            await sender.Send(new DeleteSalaryStructureCommand(employeeId), ct);
+            return Results.NoContent();
+        }).WithName("DeleteHrSalaryStructureLegacyRoute");
 
         group.MapDelete("/payroll/salary-structures/{employeeId:guid}", async (Guid employeeId, ISender sender, CancellationToken ct) =>
         {
