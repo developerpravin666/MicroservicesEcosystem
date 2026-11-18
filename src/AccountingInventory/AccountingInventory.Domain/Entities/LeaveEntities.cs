@@ -215,4 +215,36 @@ public sealed class LeaveRequest : AggregateRoot
         Status = LeaveRequestStatus.Cancelled;
         ModifiedAt = DateTimeOffset.UtcNow;
     }
+
+    public void Update(
+        Guid leaveTypeId,
+        string leaveTypeName,
+        DateOnly startDate,
+        DateOnly endDate,
+        decimal totalDays,
+        string reason)
+    {
+        if (endDate < startDate)
+            throw new ArgumentException("End date cannot be prior to start date.", nameof(endDate));
+        if (totalDays <= 0m)
+            throw new ArgumentException("Total days must be greater than zero.", nameof(totalDays));
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("Leave reason is required.", nameof(reason));
+
+        LeaveTypeId = leaveTypeId;
+        LeaveTypeName = leaveTypeName.Trim();
+        StartDate = startDate;
+        EndDate = endDate;
+        TotalDays = totalDays;
+        Reason = reason.Trim();
+        ModifiedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        IsActive = false;
+        Status = LeaveRequestStatus.Cancelled;
+        ModifiedAt = DateTimeOffset.UtcNow;
+    }
 }

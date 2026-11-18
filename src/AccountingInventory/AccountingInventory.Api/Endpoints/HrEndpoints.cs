@@ -14,14 +14,20 @@ using AccountingInventory.Application.Hr.Employees.Queries.GetEmployees;
 using AccountingInventory.Application.Hr.Leaves.Commands.AllocateLeaveBalance;
 using AccountingInventory.Application.Hr.Leaves.Commands.ApplyLeaveRequest;
 using AccountingInventory.Application.Hr.Leaves.Commands.CreateLeaveType;
+using AccountingInventory.Application.Hr.Leaves.Commands.DeleteLeaveRequest;
 using AccountingInventory.Application.Hr.Leaves.Commands.ReviewLeaveRequest;
+using AccountingInventory.Application.Hr.Leaves.Commands.UpdateLeaveRequest;
 using AccountingInventory.Application.Hr.Leaves.Models;
 using AccountingInventory.Application.Hr.Leaves.Queries.GetLeaveBalances;
 using AccountingInventory.Application.Hr.Leaves.Queries.GetLeaveRequests;
 using AccountingInventory.Application.Hr.Leaves.Queries.GetLeaveTypes;
 using AccountingInventory.Application.Hr.Masters.Commands.CreateMaster;
+using AccountingInventory.Application.Hr.Masters.Commands.UpdateMaster;
+using AccountingInventory.Application.Hr.Masters.Commands.DeleteMaster;
 using AccountingInventory.Application.Hr.Masters.Models;
 using AccountingInventory.Application.Hr.Masters.Queries.GetMasters;
+using AccountingInventory.Application.Hr.Payroll.Commands.DeletePayrollRun;
+using AccountingInventory.Application.Hr.Payroll.Commands.DeleteSalaryStructure;
 using AccountingInventory.Application.Hr.Payroll.Commands.DisbursePayrollRun;
 using AccountingInventory.Application.Hr.Payroll.Commands.MarkPayslipPaid;
 using AccountingInventory.Application.Hr.Payroll.Commands.ProcessPayrollRun;
@@ -265,6 +271,13 @@ public static class HrEndpoints
             return Results.Created($"/api/hr/leaves/requests/{result.Id}", result);
         }).WithName("ApplyHrLeaveRequest");
 
+        group.MapPut("/leaves/requests/{id:guid}", async (Guid id, [FromBody] UpdateLeaveRequestRequest req, ISender sender, CancellationToken ct) =>
+        {
+            var command = new UpdateLeaveRequestCommand(id, req.LeaveTypeId, req.StartDate, req.EndDate, req.TotalDays, req.Reason);
+            var result = await sender.Send(command, ct);
+            return Results.Ok(result);
+        }).WithName("UpdateHrLeaveRequest");
+
         group.MapPost("/leaves/requests/{id:guid}/approve", async (
             Guid id,
             [FromBody] LeaveDecisionRequest req,
@@ -286,6 +299,12 @@ public static class HrEndpoints
             var result = await sender.Send(command, ct);
             return Results.Ok(result);
         }).WithName("RejectHrLeaveRequest");
+
+        group.MapDelete("/leaves/requests/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+        {
+            await sender.Send(new DeleteLeaveRequestCommand(id), ct);
+            return Results.NoContent();
+        }).WithName("DeleteHrLeaveRequest");
 
         #endregion
 
@@ -314,6 +333,12 @@ public static class HrEndpoints
             var result = await sender.Send(command, ct);
             return Results.Ok(result);
         }).WithName("SaveHrSalaryStructure");
+
+        group.MapDelete("/payroll/salary-structures/{employeeId:guid}", async (Guid employeeId, ISender sender, CancellationToken ct) =>
+        {
+            await sender.Send(new DeleteSalaryStructureCommand(employeeId), ct);
+            return Results.NoContent();
+        }).WithName("DeleteHrSalaryStructure");
 
         group.MapGet("/payroll/runs", async ([FromQuery] int? year, ISender sender, CancellationToken ct) =>
         {
@@ -344,6 +369,12 @@ public static class HrEndpoints
             var result = await sender.Send(command, ct);
             return Results.Ok(result);
         }).WithName("DisburseHrPayrollRun");
+
+        group.MapDelete("/payroll/runs/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+        {
+            await sender.Send(new DeletePayrollRunCommand(id), ct);
+            return Results.NoContent();
+        }).WithName("DeleteHrPayrollRun");
 
         group.MapPost("/payroll/payslips/{id:guid}/mark-paid", async (
             Guid id,
@@ -384,10 +415,23 @@ public static class HrEndpoints
 
         group.MapPost("/masters", async ([FromBody] CreateHrMasterRequest req, ISender sender, CancellationToken ct) =>
         {
-            var command = new CreateHrMasterCommand(req.Category, req.Name, req.Code, req.Description, req.SortOrder, req.IsDefault);
+            var command = new CreateHrMasterCommand(req.Category, req.Name, req.Code, req.Description, req.IsDefault);
             var result = await sender.Send(command, ct);
             return Results.Created($"/api/hr/masters/{result.Id}", result);
         }).WithName("CreateHrMaster");
+
+        group.MapPut("/masters/{id:guid}", async (Guid id, [FromBody] UpdateHrMasterRequest req, ISender sender, CancellationToken ct) =>
+        {
+            var command = new UpdateHrMasterCommand(id, req.Name, req.Description, req.IsDefault, req.IsActive);
+            var result = await sender.Send(command, ct);
+            return Results.Ok(result);
+        }).WithName("UpdateHrMaster");
+
+        group.MapDelete("/masters/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+        {
+            await sender.Send(new DeleteHrMasterCommand(id), ct);
+            return Results.NoContent();
+        }).WithName("DeleteHrMaster");
 
         #endregion
 

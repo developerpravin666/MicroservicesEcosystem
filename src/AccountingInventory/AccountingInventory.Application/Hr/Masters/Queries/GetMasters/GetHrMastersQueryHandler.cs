@@ -20,9 +20,8 @@ public sealed class GetHrMastersQueryHandler(IAccountingInventoryDbContext db)
 
         return await query
             .OrderBy(m => m.Category)
-            .ThenBy(m => m.SortOrder)
             .ThenBy(m => m.Name)
-            .Select(m => new HrMasterItemDto(m.Id, m.Category, m.Name, m.Code, m.Description, m.SortOrder, m.IsDefault, m.IsActive))
+            .Select(m => new HrMasterItemDto(m.Id, m.Category, m.Name, m.Code, m.Description, m.IsDefault, m.IsActive))
             .ToListAsync(cancellationToken);
     }
 }

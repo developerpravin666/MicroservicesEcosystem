@@ -12,7 +12,6 @@ public sealed class HrMasterItem : AggregateRoot
     public string Name { get; private set; } = null!;
     public string Code { get; private set; } = null!;
     public string? Description { get; private set; }
-    public int SortOrder { get; private set; } = 0;
     public bool IsDefault { get; private set; } = false;
 
     public static HrMasterItem Create(
@@ -20,7 +19,6 @@ public sealed class HrMasterItem : AggregateRoot
         string name,
         string code,
         string? description = null,
-        int sortOrder = 0,
         bool isDefault = false)
     {
         if (string.IsNullOrWhiteSpace(category))
@@ -37,20 +35,25 @@ public sealed class HrMasterItem : AggregateRoot
             Name = name.Trim(),
             Code = code.Trim().ToUpperInvariant(),
             Description = description?.Trim(),
-            SortOrder = sortOrder,
             IsDefault = isDefault,
             IsActive = true,
             CreatedAt = DateTimeOffset.UtcNow
         };
     }
 
-    public void Update(string name, string? description, int sortOrder, bool isDefault, bool isActive = true)
+    public void Update(string name, string? description, bool isDefault, bool isActive = true)
     {
         Name = name.Trim();
         Description = description?.Trim();
-        SortOrder = sortOrder;
         IsDefault = isDefault;
         IsActive = isActive;
+        ModifiedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        IsActive = false;
         ModifiedAt = DateTimeOffset.UtcNow;
     }
 }

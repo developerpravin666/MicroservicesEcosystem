@@ -5,5 +5,4 @@ public sealed record CreateHrMasterRequest(
     string Name,
     string Code,
     string? Description = null,
-    int SortOrder = 0,
     bool IsDefault = false);

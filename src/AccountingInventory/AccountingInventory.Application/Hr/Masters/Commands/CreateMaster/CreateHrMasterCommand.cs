@@ -8,5 +8,4 @@ public sealed record CreateHrMasterCommand(
     string Name,
     string Code,
     string? Description = null,
-    int SortOrder = 0,
     bool IsDefault = false) : IRequest<HrMasterItemDto>;

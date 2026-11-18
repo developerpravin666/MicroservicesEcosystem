@@ -6,6 +6,5 @@ public sealed record HrMasterItemDto(
     string Name,
     string Code,
     string? Description,
-    int SortOrder,
     bool IsDefault,
     bool IsActive);

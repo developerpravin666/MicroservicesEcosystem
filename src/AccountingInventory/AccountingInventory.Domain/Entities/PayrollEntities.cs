@@ -124,6 +124,13 @@ public sealed class SalaryStructure : AggregateRoot
         Remarks = remarks?.Trim();
         ModifiedAt = DateTimeOffset.UtcNow;
     }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        IsActive = false;
+        ModifiedAt = DateTimeOffset.UtcNow;
+    }
 }
 
 /// <summary>
@@ -190,6 +197,14 @@ public sealed class PayrollRun : AggregateRoot
 
     public void Cancel()
     {
+        Status = PayrollRunStatus.Cancelled;
+        ModifiedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        IsActive = false;
         Status = PayrollRunStatus.Cancelled;
         ModifiedAt = DateTimeOffset.UtcNow;
     }
@@ -304,6 +319,13 @@ public sealed class Payslip : AggregateRoot
         PaymentStatus = PayslipPaymentStatus.Paid;
         DisbursedAt = DateTimeOffset.UtcNow;
         PaymentReference = paymentReference?.Trim();
+        ModifiedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void Delete()
+    {
+        IsDeleted = true;
+        IsActive = false;
         ModifiedAt = DateTimeOffset.UtcNow;
     }
 }

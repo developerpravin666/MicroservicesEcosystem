@@ -200,6 +200,7 @@ public sealed class DatabaseMigrationCoordinator(
                     WHEN t.table_name = 'hr_salary_structures' THEN 'Employee compensation, allowances, and statutory deduction plans'
                     WHEN t.table_name = 'hr_payroll_runs' THEN 'Monthly payroll calculation and disbursement batch runs'
                     WHEN t.table_name = 'hr_payslips' THEN 'Monthly employee salary slips and payment records'
+                    WHEN t.table_name = 'hr_master_items' THEN 'HR & payroll master dictionary items (job titles, types, status)'
                     ELSE 'Operational transactional table'
                 END,
                 t.table_name LIKE '__%' OR t.table_name = 'table_registry',

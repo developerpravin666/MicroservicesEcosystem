@@ -17,23 +17,34 @@ public sealed class CreateHrMasterCommandHandler(
     {
         var category = request.Category.Trim().ToUpperInvariant();
         var code = request.Code.Trim().ToUpperInvariant();
+        var name = request.Name.Trim();
 
-        var exists = await db.HrMasterItems.AnyAsync(
+        var codeExists = await db.HrMasterItems.AnyAsync(
             m => m.Category == category && m.Code == code && !m.IsDeleted,
             cancellationToken);
 
-        if (exists)
+        if (codeExists)
         {
             logger.LogWarning("Master item '{Code}' already exists in category '{Category}'.", code, category);
-            throw new ConflictException($"Master item '{code}' already exists in category '{category}'.");
+            throw new ConflictException($"Master item with code '{code}' already exists in category '{category}'.");
         }
 
-        var item = HrMasterItem.Create(category, request.Name, code, request.Description, request.SortOrder, request.IsDefault);
+        var nameExists = await db.HrMasterItems.AnyAsync(
+            m => m.Category == category && m.Name.ToLower() == name.ToLower() && !m.IsDeleted,
+            cancellationToken);
+
+        if (nameExists)
+        {
+            logger.LogWarning("Master item with name '{Name}' already exists in category '{Category}'.", name, category);
+            throw new ConflictException($"A master item with name '{name}' already exists in category '{category}'.");
+        }
+
+        var item = HrMasterItem.Create(category, name, code, request.Description, request.IsDefault);
         db.HrMasterItems.Add(item);
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Master item '{Code}' ({Name}) created under '{Category}'.", item.Code, item.Name, item.Category);
 
-        return new HrMasterItemDto(item.Id, item.Category, item.Name, item.Code, item.Description, item.SortOrder, item.IsDefault, item.IsActive);
+        return new HrMasterItemDto(item.Id, item.Category, item.Name, item.Code, item.Description, item.IsDefault, item.IsActive);
     }
 }
